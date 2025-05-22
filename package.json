@@ -7,7 +7,7 @@
     "node": "18.x"
   },
   "scripts": {
-    "dev": "npx vite"
+    "dev": "vite"
   },
   "dependencies": {
     "@tensorflow-models/face-detection": "1.0.1",
@@ -29,6 +29,6 @@
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
-    "vite": "4.5.2"
+    "vite": "^4.5.2"
   }
 }
