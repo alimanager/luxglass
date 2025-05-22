@@ -7,8 +7,7 @@
     "node": "18.x"
   },
   "scripts": {
-       "dev": "npx vite", // Use npx to ensure the local Vite is executed
-    
+    "dev": "npx vite"
   },
   "dependencies": {
     "@tensorflow-models/face-detection": "1.0.1",
