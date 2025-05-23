@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Glasses } from '../types/glasses';
-import { Sliders, RotateCcw } from 'lucide-react';
+import { Sliders, RotateCcw, AlertCircle } from 'lucide-react';
 
 interface VirtualTryOnProps {
   glasses: Glasses;
@@ -95,7 +95,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
       },
       (error) => {
         console.error('Error loading model:', error);
-        setLoadingError('Erreur lors du chargement du modèle 3D. Veuillez réessayer.');
+        setLoadingError('Le modèle 3D n\'a pas pu être chargé. Veuillez vérifier que le fichier glasses.glb est présent dans le dossier public.');
         setIsLoading(false);
       }
     );
@@ -128,6 +128,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
       }
       renderer.dispose();
       controlsRef.current?.dispose();
+      container.removeChild(renderer.domElement);
     };
   }, [glasses]);
 
@@ -159,6 +160,29 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     updateGlassesPosition();
   }, [adjustments]);
 
+  if (loadingError) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-red-800 mb-2">
+          Erreur de chargement du modèle
+        </h3>
+        <p className="text-red-600 mb-4">
+          {loadingError}
+        </p>
+        <div className="text-sm text-red-700">
+          <p className="mb-2">Pour résoudre ce problème :</p>
+          <ol className="text-left list-decimal list-inside space-y-1">
+            <li>Téléchargez un modèle 3D de lunettes au format .glb</li>
+            <li>Renommez le fichier en "glasses.glb"</li>
+            <li>Placez le fichier dans le dossier "public" du projet</li>
+            <li>Redémarrez le serveur de développement</li>
+          </ol>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div 
@@ -173,12 +197,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
           </div>
         )}
       </div>
-
-      {loadingError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {loadingError}
-        </div>
-      )}
       
       <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
         <div className="flex items-center justify-between">
