@@ -80,7 +80,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     setLoadingError(null);
     setIsLoading(true);
 
-    // Load model from public directory
     loader.load(
       '/glasses.glb',
       (gltf) => {
@@ -174,7 +173,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
           </div>
         )}
       </div>
-      
+
       {loadingError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
           {loadingError}
