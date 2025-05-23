@@ -1,141 +1,110 @@
-import React, { useRef, useState, useEffect } from 'react';
-import Webcam from 'react-webcam';
-import * as tf from '@tensorflow/tfjs';
-import '@tensorflow/tfjs-backend-webgl';  // Import WebGL backend first
-import * as faceDetection from '@tensorflow-models/face-detection';
+import React, { useState } from 'react';
+import FaceAnalysis from './components/FaceAnalysis';
+import VirtualTryOn from './components/VirtualTryOn';
+import { glasses } from './data/mockData';
 
 function App() {
-  const webcamRef = useRef<Webcam>(null);
-  const [detector, setDetector] = useState<faceDetection.FaceDetector | null>(null);
-  const [isModelLoading, setIsModelLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [detections, setDetections] = useState<faceDetection.Face[]>([]);
+  const [faceShape, setFaceShape] = useState<string | null>(null);
+  const [selectedGlasses, setSelectedGlasses] = useState(glasses[0]);
 
-  useEffect(() => {
-    const initializeDetector = async () => {
-      try {
-        setIsModelLoading(true);
-        setError(null);
-        
-        // Explicitly set WebGL backend and ensure TF is ready
-        await tf.setBackend('webgl');
-        await tf.ready();
-        
-        const model = await faceDetection.createDetector(
-          faceDetection.SupportedModels.MediaPipeFaceDetector,
-          {
-            runtime: 'tfjs',
-            modelType: 'short'
-          }
-        );
-        
-        setDetector(model);
-      } catch (err) {
-        console.error('Error loading face detection model:', err);
-        setError('Error loading face detection model');
-      } finally {
-        setIsModelLoading(false);
+  const handleFaceAnalysis = (shape: string) => {
+    setFaceShape(shape);
+    // Get recommended glasses based on face shape
+    const recommendedGlasses = glasses.filter(g => {
+      switch (shape) {
+        case 'round':
+          return ['Rectangulaire', 'Carré'].includes(g.style);
+        case 'square':
+          return ['Rond', 'Ovale'].includes(g.style);
+        case 'heart':
+          return ['Aviateur', 'Papillon'].includes(g.style);
+        case 'oval':
+          return true; // Oval faces can wear most styles
+        default:
+          return true;
       }
-    };
-
-    initializeDetector();
-
-    return () => {
-      if (detector) {
-        detector.dispose();
-      }
-    };
-  }, []);
-
-  const detectFace = async () => {
-    if (!detector || !webcamRef.current?.video) {
-      console.log('Detector or video not ready');
-      return;
-    }
-
-    try {
-      console.log('Starting face detection...');
-      const video = webcamRef.current.video;
-      const faces = await detector.estimateFaces(video, {
-        flipHorizontal: false
-      });
-      console.log('Face detections:', faces);
-      setDetections(faces);
-    } catch (err) {
-      console.error('Error detecting face:', err);
-      setError('Error detecting face');
+    });
+    
+    if (recommendedGlasses.length > 0) {
+      setSelectedGlasses(recommendedGlasses[0]);
     }
   };
 
-  // Draw face detections
-  useEffect(() => {
-    if (detections.length > 0) {
-      const canvas = document.createElement('canvas');
-      const video = webcamRef.current?.video;
-      if (!video) return;
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      // Draw the detections
-      detections.forEach(face => {
-        const { box } = face;
-        ctx.strokeStyle = '#00ff00';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(box.xMin, box.yMin, box.width, box.height);
-      });
-    }
-  }, [detections]);
-
   return (
-    <div className="p-5">
-      <h1 className="text-2xl font-bold mb-4">TensorFlow.js Face Detection Test</h1>
-      
-      <div className="mt-5 relative">
-        <Webcam
-          ref={webcamRef}
-          mirrored
-          className="w-full max-w-2xl"
-          videoConstraints={{
-            width: 640,
-            height: 480,
-            facingMode: "user"
-          }}
-        />
-        {detections.length > 0 && (
-          <div className="absolute top-2 left-2 bg-green-500 text-white px-3 py-1 rounded">
-            Face Detected!
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+          Essayage Virtuel de Lunettes
+        </h1>
+
+        {!faceShape ? (
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-semibold mb-4">
+                Analysez votre visage
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Positionnez votre visage dans le cadre et laissez-nous analyser 
+                sa forme pour vous recommander les meilleures montures.
+              </p>
+              <FaceAnalysis onAnalysisComplete={handleFaceAnalysis} />
+            </div>
           </div>
-        )}
-      </div>
-
-      {error && (
-        <div className="text-red-500 mt-3">
-          {error}
-        </div>
-      )}
-
-      <button
-        onClick={detectFace}
-        disabled={isModelLoading}
-        className={`mt-5 px-5 py-2 rounded-md text-white ${
-          isModelLoading 
-            ? 'bg-gray-400 cursor-not-allowed' 
-            : 'bg-blue-500 hover:bg-blue-600'
-        }`}
-      >
-        {isModelLoading ? 'Loading model...' : 'Detect Face'}
-      </button>
-
-      <div className="mt-4 text-sm text-gray-600">
-        {isModelLoading ? (
-          'Loading face detection model...'
-        ) : detector ? (
-          'Model loaded successfully. Click "Detect Face" to test.'
         ) : (
-          'Error loading model. Please refresh the page.'
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <VirtualTryOn glasses={selectedGlasses} faceShape={faceShape} />
+            </div>
+            
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-lg shadow-sm">
+                <h2 className="text-xl font-semibold mb-4">
+                  Résultats de l'analyse
+                </h2>
+                <p className="text-gray-600">
+                  Votre forme de visage : <span className="font-semibold">{faceShape}</span>
+                </p>
+                <div className="mt-4">
+                  <h3 className="font-medium mb-2">Lunettes recommandées :</h3>
+                  <div className="grid gap-4">
+                    {glasses.slice(0, 3).map((glass) => (
+                      <button
+                        key={glass.id}
+                        onClick={() => setSelectedGlasses(glass)}
+                        className={`p-4 rounded-lg border transition-all ${
+                          selectedGlasses.id === glass.id
+                            ? 'border-primary-500 bg-primary-50'
+                            : 'border-gray-200 hover:border-primary-200'
+                        }`}
+                      >
+                        <div className="flex items-center">
+                          <img
+                            src={glass.imageUrl}
+                            alt={glass.name}
+                            className="w-20 h-20 object-cover rounded"
+                          />
+                          <div className="ml-4 text-left">
+                            <h4 className="font-medium">{glass.name}</h4>
+                            <p className="text-sm text-gray-600">{glass.brand}</p>
+                            <p className="text-primary-600 font-medium mt-1">
+                              {glass.price} €
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setFaceShape(null)}
+                className="w-full py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Recommencer l'analyse
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
