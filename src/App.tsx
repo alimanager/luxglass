@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import * as tf from '@tensorflow/tfjs';
+import '@tensorflow/tfjs-backend-webgl';  // Import WebGL backend first
 import * as faceDetection from '@tensorflow-models/face-detection';
 
 function App() {
@@ -15,13 +16,14 @@ function App() {
         setIsModelLoading(true);
         setError(null);
         
+        // Explicitly set WebGL backend and ensure TF is ready
+        await tf.setBackend('webgl');
         await tf.ready();
         
         const model = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
-            runtime: 'mediapipe',
-            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection',
+            runtime: 'tfjs', // Changed to 'tfjs' runtime instead of 'mediapipe'
             modelType: 'short',
             maxFaces: 1
           }
