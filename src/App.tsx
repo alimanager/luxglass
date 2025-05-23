@@ -1,11 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import * as tf from '@tensorflow/tfjs';
-import * as faceDetection from '@tensorflow-models/face-detection';
+import { FaceDetector, SupportedModels, load } from '@tensorflow-models/face-detection';
 
 function App() {
   const webcamRef = useRef<Webcam>(null);
-  const [detector, setDetector] = useState<faceDetection.FaceDetector | null>(null);
+  const [detector, setDetector] = useState<FaceDetector | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,8 +17,8 @@ function App() {
         
         await tf.ready();
         
-        const model = await faceDetection.load(
-          faceDetection.SupportedModels.MediaPipeFaceDetector,
+        const model = await load(
+          SupportedModels.MediaPipeFaceDetector,
           {
             runtime: 'mediapipe',
             solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection',
@@ -59,14 +59,14 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>TensorFlow.js Face Detection Test</h1>
+    <div className="p-5">
+      <h1 className="text-2xl font-bold mb-4">TensorFlow.js Face Detection Test</h1>
       
-      <div style={{ marginTop: '20px' }}>
+      <div className="mt-5">
         <Webcam
           ref={webcamRef}
           mirrored
-          style={{ width: '100%', maxWidth: '640px' }}
+          className="w-full max-w-2xl"
           videoConstraints={{
             width: 640,
             height: 480,
@@ -76,7 +76,7 @@ function App() {
       </div>
 
       {error && (
-        <div style={{ color: 'red', marginTop: '10px' }}>
+        <div className="text-red-500 mt-3">
           {error}
         </div>
       )}
@@ -84,15 +84,11 @@ function App() {
       <button
         onClick={detectFace}
         disabled={isModelLoading}
-        style={{
-          marginTop: '20px',
-          padding: '10px 20px',
-          backgroundColor: isModelLoading ? '#ccc' : '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: isModelLoading ? 'not-allowed' : 'pointer'
-        }}
+        className={`mt-5 px-5 py-2 rounded-md text-white ${
+          isModelLoading 
+            ? 'bg-gray-400 cursor-not-allowed' 
+            : 'bg-blue-500 hover:bg-blue-600'
+        }`}
       >
         {isModelLoading ? 'Loading model...' : 'Detect Face'}
       </button>
