@@ -78,9 +78,9 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     const loader = new GLTFLoader();
     setLoadingError(null);
 
-    // Try to load the local model first
+    // Load the model from the public directory
     loader.load(
-      '/models/glasses.glb',
+      '/glasses.glb',
       (gltf) => {
         const model = gltf.scene;
         model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
@@ -92,7 +92,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         console.log((progress.loaded / progress.total * 100) + '% loaded');
       },
       (error) => {
-        console.error('Error loading local model:', error);
+        console.error('Error loading model:', error);
         setLoadingError('Erreur lors du chargement du modèle 3D. Veuillez réessayer.');
       }
     );
