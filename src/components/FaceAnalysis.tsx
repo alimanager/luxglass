@@ -23,7 +23,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         
         await tf.ready();
         
-        const model = await faceDetection.load(
+        const model = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
             runtime: 'mediapipe',
