@@ -17,12 +17,37 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const glassesModelRef = useRef<THREE.Group | null>(null);
+  const [modelLoadError, setModelLoadError] = useState<string | null>(null);
 
   const [adjustments, setAdjustments] = useState({
     scale: 1,
     height: 0,
     depth: 0
   });
+
+  const loadModel = (loader: GLTFLoader, url: string, scene: THREE.Scene) => {
+    return new Promise<void>((resolve, reject) => {
+      loader.load(
+        url,
+        (gltf) => {
+          const model = gltf.scene;
+          model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
+          model.position.set(0, adjustments.height, adjustments.depth);
+          glassesModelRef.current = model;
+          scene.add(model);
+          setModelLoadError(null);
+          resolve();
+        },
+        (xhr) => {
+          console.log((xhr.loaded / xhr.total) * 100 + '% loaded');
+        },
+        (error) => {
+          console.error('Error loading model:', error);
+          reject(error);
+        }
+      );
+    });
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -73,24 +98,18 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     controlsRef.current.maxDistance = 10;
     controlsRef.current.minDistance = 2;
 
-    // Load glasses model
+    // Load glasses model with fallback
     const loader = new GLTFLoader();
-    const modelUrl = `https://models.readyplayer.me/glasses/${glasses.style.toLowerCase()}.glb`;
+    const remoteModelUrl = `https://models.readyplayer.me/glasses/${glasses.style.toLowerCase()}.glb`;
+    const localModelUrl = '/models/default-glasses.glb';
 
-    loader.load(
-      modelUrl,
-      (gltf) => {
-        const model = gltf.scene;
-        model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
-        model.position.set(0, adjustments.height, adjustments.depth);
-        glassesModelRef.current = model;
-        scene.add(model);
-      },
-      undefined,
-      (error) => {
-        console.error('Error loading glasses model:', error);
-      }
-    );
+    // Try loading remote model first, fall back to local model if it fails
+    loadModel(loader, remoteModelUrl, scene).catch((error) => {
+      console.log('Remote model failed to load, trying local model...');
+      loadModel(loader, localModelUrl, scene).catch((error) => {
+        setModelLoadError('Failed to load both remote and local models. Please try again later.');
+      });
+    });
 
     // Animation loop
     const animate = () => {
@@ -155,8 +174,14 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     <div className="space-y-4">
       <div 
         ref={containerRef} 
-        className="aspect-video bg-secondary-50 rounded-lg overflow-hidden shadow-inner"
-      />
+        className="aspect-video bg-secondary-50 rounded-lg overflow-hidden shadow-inner relative"
+      >
+        {modelLoadError && (
+          <div className="absolute inset-0 flex items-center justify-center bg-secondary-50 bg-opacity-90">
+            <p className="text-red-600 text-center p-4">{modelLoadError}</p>
+          </div>
+        )}
+      </div>
       
       <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
         <div className="flex items-center justify-between">
