@@ -1,11 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import * as tf from '@tensorflow/tfjs';
-import { FaceDetector, SupportedModels, load } from '@tensorflow-models/face-detection';
+import * as faceDetection from '@tensorflow-models/face-detection';
 
 function App() {
   const webcamRef = useRef<Webcam>(null);
-  const [detector, setDetector] = useState<FaceDetector | null>(null);
+  const [detector, setDetector] = useState<faceDetection.FaceDetector | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,8 +17,8 @@ function App() {
         
         await tf.ready();
         
-        const model = await load(
-          SupportedModels.MediaPipeFaceDetector,
+        const model = await faceDetection.load(
+          faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
             runtime: 'mediapipe',
             solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_detection',
