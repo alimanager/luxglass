@@ -9,6 +9,7 @@ function App() {
   const [detector, setDetector] = useState<faceDetection.FaceDetector | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [detections, setDetections] = useState<faceDetection.Face[]>([]);
 
   useEffect(() => {
     const initializeDetector = async () => {
@@ -23,9 +24,8 @@ function App() {
         const model = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
-            runtime: 'tfjs', // Changed to 'tfjs' runtime instead of 'mediapipe'
-            modelType: 'short',
-            maxFaces: 1
+            runtime: 'tfjs',
+            modelType: 'short'
           }
         );
         
@@ -48,23 +48,52 @@ function App() {
   }, []);
 
   const detectFace = async () => {
-    if (!detector || !webcamRef.current?.video) return;
+    if (!detector || !webcamRef.current?.video) {
+      console.log('Detector or video not ready');
+      return;
+    }
 
     try {
+      console.log('Starting face detection...');
       const video = webcamRef.current.video;
-      const detections = await detector.estimateFaces(video);
-      console.log('Face detections:', detections);
+      const faces = await detector.estimateFaces(video, {
+        flipHorizontal: false
+      });
+      console.log('Face detections:', faces);
+      setDetections(faces);
     } catch (err) {
       console.error('Error detecting face:', err);
       setError('Error detecting face');
     }
   };
 
+  // Draw face detections
+  useEffect(() => {
+    if (detections.length > 0) {
+      const canvas = document.createElement('canvas');
+      const video = webcamRef.current?.video;
+      if (!video) return;
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Draw the detections
+      detections.forEach(face => {
+        const { box } = face;
+        ctx.strokeStyle = '#00ff00';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(box.xMin, box.yMin, box.width, box.height);
+      });
+    }
+  }, [detections]);
+
   return (
     <div className="p-5">
       <h1 className="text-2xl font-bold mb-4">TensorFlow.js Face Detection Test</h1>
       
-      <div className="mt-5">
+      <div className="mt-5 relative">
         <Webcam
           ref={webcamRef}
           mirrored
@@ -75,6 +104,11 @@ function App() {
             facingMode: "user"
           }}
         />
+        {detections.length > 0 && (
+          <div className="absolute top-2 left-2 bg-green-500 text-white px-3 py-1 rounded">
+            Face Detected!
+          </div>
+        )}
       </div>
 
       {error && (
@@ -94,6 +128,16 @@ function App() {
       >
         {isModelLoading ? 'Loading model...' : 'Detect Face'}
       </button>
+
+      <div className="mt-4 text-sm text-gray-600">
+        {isModelLoading ? (
+          'Loading face detection model...'
+        ) : detector ? (
+          'Model loaded successfully. Click "Detect Face" to test.'
+        ) : (
+          'Error loading model. Please refresh the page.'
+        )}
+      </div>
     </div>
   );
 }
