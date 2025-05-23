@@ -18,6 +18,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   const controlsRef = useRef<OrbitControls | null>(null);
   const glassesModelRef = useRef<THREE.Group | null>(null);
   const [loadingError, setLoadingError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [adjustments, setAdjustments] = useState({
     scale: 1,
@@ -77,16 +78,21 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     // Load glasses model
     const loader = new GLTFLoader();
     setLoadingError(null);
+    setIsLoading(true);
 
-    // Load the model from the public directory
+    // Use import.meta.env.BASE_URL to ensure correct path resolution
+    const modelPath = import.meta.env.BASE_URL + 'glasses.glb';
+    console.log('Loading model from:', modelPath); // Debug log
+
     loader.load(
-      '/glasses.glb',
+      modelPath,
       (gltf) => {
         const model = gltf.scene;
         model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
         model.position.set(0, adjustments.height, adjustments.depth);
         glassesModelRef.current = model;
         scene.add(model);
+        setIsLoading(false);
       },
       (progress) => {
         console.log((progress.loaded / progress.total * 100) + '% loaded');
@@ -94,6 +100,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
       (error) => {
         console.error('Error loading model:', error);
         setLoadingError('Erreur lors du chargement du modèle 3D. Veuillez réessayer.');
+        setIsLoading(false);
       }
     );
 
@@ -160,8 +167,16 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     <div className="space-y-4">
       <div 
         ref={containerRef} 
-        className="aspect-video bg-secondary-50 rounded-lg overflow-hidden shadow-inner"
-      />
+        className="aspect-video bg-secondary-50 rounded-lg overflow-hidden shadow-inner relative"
+      >
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
+            <div className="text-gray-600">
+              Chargement du modèle...
+            </div>
+          </div>
+        )}
+      </div>
       
       {loadingError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
