@@ -80,12 +80,9 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     setLoadingError(null);
     setIsLoading(true);
 
-    // Use import.meta.env.BASE_URL to ensure correct path resolution
-    const modelPath = import.meta.env.BASE_URL + 'glasses.glb';
-    console.log('Loading model from:', modelPath); // Debug log
-
+    // Load model from public directory
     loader.load(
-      modelPath,
+      '/glasses.glb',
       (gltf) => {
         const model = gltf.scene;
         model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
