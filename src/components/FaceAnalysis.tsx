@@ -16,7 +16,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState(false);
-  const animationFrameRef = useRef<number>();
   const detectionIntervalRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
@@ -38,7 +37,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         );
         
         setDetector(model);
-        startContinuousDetection();
+        startContinuousDetection(model);
       } catch (err) {
         console.error('Error loading face detection model:', err);
         setError('Erreur lors du chargement du modèle de détection faciale');
@@ -53,32 +52,36 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       if (detector) {
         detector.dispose();
       }
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
       if (detectionIntervalRef.current) {
         clearInterval(detectionIntervalRef.current);
       }
     };
   }, []);
 
-  const startContinuousDetection = () => {
-    if (!detector || !webcamRef.current?.video) return;
+  const startContinuousDetection = (model: faceDetection.FaceDetector) => {
+    if (!webcamRef.current?.video) return;
 
     const detectFace = async () => {
       try {
         const video = webcamRef.current?.video;
-        if (!video) return;
+        if (!video || !model) return;
 
-        const detections = await detector.estimateFaces(video);
-        setFaceDetected(detections.length > 0);
+        const detections = await model.estimateFaces(video);
+        const hasFace = detections.length > 0;
+        setFaceDetected(hasFace);
+        
+        // Clear any previous errors if we successfully detect a face
+        if (hasFace && error) {
+          setError(null);
+        }
       } catch (err) {
         console.error('Error in continuous detection:', err);
+        setFaceDetected(false);
       }
     };
 
-    // Run detection every 500ms
-    detectionIntervalRef.current = setInterval(detectFace, 500);
+    // Run detection every 300ms for more responsive feedback
+    detectionIntervalRef.current = setInterval(detectFace, 300);
   };
 
   const analyzeFaceShape = async () => {
@@ -88,9 +91,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setError(null);
 
     try {
-      const video = webcamRef.current?.video;
-      if (!video) return;
-
+      const video = webcamRef.current.video;
       const detections = await detector.estimateFaces(video);
 
       if (detections && detections.length > 0) {
@@ -145,6 +146,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           <div className="absolute inset-1/4 border-2 border-dashed border-white/50 rounded-lg"></div>
         </div>
 
+        {/* Face detection status indicator */}
+        <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full transition-colors ${
+          faceDetected ? 'bg-green-500' : 'bg-gray-500'
+        } text-white text-sm flex items-center`}>
+          {faceDetected ? 'Visage détecté' : 'En attente de détection'}
+        </div>
+
         {/* Loading overlay */}
         {isModelLoading && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -163,12 +171,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         </div>
       )}
 
-      {!isModelLoading && !error && !faceDetected && (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded-lg">
-          <p>Placez votre visage dans le cadre pour commencer l'analyse</p>
-        </div>
-      )}
-
       <div className="flex justify-center">
         <button
           onClick={analyzeFaceShape}
@@ -178,12 +180,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
               ? 'bg-gray-300 cursor-not-allowed'
               : 'bg-primary-600 hover:bg-primary-700 text-white'
           }`}
-          aria-label={
-            isModelLoading ? "Chargement du modèle" :
-            isAnalyzing ? "Analyse en cours" :
-            !faceDetected ? "Visage non détecté" :
-            "Analyser la forme du visage"
-          }
         >
           {isModelLoading ? (
             <>
@@ -198,7 +194,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           ) : (
             <>
               <Camera className="h-5 w-5 mr-2" />
-              Analyser la forme du visage
+              {faceDetected ? 'Analyser la forme du visage' : 'En attente de détection du visage'}
             </>
           )}
         </button>
