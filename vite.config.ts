@@ -8,7 +8,8 @@ export default defineConfig({
     include: [
       '@tensorflow/tfjs',
       '@tensorflow/tfjs-backend-webgl',
-      '@tensorflow-models/face-detection'
+      '@tensorflow-models/face-detection',
+      '@tensorflow-models/face-landmarks-detection'
     ]
   },
   server: {
