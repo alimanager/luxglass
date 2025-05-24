@@ -4,19 +4,23 @@ import { Camera, RefreshCw, AlertCircle } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import '@tensorflow/tfjs-backend-webgl';
 import * as faceDetection from '@tensorflow-models/face-detection';
+import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 
 interface FaceAnalysisProps {
   onAnalysisComplete: (faceShape: string) => void;
+  onLandmarksDetected?: (landmarks: any) => void;
 }
 
-const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
+const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandmarksDetected }) => {
   const webcamRef = useRef<Webcam>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [detector, setDetector] = useState<faceDetection.FaceDetector | null>(null);
+  const [landmarksDetector, setLandmarksDetector] = useState<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState(false);
   const detectionIntervalRef = useRef<NodeJS.Timeout>();
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
     const initializeTF = async () => {
@@ -27,7 +31,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         await tf.setBackend('webgl');
         await tf.ready();
         
-        const model = await faceDetection.createDetector(
+        // Initialize face detection model
+        const faceModel = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
             runtime: 'tfjs',
@@ -36,11 +41,28 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           }
         );
         
-        setDetector(model);
-        startContinuousDetection(model);
+        // Initialize face landmarks detection model
+        const landmarksModel = await faceLandmarksDetection.createDetector(
+          faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+          {
+            runtime: 'tfjs',
+            refineLandmarks: true,
+            maxFaces: 1
+          }
+        );
+        
+        setDetector(faceModel);
+        setLandmarksDetector(landmarksModel);
+        
+        // Wait for video to be ready before starting detection
+        if (webcamRef.current?.video) {
+          webcamRef.current.video.addEventListener('loadeddata', () => {
+            startContinuousDetection(faceModel, landmarksModel);
+          });
+        }
       } catch (err) {
-        console.error('Error loading face detection model:', err);
-        setError('Erreur lors du chargement du modèle de détection faciale');
+        console.error('Error loading face detection models:', err);
+        setError('Erreur lors du chargement des modèles de détection faciale');
       } finally {
         setIsModelLoading(false);
       }
@@ -55,43 +77,76 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       if (detectionIntervalRef.current) {
         clearInterval(detectionIntervalRef.current);
       }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, []);
 
-  const startContinuousDetection = (model: faceDetection.FaceDetector) => {
-    if (!webcamRef.current?.video) return;
+  const isVideoReady = (video: HTMLVideoElement): boolean => {
+    return video.readyState === 4 && video.videoWidth > 0 && video.videoHeight > 0;
+  };
 
+  const startContinuousDetection = (
+    faceModel: faceDetection.FaceDetector,
+    landmarksModel: faceLandmarksDetection.FaceLandmarksDetector
+  ) => {
     const detectFace = async () => {
       try {
         const video = webcamRef.current?.video;
-        if (!video || !model) return;
+        if (!video || !faceModel || !landmarksModel) return;
 
-        const detections = await model.estimateFaces(video);
+        // Check if video is ready and has valid dimensions
+        if (!isVideoReady(video)) {
+          console.log('Video not ready yet, skipping detection');
+          animationFrameRef.current = requestAnimationFrame(detectFace);
+          return;
+        }
+
+        // Detect face and landmarks
+        const detections = await faceModel.estimateFaces(video);
         const hasFace = detections.length > 0;
         setFaceDetected(hasFace);
-        
-        // Clear any previous errors if we successfully detect a face
-        if (hasFace && error) {
-          setError(null);
+
+        if (hasFace) {
+          // Get face landmarks
+          const landmarks = await landmarksModel.estimateFaces(video);
+          if (landmarks.length > 0 && onLandmarksDetected) {
+            onLandmarksDetected(landmarks[0]);
+          }
+          
+          if (error) {
+            setError(null);
+          }
         }
+
+        animationFrameRef.current = requestAnimationFrame(detectFace);
       } catch (err) {
         console.error('Error in continuous detection:', err);
         setFaceDetected(false);
+        // Retry detection after a short delay
+        setTimeout(() => {
+          animationFrameRef.current = requestAnimationFrame(detectFace);
+        }, 1000);
       }
     };
 
-    // Run detection every 300ms for more responsive feedback
-    detectionIntervalRef.current = setInterval(detectFace, 300);
+    animationFrameRef.current = requestAnimationFrame(detectFace);
   };
 
   const analyzeFaceShape = async () => {
     if (!detector || !webcamRef.current?.video) return;
 
+    const video = webcamRef.current.video;
+    if (!isVideoReady(video)) {
+      setError('La vidéo n\'est pas encore prête. Veuillez patienter.');
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
 
     try {
-      const video = webcamRef.current.video;
       const detections = await detector.estimateFaces(video);
 
       if (detections && detections.length > 0) {
