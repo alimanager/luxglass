@@ -13,6 +13,7 @@ interface FaceAnalysisProps {
 
 const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandmarksDetected }) => {
   const webcamRef = useRef<Webcam>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [detector, setDetector] = useState<faceDetection.FaceDetector | null>(null);
   const [landmarksDetector, setLandmarksDetector] = useState<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
@@ -25,7 +26,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   const animationFrameRef = useRef<number>();
   const frameCountRef = useRef(0);
   const lastDetectionTimeRef = useRef(0);
-  const detectionThrottleMs = 100; // Throttle detection to every 100ms
+  const detectionThrottleMs = 100;
+  const smoothedLandmarksRef = useRef<any[]>([]);
 
   useEffect(() => {
     const initializeTF = async () => {
@@ -73,7 +75,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
-      tf.disposeVariables(); // Clean up TensorFlow memory
+      tf.disposeVariables();
     };
   }, []);
 
@@ -102,16 +104,69 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     }
   }, [detector, landmarksDetector]);
 
-  const checkFacePosition = (face: faceDetection.Face, videoWidth: number, videoHeight: number) => {
-    const centerX = videoWidth / 2;
-    const centerY = videoHeight / 2;
-    const faceX = face.box.xCenter;
-    const faceY = face.box.yCenter;
+  const smoothLandmarks = (newLandmarks: any[]) => {
+    const alpha = 0.7; // Smoothing factor (0-1), higher = more smoothing
+    if (!smoothedLandmarksRef.current.length) {
+      smoothedLandmarksRef.current = newLandmarks;
+      return newLandmarks;
+    }
+
+    const smoothed = newLandmarks.map((landmark, i) => ({
+      x: alpha * smoothedLandmarksRef.current[i].x + (1 - alpha) * landmark.x,
+      y: alpha * smoothedLandmarksRef.current[i].y + (1 - alpha) * landmark.y,
+      z: alpha * smoothedLandmarksRef.current[i].z + (1 - alpha) * landmark.z
+    }));
+
+    smoothedLandmarksRef.current = smoothed;
+    return smoothed;
+  };
+
+  const drawFaceOutline = (landmarks: any[], ctx: CanvasRenderingContext2D) => {
+    // Clear the canvas
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     
-    const threshold = videoWidth * 0.15;
+    // Face outline points (indices for MediaPipe Face Mesh)
+    const jawLine = [162, 21, 54, 103, 67, 109, 10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152];
+    const leftEye = [33, 7, 163, 144, 145, 153, 154, 155, 133, 33];
+    const rightEye = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398, 362];
+    const leftEyebrow = [46, 53, 52, 65, 55, 66, 63, 70, 105, 66, 107];
+    const rightEyebrow = [276, 283, 282, 295, 285, 296, 293, 300, 334, 296, 336];
+    const nose = [168, 197, 5, 4, 1, 19, 94, 2, 164, 0, 11, 12, 13, 14, 15, 16, 17, 18, 200, 199, 175];
+
+    const outlineFeatures = [jawLine, leftEye, rightEye, leftEyebrow, rightEyebrow, nose];
+    
+    ctx.strokeStyle = facePosition === 'center' ? '#10B981' : '#FCD34D';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    outlineFeatures.forEach(feature => {
+      ctx.beginPath();
+      feature.forEach((index, i) => {
+        const point = landmarks[index];
+        const x = point.x * ctx.canvas.width;
+        const y = point.y * ctx.canvas.height;
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+    });
+  };
+
+  const checkFacePosition = (landmarks: any[], videoWidth: number, videoHeight: number) => {
+    // Use the nose tip (landmark 1) as reference point
+    const noseTip = landmarks[1];
+    const centerX = 0.5;
+    const centerY = 0.5;
+    
+    const threshold = 0.15;
     
     const distanceFromCenter = Math.sqrt(
-      Math.pow(centerX - faceX, 2) + Math.pow(centerY - faceY, 2)
+      Math.pow(centerX - noseTip.x, 2) + Math.pow(centerY - noseTip.y, 2)
     );
     
     return distanceFromCenter < threshold;
@@ -122,7 +177,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     landmarksModel: faceLandmarksDetection.FaceLandmarksDetector
   ) => {
     let consecutiveCenteredFrames = 0;
-    const requiredCenteredFrames = 15; // Reduced from 30 to 15 frames for better responsiveness
+    const requiredCenteredFrames = 15;
 
     const detectFace = async () => {
       try {
@@ -134,41 +189,39 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         lastDetectionTimeRef.current = now;
 
         const video = webcamRef.current?.video;
-        if (!video || !isVideoReady || !faceModel || !landmarksModel) {
+        const canvas = canvasRef.current;
+        if (!video || !canvas || !isVideoReady || !faceModel || !landmarksModel) {
           animationFrameRef.current = requestAnimationFrame(detectFace);
           return;
         }
 
         frameCountRef.current++;
-        if (frameCountRef.current % 2 !== 0) { // Process every other frame
+        if (frameCountRef.current % 2 !== 0) {
           animationFrameRef.current = requestAnimationFrame(detectFace);
           return;
         }
 
-        const videoWidth = video.videoWidth;
-        const videoHeight = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-        const [detections] = await Promise.all([
-          faceModel.estimateFaces(video)
-        ]);
-        
-        const hasFace = detections.length > 0;
+        // Match canvas size to video
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const landmarks = await landmarksModel.estimateFaces(video);
+        const hasFace = landmarks.length > 0;
         setFaceDetected(hasFace);
 
         if (hasFace) {
-          const face = detections[0];
-          const isCentered = checkFacePosition(face, videoWidth, videoHeight);
+          const smoothedLandmarks = smoothLandmarks(landmarks[0].keypoints);
+          const isCentered = checkFacePosition(smoothedLandmarks, video.videoWidth, video.videoHeight);
           
           if (isCentered) {
             consecutiveCenteredFrames++;
             if (consecutiveCenteredFrames >= requiredCenteredFrames) {
               setFacePosition('center');
-              // Only get landmarks when needed
               if (onLandmarksDetected) {
-                const landmarks = await landmarksModel.estimateFaces(video);
-                if (landmarks.length > 0) {
-                  onLandmarksDetected(landmarks[0]);
-                }
+                onLandmarksDetected(landmarks[0]);
               }
             } else {
               setFacePosition('off-center');
@@ -178,18 +231,19 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             setFacePosition('off-center');
           }
 
+          drawFaceOutline(smoothedLandmarks, ctx);
+
           if (error) {
             setError(null);
           }
         } else {
           consecutiveCenteredFrames = 0;
           setFacePosition(null);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
           setError('Aucun visage détecté. Assurez-vous d\'être bien visible dans le cadre.');
         }
 
-        // Clean up tensors
         tf.dispose();
-
         animationFrameRef.current = requestAnimationFrame(detectFace);
       } catch (err) {
         console.error('Error in continuous detection:', err);
@@ -248,7 +302,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       setError('Une erreur est survenue lors de l\'analyse. Veuillez réessayer.');
     } finally {
       setIsAnalyzing(false);
-      tf.dispose(); // Clean up tensors after analysis
+      tf.dispose();
     }
   };
 
@@ -269,13 +323,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           }}
         />
         
-        <div className={`absolute inset-0 border-4 transition-colors duration-300 ${
-          faceDetected ? (
-            facePosition === 'center' ? 'border-green-500' : 'border-yellow-500'
-          ) : 'border-gray-300'
-        } rounded-lg`}>
-          <div className="absolute inset-1/4 border-2 border-dashed border-white/50 rounded-lg"></div>
-        </div>
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full pointer-events-none"
+        />
 
         {faceDetected && facePosition === 'off-center' && (
           <div className="absolute inset-0 flex items-center justify-center">
