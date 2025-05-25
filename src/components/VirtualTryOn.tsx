@@ -17,6 +17,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
   const glassesModelRef = useRef<THREE.Group | null>(null);
+  const animationFrameRef = useRef<number>();
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -30,34 +31,31 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     if (!containerRef.current) return;
 
     // Initialize Three.js scene
-    sceneRef.current = new THREE.Scene();
-    sceneRef.current.background = new THREE.Color(0xf5f5f5);
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xf5f5f5);
+    sceneRef.current = scene;
 
-    cameraRef.current = new THREE.PerspectiveCamera(
+    // Camera setup
+    const camera = new THREE.PerspectiveCamera(
       75,
       containerRef.current.clientWidth / containerRef.current.clientHeight,
       0.1,
       1000
     );
+    camera.position.z = 5;
+    camera.position.y = 1;
+    cameraRef.current = camera;
 
-    rendererRef.current = new THREE.WebGLRenderer({
+    // Renderer setup
+    const renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true
     });
-
-    const container = containerRef.current;
-    const scene = sceneRef.current;
-    const camera = cameraRef.current;
-    const renderer = rendererRef.current;
-
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
-    container.appendChild(renderer.domElement);
-
-    // Camera position
-    camera.position.z = 5;
-    camera.position.y = 1;
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -69,29 +67,42 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     scene.add(directionalLight);
 
     // Controls
-    controlsRef.current = new OrbitControls(camera, renderer.domElement);
-    controlsRef.current.enableDamping = true;
-    controlsRef.current.dampingFactor = 0.05;
-    controlsRef.current.maxDistance = 10;
-    controlsRef.current.minDistance = 2;
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.maxDistance = 10;
+    controls.minDistance = 2;
+    controlsRef.current = controls;
 
     // Load glasses model
     const loader = new GLTFLoader();
     setLoadingError(null);
     setIsLoading(true);
 
+    console.log('Loading model from:', '/glasses.glb'); // Debug path
+
     loader.load(
       '/glasses.glb',
       (gltf) => {
+        console.log('Model loaded successfully:', gltf); // Debug loaded model
+
         const model = gltf.scene;
         model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
         model.position.set(0, adjustments.height, adjustments.depth);
+        
+        // Remove any existing model
+        if (glassesModelRef.current) {
+          scene.remove(glassesModelRef.current);
+        }
+        
         glassesModelRef.current = model;
         scene.add(model);
+        
+        console.log('Model added to scene'); // Debug scene addition
         setIsLoading(false);
       },
       (progress) => {
-        console.log((progress.loaded / progress.total * 100) + '% loaded');
+        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
       },
       (error) => {
         console.error('Error loading model:', error);
@@ -102,37 +113,64 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
 
     // Animation loop
     const animate = () => {
-      requestAnimationFrame(animate);
+      if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return;
+      
+      animationFrameRef.current = requestAnimationFrame(animate);
+      
       if (controlsRef.current) {
         controlsRef.current.update();
       }
-      renderer.render(scene, camera);
+      
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
     };
     animate();
 
     // Handle resize
     const handleResize = () => {
-      if (!container || !camera || !renderer) return;
+      if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
       
-      camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
+      
+      cameraRef.current.aspect = width / height;
+      cameraRef.current.updateProjectionMatrix();
+      rendererRef.current.setSize(width, height);
     };
 
     window.addEventListener('resize', handleResize);
 
+    // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
+      
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      
       if (glassesModelRef.current) {
         scene.remove(glassesModelRef.current);
+        glassesModelRef.current.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            if (child.material instanceof THREE.Material) {
+              child.material.dispose();
+            } else if (Array.isArray(child.material)) {
+              child.material.forEach(material => material.dispose());
+            }
+          }
+        });
       }
-      renderer.dispose();
+      
       controlsRef.current?.dispose();
-      container.removeChild(renderer.domElement);
+      rendererRef.current?.dispose();
+      
+      if (containerRef.current && rendererRef.current) {
+        containerRef.current.removeChild(rendererRef.current.domElement);
+      }
     };
-  }, [glasses]);
+  }, []);
 
-  const updateGlassesPosition = () => {
+  useEffect(() => {
     if (glassesModelRef.current) {
       glassesModelRef.current.scale.set(
         adjustments.scale,
@@ -145,7 +183,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         adjustments.depth
       );
     }
-  };
+  }, [adjustments]);
 
   const resetAdjustments = () => {
     setAdjustments({
@@ -153,12 +191,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
       height: 0,
       depth: 0
     });
-    updateGlassesPosition();
   };
-
-  useEffect(() => {
-    updateGlassesPosition();
-  }, [adjustments]);
 
   if (loadingError) {
     return (
