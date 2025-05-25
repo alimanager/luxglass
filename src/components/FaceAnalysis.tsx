@@ -30,13 +30,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         setIsModelLoading(true);
         setError(null);
         
-        // Ensure WebGL backend is initialized
         await tf.setBackend('webgl');
         await tf.ready();
         
         console.log('TensorFlow.js initialized with WebGL backend');
         
-        // Initialize face detection model
         const faceModel = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
@@ -48,7 +46,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         
         console.log('Face detection model loaded');
         
-        // Initialize face landmarks detection model
         const landmarksModel = await faceLandmarksDetection.createDetector(
           faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
           {
@@ -65,7 +62,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         setIsModelLoading(false);
       } catch (err) {
         console.error('Error loading face detection models:', err);
-        setError('Error loading face detection models. Please refresh the page.');
+        setError('Erreur lors du chargement des modèles de détection faciale. Veuillez rafraîchir la page.');
         setIsModelLoading(false);
       }
     };
@@ -98,7 +95,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
 
       video.addEventListener('loadeddata', handleVideoReady);
       
-      // Check if video is already ready
       if (video.readyState === 4) {
         handleVideoReady();
       }
@@ -115,7 +111,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     const faceX = face.box.xCenter;
     const faceY = face.box.yCenter;
     
-    const threshold = 50; // pixels from center
+    // Increased threshold for more lenient center detection
+    const threshold = 100; // pixels from center
     
     const distanceFromCenter = Math.sqrt(
       Math.pow(centerX - faceX, 2) + Math.pow(centerY - faceY, 2)
@@ -136,11 +133,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           return;
         }
 
-        // Get video dimensions
         const videoWidth = video.videoWidth;
         const videoHeight = video.videoHeight;
 
-        // Detect face
         const detections = await faceModel.estimateFaces(video);
         const hasFace = detections.length > 0;
         setFaceDetected(hasFace);
@@ -150,7 +145,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           const position = checkFacePosition(face, videoWidth, videoHeight);
           setFacePosition(position);
 
-          // Get face landmarks if face is centered
           if (position === 'center') {
             const landmarks = await landmarksModel.estimateFaces(video);
             if (landmarks.length > 0 && onLandmarksDetected) {
@@ -163,7 +157,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           }
         } else {
           setFacePosition(null);
-          setError('No face detected. Please ensure you are visible in the frame.');
+          setError('Aucun visage détecté. Assurez-vous d\'être bien visible dans le cadre.');
         }
 
         animationFrameRef.current = requestAnimationFrame(detectFace);
@@ -171,9 +165,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         console.error('Error in continuous detection:', err);
         setFaceDetected(false);
         setFacePosition(null);
-        setError('An error occurred during detection. Please check your camera.');
+        setError('Une erreur est survenue lors de la détection. Veuillez vérifier votre caméra.');
         
-        // Retry detection after a delay
         setTimeout(() => {
           animationFrameRef.current = requestAnimationFrame(detectFace);
         }, 1000);
@@ -185,12 +178,12 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
 
   const analyzeFaceShape = async () => {
     if (!detector || !webcamRef.current?.video || !isVideoReady) {
-      setError('Video is not ready yet. Please wait.');
+      setError('La vidéo n\'est pas encore prête. Veuillez patienter.');
       return;
     }
 
     if (facePosition !== 'center') {
-      setError('Please center your face in the frame before analysis.');
+      setError('Veuillez centrer votre visage dans le cadre avant l\'analyse.');
       return;
     }
 
@@ -218,11 +211,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
 
         onAnalysisComplete(faceShape);
       } else {
-        setError('No face detected. Please ensure you are well-framed and in a well-lit area.');
+        setError('Aucun visage détecté. Veuillez vous assurer d\'être bien cadré et dans un endroit bien éclairé.');
       }
     } catch (err) {
       console.error('Error analyzing face:', err);
-      setError('An error occurred during analysis. Please try again.');
+      setError('Une erreur est survenue lors de l\'analyse. Veuillez réessayer.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -230,28 +223,28 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
 
   return (
     <div className="relative space-y-4">
-      <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden relative">
+      <div className="aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden relative">
         <Webcam
           ref={webcamRef}
           mirrored
           className="w-full h-full object-cover"
           videoConstraints={{
             width: 1280,
-            height: 720,
+            height: 960,
             facingMode: "user"
           }}
           onUserMediaError={() => {
-            setError('Cannot access camera. Please check permissions.');
+            setError('Impossible d\'accéder à la caméra. Veuillez vérifier les permissions.');
           }}
         />
         
-        {/* Face detection guide overlay */}
-        <div className={`absolute inset-0 border-4 transition-colors duration-300 ${
+        {/* Larger detection guide overlay */}
+        <div className={`absolute inset-[15%] border-4 transition-colors duration-300 ${
           faceDetected ? (
             facePosition === 'center' ? 'border-green-500' : 'border-yellow-500'
           ) : 'border-gray-300'
         } rounded-lg`}>
-          <div className="absolute inset-1/4 border-2 border-dashed border-white/50 rounded-lg"></div>
+          <div className="absolute inset-0 border-2 border-dashed border-white/50 rounded-lg"></div>
         </div>
 
         {/* Face position indicator */}
@@ -259,7 +252,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="bg-yellow-500/80 text-white px-4 py-2 rounded-full flex items-center">
               <Move className="h-5 w-5 mr-2" />
-              Center your face
+              Centrez votre visage
             </div>
           </div>
         )}
@@ -270,10 +263,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             facePosition === 'center' ? 'bg-green-500' : 'bg-yellow-500'
           ) : 'bg-gray-500'
         } text-white text-sm flex items-center`}>
-          {!isVideoReady ? 'Initializing camera...' : (
+          {!isVideoReady ? 'Initialisation de la caméra...' : (
             faceDetected ? (
-              facePosition === 'center' ? 'Face well positioned' : 'Adjust position'
-            ) : 'Waiting for detection'
+              facePosition === 'center' ? 'Visage bien positionné' : 'Ajustez la position'
+            ) : 'En attente de détection'
           )}
         </div>
 
@@ -282,7 +275,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <div className="text-white text-center">
               <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-              <p>Loading model...</p>
+              <p>Chargement du modèle...</p>
             </div>
           </div>
         )}
@@ -308,24 +301,24 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           {isModelLoading ? (
             <>
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-              Loading model...
+              Chargement du modèle...
             </>
           ) : !isVideoReady ? (
             <>
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-              Initializing camera...
+              Initialisation de la caméra...
             </>
           ) : isAnalyzing ? (
             <>
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-              Analyzing...
+              Analyse en cours...
             </>
           ) : (
             <>
               <Camera className="h-5 w-5 mr-2" />
               {faceDetected ? (
-                facePosition === 'center' ? 'Analyze Face Shape' : 'Center your face'
-              ) : 'Waiting for face detection'}
+                facePosition === 'center' ? 'Analyser la forme du visage' : 'Centrez votre visage'
+              ) : 'En attente de détection du visage'}
             </>
           )}
         </button>
