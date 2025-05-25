@@ -33,6 +33,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         await tf.setBackend('webgl');
         await tf.ready();
         
+        console.log('TensorFlow.js initialized with WebGL backend');
+        
         // Create face detector with more lenient settings
         const faceModel = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
@@ -40,9 +42,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             runtime: 'tfjs',
             modelType: 'full',
             maxFaces: 1,
-            minDetectionConfidence: 0.3  // Even lower threshold for better detection
+            minDetectionConfidence: 0.5  // Lower threshold for better detection
           }
         );
+        
+        console.log('Face detection model loaded');
         
         const landmarksModel = await faceLandmarksDetection.createDetector(
           faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
@@ -52,6 +56,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             maxFaces: 1
           }
         );
+        
+        console.log('Face landmarks model loaded');
         
         setDetector(faceModel);
         setLandmarksDetector(landmarksModel);
@@ -80,7 +86,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       const video = webcamRef.current.video;
       
       const handleVideoReady = () => {
+        console.log('Video readyState:', video.readyState);
+        
         if (video.readyState === 4) {
+          console.log('Video dimensions:', video.videoWidth, 'x', video.videoHeight);
           setIsVideoReady(true);
           if (detector && landmarksDetector) {
             startContinuousDetection(detector, landmarksDetector);
@@ -89,6 +98,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       };
 
       video.addEventListener('loadeddata', handleVideoReady);
+      video.addEventListener('loadedmetadata', () => console.log('Video metadata loaded'));
       
       if (video.readyState === 4) {
         handleVideoReady();
@@ -106,8 +116,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     const faceX = face.box.xCenter;
     const faceY = face.box.yCenter;
     
-    // Much larger threshold for more lenient center detection
-    const threshold = 200; // pixels from center
+    // Increased threshold for more lenient center detection
+    const threshold = 150; // pixels from center
     
     const distanceFromCenter = Math.sqrt(
       Math.pow(centerX - faceX, 2) + Math.pow(centerY - faceY, 2)
@@ -131,18 +141,22 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         const videoWidth = video.videoWidth;
         const videoHeight = video.videoHeight;
 
+        // Ensure video dimensions are valid
         if (videoWidth === 0 || videoHeight === 0) {
+          console.log('Invalid video dimensions, retrying...');
           animationFrameRef.current = requestAnimationFrame(detectFace);
           return;
         }
 
         const detections = await faceModel.estimateFaces(video);
+        console.log('Face detections:', detections.length);
         
         const hasFace = detections.length > 0;
         setFaceDetected(hasFace);
 
         if (hasFace) {
           const face = detections[0];
+          console.log('Face box:', face.box);
           
           const position = checkFacePosition(face, videoWidth, videoHeight);
           setFacePosition(position);
@@ -245,8 +259,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           }}
         />
         
-        {/* Much larger detection guide overlay */}
-        <div className={`absolute inset-[25%] border-4 transition-colors duration-300 ${
+        {/* Larger detection guide overlay */}
+        <div className={`absolute inset-[15%] border-4 transition-colors duration-300 ${
           faceDetected ? (
             facePosition === 'center' ? 'border-green-500' : 'border-yellow-500'
           ) : 'border-gray-300'
