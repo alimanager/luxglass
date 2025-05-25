@@ -86,6 +86,50 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     };
   }, []);
 
+  const calculateFaceShape = (landmarks: any) => {
+    // Extract key facial measurements from landmarks
+    const faceWidth = landmarks.boundingBox.width;
+    const faceHeight = landmarks.boundingBox.height;
+    const ratio = faceHeight / faceWidth;
+
+    // Get jawline points
+    const jawLeft = landmarks.mesh[132];
+    const jawRight = landmarks.mesh[361];
+    const chin = landmarks.mesh[152];
+    
+    // Calculate jawline angle
+    const jawAngle = Math.atan2(
+      chin[1] - jawLeft[1],
+      chin[0] - jawLeft[0]
+    ) * (180 / Math.PI);
+
+    // Get forehead width
+    const foreheadLeft = landmarks.mesh[21];
+    const foreheadRight = landmarks.mesh[251];
+    const foreheadWidth = Math.abs(foreheadRight[0] - foreheadLeft[0]);
+
+    // Get cheekbone width
+    const cheekLeft = landmarks.mesh[123];
+    const cheekRight = landmarks.mesh[352];
+    const cheekboneWidth = Math.abs(cheekRight[0] - cheekLeft[0]);
+
+    // Determine face shape based on measurements
+    if (ratio > 1.5) {
+      return 'oblong';
+    } else if (ratio < 1.2) {
+      if (jawAngle > 60) {
+        return 'round';
+      }
+      return 'square';
+    } else if (foreheadWidth > cheekboneWidth && jawAngle < 45) {
+      return 'heart';
+    } else if (Math.abs(foreheadWidth - cheekboneWidth) < 10 && ratio >= 1.3 && ratio <= 1.4) {
+      return 'oval';
+    }
+
+    return 'oval'; // Default to oval if no clear match
+  };
+
   useEffect(() => {
     if (webcamRef.current?.video) {
       const video = webcamRef.current.video;
@@ -217,33 +261,19 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
 
     try {
       const video = webcamRef.current.video;
-      let faces;
+      let landmarks;
       
       await tf.tidy(async () => {
         const imageTensor = tf.browser.fromPixels(video);
-        faces = await detector.estimateFaces(imageTensor);
+        landmarks = await landmarksDetector?.estimateFaces(imageTensor);
       });
 
-      if (!faces || faces.length === 0) {
+      if (!landmarks || landmarks.length === 0) {
         setError('Aucun visage détecté. Veuillez vous assurer d\'être bien cadré et dans un endroit bien éclairé.');
         return;
       }
 
-      const face = faces[0];
-      const { width, height } = face.box;
-      const ratio = height / width;
-
-      let faceShape = 'oval';
-      if (ratio > 1.5) {
-        faceShape = 'oblong';
-      } else if (ratio < 1.2) {
-        faceShape = 'round';
-      } else if (ratio >= 1.2 && ratio <= 1.3) {
-        faceShape = 'square';
-      } else if (ratio > 1.3 && ratio <= 1.5) {
-        faceShape = 'heart';
-      }
-
+      const faceShape = calculateFaceShape(landmarks[0]);
       onAnalysisComplete(faceShape);
     } catch (err) {
       console.error('Error analyzing face:', err);
