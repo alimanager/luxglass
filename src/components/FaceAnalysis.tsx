@@ -144,13 +144,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         processingRef.current = true;
         lastProcessTimeRef.current = currentTime;
 
-        // Create input tensor
         const imageTensor = tf.tidy(() => tf.browser.fromPixels(video));
-        
-        // Perform face detection
         const faces = await detector.estimateFaces(imageTensor);
-        
-        // Dispose of the input tensor after detection
         imageTensor.dispose();
 
         const position = faces.length > 0 
@@ -165,7 +160,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         );
 
         if (faces.length > 0 && position === 'center') {
-          // Create a new tensor for landmarks detection
           const landmarksTensor = tf.tidy(() => tf.browser.fromPixels(video));
           const landmarks = await landmarksDetector.estimateFaces(landmarksTensor);
           landmarksTensor.dispose();
@@ -174,7 +168,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             onLandmarksDetected(landmarks[0]);
           }
         }
-
       } catch (err) {
         console.error('Error in continuous detection:', err);
         setFaceDetected(false);
