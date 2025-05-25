@@ -36,9 +36,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         setIsModelLoading(true);
         setError(null);
 
-        await tf.setBackend('webgl');
-        await tf.ready();
-
+        // Don't initialize backend here since it's already done in main.tsx
         const faceDetector = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
