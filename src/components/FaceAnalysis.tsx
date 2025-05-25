@@ -33,16 +33,18 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         await tf.setBackend('webgl');
         await tf.ready();
         
-        // Create face detector with more lenient settings
+        console.log('TensorFlow.js initialized with WebGL backend');
+        
         const faceModel = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
             runtime: 'tfjs',
-            modelType: 'full',
-            maxFaces: 1,
-            minDetectionConfidence: 0.3  // Even lower threshold for better detection
+            modelType: 'short',
+            maxFaces: 1
           }
         );
+        
+        console.log('Face detection model loaded');
         
         const landmarksModel = await faceLandmarksDetection.createDetector(
           faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
@@ -52,6 +54,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             maxFaces: 1
           }
         );
+        
+        console.log('Face landmarks model loaded');
         
         setDetector(faceModel);
         setLandmarksDetector(landmarksModel);
@@ -81,6 +85,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       
       const handleVideoReady = () => {
         if (video.readyState === 4) {
+          console.log('Video stream is ready');
           setIsVideoReady(true);
           if (detector && landmarksDetector) {
             startContinuousDetection(detector, landmarksDetector);
@@ -106,8 +111,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     const faceX = face.box.xCenter;
     const faceY = face.box.yCenter;
     
-    // Much larger threshold for more lenient center detection
-    const threshold = 200; // pixels from center
+    // Increased threshold for more lenient center detection
+    const threshold = 100; // pixels from center
     
     const distanceFromCenter = Math.sqrt(
       Math.pow(centerX - faceX, 2) + Math.pow(centerY - faceY, 2)
@@ -123,7 +128,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     const detectFace = async () => {
       try {
         const video = webcamRef.current?.video;
-        if (!video || video.readyState !== 4 || !faceModel || !landmarksModel) {
+        if (!video || !isVideoReady || !faceModel || !landmarksModel) {
           animationFrameRef.current = requestAnimationFrame(detectFace);
           return;
         }
@@ -131,19 +136,12 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         const videoWidth = video.videoWidth;
         const videoHeight = video.videoHeight;
 
-        if (videoWidth === 0 || videoHeight === 0) {
-          animationFrameRef.current = requestAnimationFrame(detectFace);
-          return;
-        }
-
         const detections = await faceModel.estimateFaces(video);
-        
         const hasFace = detections.length > 0;
         setFaceDetected(hasFace);
 
         if (hasFace) {
           const face = detections[0];
-          
           const position = checkFacePosition(face, videoWidth, videoHeight);
           setFacePosition(position);
 
@@ -161,9 +159,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           setFacePosition(null);
           setError('Aucun visage détecté. Assurez-vous d\'être bien visible dans le cadre.');
         }
-
-        // Clean up tensors
-        tf.dispose(detections);
 
         animationFrameRef.current = requestAnimationFrame(detectFace);
       } catch (err) {
@@ -236,17 +231,15 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           videoConstraints={{
             width: 1280,
             height: 960,
-            facingMode: "user",
-            aspectRatio: 4/3
+            facingMode: "user"
           }}
-          onUserMediaError={(err) => {
-            console.error('Webcam error:', err);
+          onUserMediaError={() => {
             setError('Impossible d\'accéder à la caméra. Veuillez vérifier les permissions.');
           }}
         />
         
-        {/* Much larger detection guide overlay */}
-        <div className={`absolute inset-[25%] border-4 transition-colors duration-300 ${
+        {/* Larger detection guide overlay */}
+        <div className={`absolute inset-[15%] border-4 transition-colors duration-300 ${
           faceDetected ? (
             facePosition === 'center' ? 'border-green-500' : 'border-yellow-500'
           ) : 'border-gray-300'
