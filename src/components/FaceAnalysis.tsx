@@ -36,7 +36,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         setIsModelLoading(true);
         setError(null);
 
-        // Don't initialize backend here since it's already done in main.tsx
         const faceDetector = await faceDetection.createDetector(
           faceDetection.SupportedModels.MediaPipeFaceDetector,
           {
@@ -87,47 +86,60 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   }, []);
 
   const calculateFaceShape = (landmarks: any) => {
-    // Extract key facial measurements from landmarks
+    // Extract facial measurements
     const faceWidth = landmarks.boundingBox.width;
     const faceHeight = landmarks.boundingBox.height;
     const ratio = faceHeight / faceWidth;
 
-    // Get jawline points
+    // Get key facial points
     const jawLeft = landmarks.mesh[132];
     const jawRight = landmarks.mesh[361];
     const chin = landmarks.mesh[152];
-    
-    // Calculate jawline angle
+    const foreheadLeft = landmarks.mesh[21];
+    const foreheadRight = landmarks.mesh[251];
+    const cheekLeft = landmarks.mesh[123];
+    const cheekRight = landmarks.mesh[352];
+    const templeLeft = landmarks.mesh[162];
+    const templeRight = landmarks.mesh[389];
+
+    // Calculate key measurements
     const jawAngle = Math.atan2(
       chin[1] - jawLeft[1],
       chin[0] - jawLeft[0]
     ) * (180 / Math.PI);
-
-    // Get forehead width
-    const foreheadLeft = landmarks.mesh[21];
-    const foreheadRight = landmarks.mesh[251];
+    
     const foreheadWidth = Math.abs(foreheadRight[0] - foreheadLeft[0]);
-
-    // Get cheekbone width
-    const cheekLeft = landmarks.mesh[123];
-    const cheekRight = landmarks.mesh[352];
     const cheekboneWidth = Math.abs(cheekRight[0] - cheekLeft[0]);
+    const jawWidth = Math.abs(jawRight[0] - jawLeft[0]);
+    const templeWidth = Math.abs(templeRight[0] - templeLeft[0]);
 
-    // Determine face shape based on measurements
+    // Calculate face shape based on measurements and ratios
     if (ratio > 1.5) {
       return 'oblong';
-    } else if (ratio < 1.2) {
-      if (jawAngle > 60) {
+    }
+
+    if (ratio < 1.2) {
+      if (jawAngle > 60 && Math.abs(cheekboneWidth - jawWidth) < 10) {
         return 'round';
       }
       return 'square';
-    } else if (foreheadWidth > cheekboneWidth && jawAngle < 45) {
+    }
+
+    if (foreheadWidth > cheekboneWidth && 
+        cheekboneWidth > jawWidth && 
+        jawAngle < 45) {
       return 'heart';
-    } else if (Math.abs(foreheadWidth - cheekboneWidth) < 10 && ratio >= 1.3 && ratio <= 1.4) {
+    }
+
+    if (Math.abs(foreheadWidth - cheekboneWidth) < 10 && 
+        ratio >= 1.3 && 
+        ratio <= 1.4 && 
+        templeWidth > jawWidth) {
       return 'oval';
     }
 
-    return 'oval'; // Default to oval if no clear match
+    // Default to oval if no clear match
+    return 'oval';
   };
 
   useEffect(() => {
@@ -246,7 +258,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   };
 
   const analyzeFaceShape = async () => {
-    if (!detector || !webcamRef.current?.video || !isVideoReady) {
+    if (!landmarksDetector || !webcamRef.current?.video || !isVideoReady) {
       setError('La vidéo n\'est pas encore prête. Veuillez patienter.');
       return;
     }
@@ -265,7 +277,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       
       await tf.tidy(async () => {
         const imageTensor = tf.browser.fromPixels(video);
-        landmarks = await landmarksDetector?.estimateFaces(imageTensor);
+        landmarks = await landmarksDetector.estimateFaces(imageTensor);
       });
 
       if (!landmarks || landmarks.length === 0) {
