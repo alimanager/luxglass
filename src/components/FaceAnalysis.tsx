@@ -27,13 +27,18 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   const isDisposingRef = useRef(false);
 
   useEffect(() => {
-    if (!window.__models) {
-      setError('Models not initialized. Please refresh the page.');
+    const checkModels = () => {
+      if (!window.__models) {
+        setError('Modèles non initialisés. Veuillez patienter...');
+        setIsModelLoading(true);
+        setTimeout(checkModels, 500); // Check again in 500ms
+        return;
+      }
       setIsModelLoading(false);
-      return;
-    }
+      setError(null);
+    };
 
-    setIsModelLoading(false);
+    checkModels();
 
     return () => {
       isDisposingRef.current = true;
