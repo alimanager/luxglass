@@ -20,7 +20,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   const animationFrameRef = useRef<number>();
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [modelLoadAttempts, setModelLoadAttempts] = useState(0);
 
   const [adjustments, setAdjustments] = useState({
     scale: 1,
@@ -30,6 +29,8 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
 
   useEffect(() => {
     if (!containerRef.current) return;
+
+    console.log('Initializing Three.js scene...');
 
     // Initialize Three.js scene
     const scene = new THREE.Scene();
@@ -76,67 +77,65 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     controlsRef.current = controls;
 
     // Load glasses model
-    const loadModel = () => {
-      const loader = new GLTFLoader();
-      setLoadingError(null);
-      setIsLoading(true);
+    const modelPath = '/glasses.glb';
+    console.log('Attempting to load 3D model from:', modelPath);
+    console.log('Current working directory:', window.location.href);
 
-      // Log the model loading attempt
-      console.log(`Attempting to load model (attempt ${modelLoadAttempts + 1})`);
+    const loader = new GLTFLoader();
+    setLoadingError(null);
+    setIsLoading(true);
 
-      // Try different paths based on the attempt number
-      const modelPaths = [
-        '/glasses.glb',
-        '/models/glasses.glb',
-        './glasses.glb',
-        '../glasses.glb'
-      ];
+    // Create a test cube to verify scene rendering
+    const testCube = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+    );
+    testCube.position.set(0, 0, 0);
+    scene.add(testCube);
+    console.log('Added test cube to scene');
 
-      const currentPath = modelPaths[modelLoadAttempts % modelPaths.length];
-      console.log('Trying path:', currentPath);
-
-      loader.load(
-        currentPath,
-        (gltf) => {
-          console.log('Model loaded successfully:', gltf);
-
-          const model = gltf.scene;
-          model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
-          model.position.set(0, adjustments.height, adjustments.depth);
-          
-          // Remove any existing model
-          if (glassesModelRef.current) {
-            scene.remove(glassesModelRef.current);
-          }
-          
-          glassesModelRef.current = model;
-          scene.add(model);
-          
-          setIsLoading(false);
-          setLoadingError(null);
-        },
-        (progress) => {
-          const percentComplete = (progress.loaded / progress.total) * 100;
-          console.log('Loading progress:', percentComplete.toFixed(2) + '%');
-        },
-        (error) => {
-          console.error('Error loading model:', error);
-          console.error('Failed path:', currentPath);
-          
-          if (modelLoadAttempts < modelPaths.length - 1) {
-            setModelLoadAttempts(prev => prev + 1);
-          } else {
-            setLoadingError(`
-              Le modèle 3D n'a pas pu être chargé. Erreur: ${error.message}
-              Chemins essayés: ${modelPaths.join(', ')}
-            `);
-          }
-          setIsLoading(false);
+    loader.load(
+      modelPath,
+      (gltf) => {
+        console.log('Model loaded successfully:', gltf);
+        
+        const model = gltf.scene;
+        model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
+        model.position.set(0, adjustments.height, adjustments.depth);
+        
+        // Remove test cube
+        scene.remove(testCube);
+        
+        // Remove any existing model
+        if (glassesModelRef.current) {
+          scene.remove(glassesModelRef.current);
         }
-      );
-    };
-
-    loadModel();
+        
+        glassesModelRef.current = model;
+        scene.add(model);
+        
+        setIsLoading(false);
+      },
+      (progress) => {
+        const percentComplete = (progress.loaded / progress.total) * 100;
+        console.log('Loading progress:', percentComplete.toFixed(2) + '%');
+      },
+      (error) => {
+        console.error('Error loading model:', error);
+        console.error('Full error details:', {
+          message: error.message,
+          stack: error.stack,
+          type: error.type
+        });
+        setLoadingError(`
+          Erreur de chargement du modèle 3D:
+          - Chemin tenté: ${modelPath}
+          - Message d'erreur: ${error.message}
+          - Type d'erreur: ${error.type || 'Unknown'}
+        `);
+        setIsLoading(false);
+      }
+    );
 
     // Animation loop
     const animate = () => {
@@ -188,6 +187,10 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         });
       }
       
+      scene.remove(testCube);
+      testCube.geometry.dispose();
+      (testCube.material as THREE.Material).dispose();
+      
       controlsRef.current?.dispose();
       rendererRef.current?.dispose();
       
@@ -195,7 +198,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         containerRef.current.removeChild(rendererRef.current.domElement);
       }
     };
-  }, [modelLoadAttempts]);
+  }, []);
 
   useEffect(() => {
     if (glassesModelRef.current) {
@@ -227,16 +230,16 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         <h3 className="text-lg font-medium text-red-800 mb-2">
           Erreur de chargement du modèle
         </h3>
-        <p className="text-red-600 mb-4">
+        <p className="text-red-600 mb-4 whitespace-pre-line">
           {loadingError}
         </p>
         <div className="text-sm text-red-700">
-          <p className="mb-2">Pour résoudre ce problème :</p>
+          <p className="mb-2">Vérifications à effectuer :</p>
           <ol className="text-left list-decimal list-inside space-y-1">
-            <li>Vérifiez que le fichier glasses.glb existe dans le dossier public</li>
-            <li>Assurez-vous que le fichier n'est pas corrompu</li>
-            <li>Vérifiez que le fichier est accessible via l'URL /glasses.glb</li>
-            <li>Consultez la console du navigateur pour plus de détails</li>
+            <li>Le fichier glasses.glb existe dans le dossier public</li>
+            <li>Le fichier est un modèle 3D valide au format GLB</li>
+            <li>Le fichier est accessible via l'URL /glasses.glb</li>
+            <li>La console du navigateur pour plus de détails</li>
           </ol>
         </div>
       </div>
