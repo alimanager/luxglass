@@ -17,11 +17,18 @@ declare global {
   }
 }
 
+let isInitialized = false;
+
 const initializeTensorFlow = async () => {
+  if (isInitialized) {
+    console.warn('TensorFlow.js is already initialized');
+    return;
+  }
+
   try {
     console.log('Initializing TensorFlow.js...');
     
-    // Initialize WebGL backend only once
+    // Set WebGL backend and wait for initialization only once
     await tf.setBackend('webgl');
     await tf.ready();
     console.log('TensorFlow.js initialized with WebGL backend');
@@ -53,6 +60,8 @@ const initializeTensorFlow = async () => {
       faceDetector,
       landmarksDetector
     };
+
+    isInitialized = true;
 
     // Initialize React app
     const root = createRoot(document.getElementById('root')!);
