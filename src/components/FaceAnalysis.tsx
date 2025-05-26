@@ -31,8 +31,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   const isDisposingRef = useRef(false);
 
   useEffect(() => {
-    const initializeTF = async () => {
+    const initializeDetectors = async () => {
       try {
+        console.log('Initializing face detection models...');
         setIsModelLoading(true);
         setError(null);
 
@@ -44,6 +45,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             maxFaces: 1
           }
         );
+        console.log('Face detector initialized');
 
         const landmarksDetector = await faceLandmarksDetection.createDetector(
           faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
@@ -53,6 +55,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             maxFaces: 1
           }
         );
+        console.log('Landmarks detector initialized');
 
         if (!isDisposingRef.current) {
           detectorRef.current = faceDetector;
@@ -60,6 +63,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           setDetector(faceDetector);
           setLandmarksDetector(landmarksDetector);
           setIsModelLoading(false);
+          console.log('Models loaded successfully');
         }
       } catch (err) {
         console.error('Error loading face detection models:', err);
@@ -68,7 +72,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       }
     };
 
-    initializeTF();
+    initializeDetectors();
 
     return () => {
       isDisposingRef.current = true;
@@ -86,12 +90,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   }, []);
 
   const calculateFaceShape = (landmarks: any) => {
-    // Extract facial measurements
     const faceWidth = landmarks.boundingBox.width;
     const faceHeight = landmarks.boundingBox.height;
     const ratio = faceHeight / faceWidth;
 
-    // Get key facial points
     const jawLeft = landmarks.mesh[132];
     const jawRight = landmarks.mesh[361];
     const chin = landmarks.mesh[152];
@@ -102,7 +104,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     const templeLeft = landmarks.mesh[162];
     const templeRight = landmarks.mesh[389];
 
-    // Calculate key measurements
     const jawAngle = Math.atan2(
       chin[1] - jawLeft[1],
       chin[0] - jawLeft[0]
@@ -113,7 +114,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     const jawWidth = Math.abs(jawRight[0] - jawLeft[0]);
     const templeWidth = Math.abs(templeRight[0] - templeLeft[0]);
 
-    // Calculate face shape based on measurements and ratios
     if (ratio > 1.5) {
       return 'oblong';
     }
@@ -138,7 +138,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       return 'oval';
     }
 
-    // Default to oval if no clear match
     return 'oval';
   };
 
