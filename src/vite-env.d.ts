@@ -2,7 +2,7 @@
 
 interface Window {
   __models: {
-    faceDetector: any;
-    landmarksDetector: any;
+    faceDetector: import('@tensorflow-models/face-detection').FaceDetector;
+    landmarksDetector: import('@tensorflow-models/face-landmarks-detection').FaceLandmarksDetector;
   };
 }
