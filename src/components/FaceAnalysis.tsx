@@ -34,6 +34,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     }
 
     setIsModelLoading(false);
+
+    return () => {
+      isDisposingRef.current = true;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {

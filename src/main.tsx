@@ -94,4 +94,13 @@ const initializeTensorFlow = async () => {
   }
 };
 
+// Add cleanup on page unload
+window.addEventListener('unload', () => {
+  if (window.__models) {
+    window.__models.faceDetector.dispose();
+    window.__models.landmarksDetector.dispose();
+    tf.disposeVariables();
+  }
+});
+
 initializeTensorFlow();
