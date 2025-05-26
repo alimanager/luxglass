@@ -79,10 +79,10 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     // Load glasses model
     const modelPath = '/glasses.glb';
     console.log('Attempting to load 3D model from:', modelPath);
-    console.log('Current working directory:', window.location.href);
 
     const loader = new GLTFLoader();
     setLoadingError(null);
+    console.log('setIsLoading:', true);
     setIsLoading(true);
 
     // Create a test cube to verify scene rendering
@@ -114,6 +114,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         glassesModelRef.current = model;
         scene.add(model);
         
+        console.log('setIsLoading:', false);
         setIsLoading(false);
       },
       (progress) => {
@@ -121,18 +122,19 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         console.log('Loading progress:', percentComplete.toFixed(2) + '%');
       },
       (error) => {
-        console.error('Error loading model:', error);
+        console.warn('Model load error:', error);
         console.error('Full error details:', {
           message: error.message,
           stack: error.stack,
           type: error.type
         });
         setLoadingError(`
-          Erreur de chargement du modèle 3D:
-          - Chemin tenté: ${modelPath}
-          - Message d'erreur: ${error.message}
-          - Type d'erreur: ${error.type || 'Unknown'}
+          Error loading 3D model:
+          - Path attempted: ${modelPath}
+          - Error message: ${error.message}
+          - Error type: ${error.type || 'Unknown'}
         `);
+        console.log('setIsLoading:', false);
         setIsLoading(false);
       }
     );
@@ -228,18 +230,18 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-red-800 mb-2">
-          Erreur de chargement du modèle
+          Error Loading Model
         </h3>
         <p className="text-red-600 mb-4 whitespace-pre-line">
           {loadingError}
         </p>
         <div className="text-sm text-red-700">
-          <p className="mb-2">Vérifications à effectuer :</p>
+          <p className="mb-2">Verification steps:</p>
           <ol className="text-left list-decimal list-inside space-y-1">
-            <li>Le fichier glasses.glb existe dans le dossier public</li>
-            <li>Le fichier est un modèle 3D valide au format GLB</li>
-            <li>Le fichier est accessible via l'URL /glasses.glb</li>
-            <li>La console du navigateur pour plus de détails</li>
+            <li>glasses.glb exists in the public directory</li>
+            <li>The file is a valid GLB model</li>
+            <li>The file is accessible via /glasses.glb</li>
+            <li>Check browser console for more details</li>
           </ol>
         </div>
       </div>
@@ -255,7 +257,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
             <div className="text-gray-600">
-              Chargement du modèle...
+              Loading model...
             </div>
           </div>
         )}
@@ -265,21 +267,21 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-medium flex items-center">
             <Sliders className="h-5 w-5 mr-2" />
-            Ajustements
+            Adjustments
           </h3>
           <button
             onClick={resetAdjustments}
             className="text-secondary-600 hover:text-secondary-900 transition-colors flex items-center"
           >
             <RotateCcw className="h-4 w-4 mr-1" />
-            Réinitialiser
+            Reset
           </button>
         </div>
         
         <div className="space-y-3">
           <div>
             <label className="text-sm text-secondary-600 block mb-1">
-              Taille
+              Size
             </label>
             <input
               type="range"
@@ -297,7 +299,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
           
           <div>
             <label className="text-sm text-secondary-600 block mb-1">
-              Hauteur
+              Height
             </label>
             <input
               type="range"
@@ -315,7 +317,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
           
           <div>
             <label className="text-sm text-secondary-600 block mb-1">
-              Profondeur
+              Depth
             </label>
             <input
               type="range"
