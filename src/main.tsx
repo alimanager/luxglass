@@ -28,12 +28,10 @@ const initializeTensorFlow = async () => {
   try {
     console.log('Initializing TensorFlow.js...');
     
-    // Set WebGL backend and wait for initialization only once
     await tf.setBackend('webgl');
     await tf.ready();
     console.log('TensorFlow.js initialized with WebGL backend');
 
-    // Load models in parallel for better performance
     const [faceDetector, landmarksDetector] = await Promise.all([
       faceDetection.createDetector(
         faceDetection.SupportedModels.MediaPipeFaceDetector,
@@ -55,7 +53,6 @@ const initializeTensorFlow = async () => {
 
     console.log('Models loaded successfully');
 
-    // Store models globally for reuse
     window.__models = {
       faceDetector,
       landmarksDetector
@@ -63,7 +60,6 @@ const initializeTensorFlow = async () => {
 
     isInitialized = true;
 
-    // Initialize React app
     const root = createRoot(document.getElementById('root')!);
     root.render(
       <StrictMode>
@@ -94,7 +90,6 @@ const initializeTensorFlow = async () => {
   }
 };
 
-// Add cleanup on page unload
 window.addEventListener('unload', () => {
   if (window.__models) {
     window.__models.faceDetector.dispose();
