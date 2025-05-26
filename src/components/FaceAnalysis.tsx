@@ -160,7 +160,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         let faces;
         await tf.tidy(async () => {
           const imageTensor = tf.browser.fromPixels(video);
-          faces = await window.__models.detector.estimateFaces(imageTensor);
+          faces = await window.__models.faceDetector.estimateFaces(imageTensor);
         });
 
         if (isDisposingRef.current) return;
