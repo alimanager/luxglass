@@ -1,4 +1,30 @@
-// Continuing from previous action...
+import React, { useEffect, useRef, useState } from 'react';
+import Webcam from 'react-webcam';
+import { AlertCircle, Camera, Move, RefreshCw } from 'lucide-react';
+import * as tf from '@tensorflow/tfjs';
+import * as faceDetection from '@tensorflow-models/face-detection';
+
+interface FaceAnalysisProps {
+  onAnalysisComplete: (faceShape: string) => void;
+  onLandmarksDetected?: (landmarks: any) => void;
+}
+
+const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandmarksDetected }) => {
+  const webcamRef = useRef<Webcam>(null);
+  const animationFrameRef = useRef<number>();
+  const frameCountRef = useRef(0);
+  const lastProcessTimeRef = useRef(0);
+  const processingRef = useRef(false);
+  const isDisposingRef = useRef(false);
+
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const [isModelLoading, setIsModelLoading] = useState(true);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [facePosition, setFacePosition] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Continuing from previous action...
 
   const calculateFaceShape = (landmarks: any) => {
     const faceWidth = landmarks.boundingBox.width;
