@@ -3,6 +3,7 @@ import Webcam from 'react-webcam';
 import { AlertCircle, Camera, Move, RefreshCw } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
+import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 
 interface FaceAnalysisProps {
   onAnalysisComplete: (faceShape: string) => void;
@@ -20,11 +21,87 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [faceDetected, setFaceDetected] = useState(false);
-  const [facePosition, setFacePosition] = useState<string | null>(null);
+  const [facePosition, setFacePosition] = useState<'center' | 'off-center' | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Continuing from previous action...
+  useEffect(() => {
+    const initializeVideo = () => {
+      if (webcamRef.current?.video) {
+        const video = webcamRef.current.video;
+        
+        const handleVideoReady = () => {
+          if (video.readyState === 4) {
+            setIsVideoReady(true);
+            startContinuousDetection();
+          }
+        };
+
+        video.addEventListener('loadeddata', handleVideoReady);
+        
+        if (video.readyState === 4) {
+          handleVideoReady();
+        }
+
+        return () => {
+          video.removeEventListener('loadeddata', handleVideoReady);
+        };
+      }
+    };
+
+    const checkModelsAndInitialize = async () => {
+      try {
+        if (!window.__models) {
+          setIsModelLoading(true);
+          setError('Initializing models...');
+          
+          await tf.setBackend('webgl');
+          await tf.ready();
+
+          const [faceDetector, landmarksDetector] = await Promise.all([
+            faceDetection.createDetector(
+              faceDetection.SupportedModels.MediaPipeFaceDetector,
+              {
+                runtime: 'tfjs',
+                modelType: 'short',
+                maxFaces: 1
+              }
+            ),
+            faceLandmarksDetection.createDetector(
+              faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+              {
+                runtime: 'tfjs',
+                refineLandmarks: true,
+                maxFaces: 1
+              }
+            )
+          ]);
+
+          window.__models = {
+            faceDetector,
+            landmarksDetector
+          };
+        }
+
+        setIsModelLoading(false);
+        setError(null);
+        initializeVideo();
+      } catch (err) {
+        console.error('Error initializing models:', err);
+        setError('Failed to initialize face detection. Please refresh the page.');
+        setIsModelLoading(false);
+      }
+    };
+
+    checkModelsAndInitialize();
+
+    return () => {
+      isDisposingRef.current = true;
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, []);
 
   const calculateFaceShape = (landmarks: any) => {
     const faceWidth = landmarks.boundingBox.width;
