@@ -17,28 +17,21 @@ declare global {
   }
 }
 
-let isInitialized = false;
-
 const initializeTensorFlow = async () => {
-  if (isInitialized) {
-    console.warn('TensorFlow.js is already initialized');
-    return;
-  }
-
   try {
-    console.log('Initializing TensorFlow.js...');
-    
+    console.log('Setting up TensorFlow.js...');
     await tf.setBackend('webgl');
     await tf.ready();
-    console.log('TensorFlow.js initialized with WebGL backend');
-
+    
+    console.log('Loading face detection models...');
     const [faceDetector, landmarksDetector] = await Promise.all([
       faceDetection.createDetector(
         faceDetection.SupportedModels.MediaPipeFaceDetector,
         {
           runtime: 'tfjs',
           modelType: 'short',
-          maxFaces: 1
+          maxFaces: 1,
+          detectorModelUrl: 'https://tfhub.dev/mediapipe/tfjs-model/face_detection/1/short/1',
         }
       ),
       faceLandmarksDetection.createDetector(
@@ -46,19 +39,18 @@ const initializeTensorFlow = async () => {
         {
           runtime: 'tfjs',
           refineLandmarks: true,
-          maxFaces: 1
+          maxFaces: 1,
+          detectorModelUrl: 'https://tfhub.dev/mediapipe/tfjs-model/face_landmarks_detection/1/default/1',
         }
       )
     ]);
-
-    console.log('Models loaded successfully');
 
     window.__models = {
       faceDetector,
       landmarksDetector
     };
 
-    isInitialized = true;
+    console.log('Models loaded successfully');
 
     const root = createRoot(document.getElementById('root')!);
     root.render(
