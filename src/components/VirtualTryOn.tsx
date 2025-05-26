@@ -20,6 +20,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   const animationFrameRef = useRef<number>();
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [modelLoadAttempts, setModelLoadAttempts] = useState(0);
 
   const [adjustments, setAdjustments] = useState({
     scale: 1,
@@ -75,41 +76,67 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     controlsRef.current = controls;
 
     // Load glasses model
-    const loader = new GLTFLoader();
-    setLoadingError(null);
-    setIsLoading(true);
+    const loadModel = () => {
+      const loader = new GLTFLoader();
+      setLoadingError(null);
+      setIsLoading(true);
 
-    console.log('Loading model from:', '/glasses.glb'); // Debug path
+      // Log the model loading attempt
+      console.log(`Attempting to load model (attempt ${modelLoadAttempts + 1})`);
 
-    loader.load(
-      '/glasses.glb',
-      (gltf) => {
-        console.log('Model loaded successfully:', gltf); // Debug loaded model
+      // Try different paths based on the attempt number
+      const modelPaths = [
+        '/glasses.glb',
+        '/models/glasses.glb',
+        './glasses.glb',
+        '../glasses.glb'
+      ];
 
-        const model = gltf.scene;
-        model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
-        model.position.set(0, adjustments.height, adjustments.depth);
-        
-        // Remove any existing model
-        if (glassesModelRef.current) {
-          scene.remove(glassesModelRef.current);
+      const currentPath = modelPaths[modelLoadAttempts % modelPaths.length];
+      console.log('Trying path:', currentPath);
+
+      loader.load(
+        currentPath,
+        (gltf) => {
+          console.log('Model loaded successfully:', gltf);
+
+          const model = gltf.scene;
+          model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
+          model.position.set(0, adjustments.height, adjustments.depth);
+          
+          // Remove any existing model
+          if (glassesModelRef.current) {
+            scene.remove(glassesModelRef.current);
+          }
+          
+          glassesModelRef.current = model;
+          scene.add(model);
+          
+          setIsLoading(false);
+          setLoadingError(null);
+        },
+        (progress) => {
+          const percentComplete = (progress.loaded / progress.total) * 100;
+          console.log('Loading progress:', percentComplete.toFixed(2) + '%');
+        },
+        (error) => {
+          console.error('Error loading model:', error);
+          console.error('Failed path:', currentPath);
+          
+          if (modelLoadAttempts < modelPaths.length - 1) {
+            setModelLoadAttempts(prev => prev + 1);
+          } else {
+            setLoadingError(`
+              Le modèle 3D n'a pas pu être chargé. Erreur: ${error.message}
+              Chemins essayés: ${modelPaths.join(', ')}
+            `);
+          }
+          setIsLoading(false);
         }
-        
-        glassesModelRef.current = model;
-        scene.add(model);
-        
-        console.log('Model added to scene'); // Debug scene addition
-        setIsLoading(false);
-      },
-      (progress) => {
-        console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-      },
-      (error) => {
-        console.error('Error loading model:', error);
-        setLoadingError('Le modèle 3D n\'a pas pu être chargé. Veuillez vérifier que le fichier glasses.glb est présent dans le dossier public.');
-        setIsLoading(false);
-      }
-    );
+      );
+    };
+
+    loadModel();
 
     // Animation loop
     const animate = () => {
@@ -168,7 +195,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         containerRef.current.removeChild(rendererRef.current.domElement);
       }
     };
-  }, []);
+  }, [modelLoadAttempts]);
 
   useEffect(() => {
     if (glassesModelRef.current) {
@@ -206,10 +233,10 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         <div className="text-sm text-red-700">
           <p className="mb-2">Pour résoudre ce problème :</p>
           <ol className="text-left list-decimal list-inside space-y-1">
-            <li>Téléchargez un modèle 3D de lunettes au format .glb</li>
-            <li>Renommez le fichier en "glasses.glb"</li>
-            <li>Placez le fichier dans le dossier "public" du projet</li>
-            <li>Redémarrez le serveur de développement</li>
+            <li>Vérifiez que le fichier glasses.glb existe dans le dossier public</li>
+            <li>Assurez-vous que le fichier n'est pas corrompu</li>
+            <li>Vérifiez que le fichier est accessible via l'URL /glasses.glb</li>
+            <li>Consultez la console du navigateur pour plus de détails</li>
           </ol>
         </div>
       </div>
