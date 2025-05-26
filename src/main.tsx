@@ -29,8 +29,9 @@ const initializeTensorFlow = async () => {
         faceDetection.SupportedModels.MediaPipeFaceDetector,
         {
           runtime: 'tfjs',
-          modelType: 'short',
-          maxFaces: 1
+          modelType: 'full',
+          maxFaces: 1,
+          shouldLoadWeights: true
         }
       ),
       faceLandmarksDetection.createDetector(
@@ -38,7 +39,8 @@ const initializeTensorFlow = async () => {
         {
           runtime: 'tfjs',
           refineLandmarks: true,
-          maxFaces: 1
+          maxFaces: 1,
+          shouldLoadWeights: true
         }
       )
     ]);
