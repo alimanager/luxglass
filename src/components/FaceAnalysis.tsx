@@ -14,8 +14,6 @@ interface FaceAnalysisProps {
 const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandmarksDetected }) => {
   const webcamRef = useRef<Webcam>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [detector, setDetector] = useState<faceDetection.FaceDetector | null>(null);
-  const [landmarksDetector, setLandmarksDetector] = useState<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [faceDetected, setFaceDetected] = useState(false);
@@ -26,67 +24,41 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   const lastProcessTimeRef = useRef(0);
   const processingRef = useRef(false);
   const animationFrameRef = useRef<number>();
-  const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
-  const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
   const isDisposingRef = useRef(false);
 
   useEffect(() => {
-    const initializeDetectors = async () => {
-      try {
-        console.log('Initializing face detection models...');
-        setIsModelLoading(true);
-        setError(null);
+    if (!window.__models) {
+      setError('Models not initialized. Please refresh the page.');
+      setIsModelLoading(false);
+      return;
+    }
 
-        const faceDetector = await faceDetection.createDetector(
-          faceDetection.SupportedModels.MediaPipeFaceDetector,
-          {
-            runtime: 'tfjs',
-            modelType: 'short',
-            maxFaces: 1
+    setIsModelLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (webcamRef.current?.video) {
+      const video = webcamRef.current.video;
+      
+      const handleVideoReady = () => {
+        if (video.readyState === 4) {
+          setIsVideoReady(true);
+          if (!isDisposingRef.current && window.__models) {
+            startContinuousDetection();
           }
-        );
-        console.log('Face detector initialized');
-
-        const landmarksDetector = await faceLandmarksDetection.createDetector(
-          faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-          {
-            runtime: 'tfjs',
-            refineLandmarks: true,
-            maxFaces: 1
-          }
-        );
-        console.log('Landmarks detector initialized');
-
-        if (!isDisposingRef.current) {
-          detectorRef.current = faceDetector;
-          landmarksDetectorRef.current = landmarksDetector;
-          setDetector(faceDetector);
-          setLandmarksDetector(landmarksDetector);
-          setIsModelLoading(false);
-          console.log('Models loaded successfully');
         }
-      } catch (err) {
-        console.error('Error loading face detection models:', err);
-        setError('Erreur lors du chargement des modèles de détection faciale. Veuillez rafraîchir la page.');
-        setIsModelLoading(false);
-      }
-    };
+      };
 
-    initializeDetectors();
+      video.addEventListener('loadeddata', handleVideoReady);
+      
+      if (video.readyState === 4) {
+        handleVideoReady();
+      }
 
-    return () => {
-      isDisposingRef.current = true;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (detectorRef.current) {
-        detectorRef.current.dispose();
-      }
-      if (landmarksDetectorRef.current) {
-        landmarksDetectorRef.current.dispose();
-      }
-      tf.disposeVariables();
-    };
+      return () => {
+        video.removeEventListener('loadeddata', handleVideoReady);
+      };
+    }
   }, []);
 
   const calculateFaceShape = (landmarks: any) => {
@@ -141,31 +113,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     return 'oval';
   };
 
-  useEffect(() => {
-    if (webcamRef.current?.video) {
-      const video = webcamRef.current.video;
-      
-      const handleVideoReady = () => {
-        if (video.readyState === 4) {
-          setIsVideoReady(true);
-          if (detector && landmarksDetector && !isDisposingRef.current) {
-            startContinuousDetection();
-          }
-        }
-      };
-
-      video.addEventListener('loadeddata', handleVideoReady);
-      
-      if (video.readyState === 4) {
-        handleVideoReady();
-      }
-
-      return () => {
-        video.removeEventListener('loadeddata', handleVideoReady);
-      };
-    }
-  }, [detector, landmarksDetector]);
-
   const checkFacePosition = (face: faceDetection.Face, videoWidth: number, videoHeight: number) => {
     const centerX = videoWidth / 2;
     const centerY = videoHeight / 2;
@@ -202,7 +149,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
 
       try {
         const video = webcamRef.current?.video;
-        if (!video || !isVideoReady || !detector || !landmarksDetector) {
+        if (!video || !isVideoReady || !window.__models) {
           animationFrameRef.current = requestAnimationFrame(detectFace);
           return;
         }
@@ -213,7 +160,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
         let faces;
         await tf.tidy(async () => {
           const imageTensor = tf.browser.fromPixels(video);
-          faces = await detector.estimateFaces(imageTensor);
+          faces = await window.__models.detector.estimateFaces(imageTensor);
         });
 
         if (isDisposingRef.current) return;
@@ -233,7 +180,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           let landmarks;
           await tf.tidy(async () => {
             const landmarksTensor = tf.browser.fromPixels(video);
-            landmarks = await landmarksDetector.estimateFaces(landmarksTensor);
+            landmarks = await window.__models.landmarksDetector.estimateFaces(landmarksTensor);
           });
 
           if (!isDisposingRef.current && landmarks.length > 0 && onLandmarksDetected) {
@@ -257,7 +204,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
   };
 
   const analyzeFaceShape = async () => {
-    if (!landmarksDetector || !webcamRef.current?.video || !isVideoReady) {
+    if (!window.__models || !webcamRef.current?.video || !isVideoReady) {
       setError('La vidéo n\'est pas encore prête. Veuillez patienter.');
       return;
     }
@@ -276,7 +223,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
       
       await tf.tidy(async () => {
         const imageTensor = tf.browser.fromPixels(video);
-        landmarks = await landmarksDetector.estimateFaces(imageTensor);
+        landmarks = await window.__models.landmarksDetector.estimateFaces(imageTensor);
       });
 
       if (!landmarks || landmarks.length === 0) {
