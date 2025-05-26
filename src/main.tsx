@@ -30,8 +30,7 @@ const initializeTensorFlow = async () => {
         {
           runtime: 'tfjs',
           modelType: 'short',
-          maxFaces: 1,
-          detectorModelUrl: 'https://tfhub.dev/mediapipe/tfjs-model/face_detection/1/short/1',
+          maxFaces: 1
         }
       ),
       faceLandmarksDetection.createDetector(
@@ -39,8 +38,7 @@ const initializeTensorFlow = async () => {
         {
           runtime: 'tfjs',
           refineLandmarks: true,
-          maxFaces: 1,
-          detectorModelUrl: 'https://tfhub.dev/mediapipe/tfjs-model/face_landmarks_detection/1/default/1',
+          maxFaces: 1
         }
       )
     ]);
