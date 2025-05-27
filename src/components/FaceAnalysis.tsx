@@ -3,255 +3,109 @@ import Webcam from 'react-webcam';
 import { AlertCircle, Camera, Move, RefreshCw } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
-import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 
 interface FaceAnalysisProps {
   onAnalysisComplete: (faceShape: string) => void;
-  onLandmarksDetected?: (landmarks: any) => void;
 }
 
-const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandmarksDetected }) => {
+const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const webcamRef = useRef<Webcam>(null);
-  const animationFrameRef = useRef<number>();
-  const frameCountRef = useRef(0);
-  const lastProcessTimeRef = useRef(0);
-  const processingRef = useRef(false);
-  const isDisposingRef = useRef(false);
-
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [faceDetected, setFaceDetected] = useState(false);
   const [facePosition, setFacePosition] = useState<'center' | 'off-center' | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
 
   useEffect(() => {
-    const initializeVideo = () => {
-      if (webcamRef.current?.video) {
-        const video = webcamRef.current.video;
-        
-        const handleVideoReady = () => {
-          if (video.readyState === 4) {
-            setIsVideoReady(true);
-            startContinuousDetection();
-          }
-        };
-
-        video.addEventListener('loadeddata', handleVideoReady);
-        
-        if (video.readyState === 4) {
-          handleVideoReady();
-        }
-
-        return () => {
-          video.removeEventListener('loadeddata', handleVideoReady);
-        };
-      }
-    };
-
-    const checkModelsAndInitialize = async () => {
+    const initializeDetector = async () => {
       try {
-        if (!window.__models) {
-          setIsModelLoading(true);
-          setError('Initializing models...');
-          
-          await tf.setBackend('webgl');
-          await tf.ready();
-
-          const [faceDetector, landmarksDetector] = await Promise.all([
-            faceDetection.createDetector(
-              faceDetection.SupportedModels.MediaPipeFaceDetector,
-              {
-                runtime: 'tfjs',
-                modelType: 'short',
-                maxFaces: 1
-              }
-            ),
-            faceLandmarksDetection.createDetector(
-              faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-              {
-                runtime: 'tfjs',
-                refineLandmarks: true,
-                maxFaces: 1
-              }
-            )
-          ]);
-
-          window.__models = {
-            faceDetector,
-            landmarksDetector
-          };
-        }
-
+        await tf.setBackend('webgl');
+        await tf.ready();
+        
+        const detector = await faceDetection.createDetector(
+          faceDetection.SupportedModels.MediaPipeFaceDetector,
+          {
+            runtime: 'tfjs',
+            modelType: 'short',
+            maxFaces: 1
+          }
+        );
+        
+        detectorRef.current = detector;
         setIsModelLoading(false);
         setError(null);
-        initializeVideo();
       } catch (err) {
-        console.error('Error initializing models:', err);
+        console.error('Error initializing detector:', err);
         setError('Failed to initialize face detection. Please refresh the page.');
         setIsModelLoading(false);
       }
     };
 
-    checkModelsAndInitialize();
-
-    return () => {
-      isDisposingRef.current = true;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
+    initializeDetector();
   }, []);
 
-  const calculateFaceShape = (landmarks: any) => {
-    const faceWidth = landmarks.boundingBox.width;
-    const faceHeight = landmarks.boundingBox.height;
-    const ratio = faceHeight / faceWidth;
-
-    const jawLeft = landmarks.mesh[132];
-    const jawRight = landmarks.mesh[361];
-    const chin = landmarks.mesh[152];
-    const foreheadLeft = landmarks.mesh[21];
-    const foreheadRight = landmarks.mesh[251];
-    const cheekLeft = landmarks.mesh[123];
-    const cheekRight = landmarks.mesh[352];
-    const templeLeft = landmarks.mesh[162];
-    const templeRight = landmarks.mesh[389];
-
-    const jawAngle = Math.atan2(
-      chin[1] - jawLeft[1],
-      chin[0] - jawLeft[0]
-    ) * (180 / Math.PI);
-    
-    const foreheadWidth = Math.abs(foreheadRight[0] - foreheadLeft[0]);
-    const cheekboneWidth = Math.abs(cheekRight[0] - cheekLeft[0]);
-    const jawWidth = Math.abs(jawRight[0] - jawLeft[0]);
-    const templeWidth = Math.abs(templeRight[0] - templeLeft[0]);
-
-    if (ratio > 1.5) {
-      return 'oblong';
-    }
-
-    if (ratio < 1.2) {
-      if (jawAngle > 60 && Math.abs(cheekboneWidth - jawWidth) < 10) {
-        return 'round';
-      }
-      return 'square';
-    }
-
-    if (foreheadWidth > cheekboneWidth && 
-        cheekboneWidth > jawWidth && 
-        jawAngle < 45) {
-      return 'heart';
-    }
-
-    if (Math.abs(foreheadWidth - cheekboneWidth) < 10 && 
-        ratio >= 1.3 && 
-        ratio <= 1.4 && 
-        templeWidth > jawWidth) {
-      return 'oval';
-    }
-
-    return 'oval';
-  };
-
-  const checkFacePosition = (face: faceDetection.Face, videoWidth: number, videoHeight: number) => {
-    const centerX = videoWidth / 2;
-    const centerY = videoHeight / 2;
-    const faceX = face.box.xCenter;
-    const faceY = face.box.yCenter;
-    
-    const threshold = 150;
-    
-    const distanceFromCenter = Math.sqrt(
-      Math.pow(centerX - faceX, 2) + Math.pow(centerY - faceY, 2)
-    );
-    
-    return distanceFromCenter < threshold ? 'center' : 'off-center';
-  };
-
-  const startContinuousDetection = () => {
-    const FRAME_INTERVAL = 3;
-    const MIN_PROCESS_INTERVAL = 50;
+  useEffect(() => {
+    let animationFrame: number;
+    let isDetecting = false;
 
     const detectFace = async () => {
-      if (isDisposingRef.current) return;
-
-      const currentTime = performance.now();
-      frameCountRef.current++;
-
-      if (
-        frameCountRef.current % FRAME_INTERVAL !== 0 ||
-        currentTime - lastProcessTimeRef.current < MIN_PROCESS_INTERVAL ||
-        processingRef.current
-      ) {
-        animationFrameRef.current = requestAnimationFrame(detectFace);
+      if (!webcamRef.current?.video || !detectorRef.current || isDetecting) {
+        animationFrame = requestAnimationFrame(detectFace);
         return;
       }
 
+      isDetecting = true;
+
       try {
-        const video = webcamRef.current?.video;
-        if (!video || !isVideoReady || !window.__models) {
-          animationFrameRef.current = requestAnimationFrame(detectFace);
-          return;
-        }
-
-        processingRef.current = true;
-        lastProcessTimeRef.current = currentTime;
-
-        let faces;
-        await tf.tidy(async () => {
-          const imageTensor = tf.browser.fromPixels(video);
-          faces = await window.__models.faceDetector.estimateFaces(imageTensor);
-        });
-
-        if (isDisposingRef.current) return;
-
-        const position = faces.length > 0 
-          ? checkFacePosition(faces[0], video.videoWidth, video.videoHeight)
-          : null;
-
-        setFaceDetected(faces.length > 0);
-        setFacePosition(position);
-        setError(faces.length === 0 
-          ? 'Aucun visage détecté. Assurez-vous d\'être bien visible dans le cadre.' 
-          : null
-        );
-
-        if (faces.length > 0 && position === 'center') {
-          let landmarks;
-          await tf.tidy(async () => {
-            const landmarksTensor = tf.browser.fromPixels(video);
-            landmarks = await window.__models.landmarksDetector.estimateFaces(landmarksTensor);
-          });
-
-          if (!isDisposingRef.current && landmarks.length > 0 && onLandmarksDetected) {
-            onLandmarksDetected(landmarks[0]);
-          }
+        const faces = await detectorRef.current.estimateFaces(webcamRef.current.video);
+        
+        if (faces.length > 0) {
+          setFaceDetected(true);
+          
+          // Check if face is centered
+          const video = webcamRef.current.video;
+          const centerX = video.videoWidth / 2;
+          const centerY = video.videoHeight / 2;
+          const face = faces[0];
+          const faceX = face.box.xCenter;
+          const faceY = face.box.yCenter;
+          
+          const threshold = 100;
+          const distanceFromCenter = Math.sqrt(
+            Math.pow(centerX - faceX, 2) + Math.pow(centerY - faceY, 2)
+          );
+          
+          setFacePosition(distanceFromCenter < threshold ? 'center' : 'off-center');
+          setError(null);
+        } else {
+          setFaceDetected(false);
+          setFacePosition(null);
+          setError('Aucun visage détecté. Assurez-vous d\'être bien visible dans le cadre.');
         }
       } catch (err) {
-        console.error('Error in continuous detection:', err);
-        setFaceDetected(false);
-        setFacePosition(null);
-        setError('Une erreur est survenue lors de la détection. Veuillez vérifier votre caméra.');
-      } finally {
-        processingRef.current = false;
-        if (!isDisposingRef.current) {
-          animationFrameRef.current = requestAnimationFrame(detectFace);
-        }
+        console.error('Error detecting face:', err);
+        setError('Une erreur est survenue lors de la détection.');
       }
+
+      isDetecting = false;
+      animationFrame = requestAnimationFrame(detectFace);
     };
 
-    detectFace();
-  };
-
-  const analyzeFaceShape = async () => {
-    if (!window.__models || !webcamRef.current?.video || !isVideoReady) {
-      setError('La vidéo n\'est pas encore prête. Veuillez patienter.');
-      return;
+    if (isVideoReady && !isModelLoading) {
+      detectFace();
     }
 
-    if (facePosition !== 'center') {
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
+  }, [isVideoReady, isModelLoading]);
+
+  const analyzeFaceShape = async () => {
+    if (!faceDetected || facePosition !== 'center') {
       setError('Veuillez centrer votre visage dans le cadre avant l\'analyse.');
       return;
     }
@@ -260,21 +114,30 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
     setError(null);
 
     try {
-      const video = webcamRef.current.video;
-      let landmarks;
+      // Simplified face shape detection based on face box dimensions
+      const faces = await detectorRef.current?.estimateFaces(webcamRef.current!.video!);
       
-      await tf.tidy(async () => {
-        const imageTensor = tf.browser.fromPixels(video);
-        landmarks = await window.__models.landmarksDetector.estimateFaces(imageTensor);
-      });
+      if (faces && faces.length > 0) {
+        const face = faces[0];
+        const width = face.box.width;
+        const height = face.box.height;
+        const ratio = height / width;
 
-      if (!landmarks || landmarks.length === 0) {
-        setError('Aucun visage détecté. Veuillez vous assurer d\'être bien cadré et dans un endroit bien éclairé.');
-        return;
+        let faceShape;
+        if (ratio > 1.35) {
+          faceShape = 'oblong';
+        } else if (ratio < 1.15) {
+          faceShape = 'round';
+        } else if (width > height) {
+          faceShape = 'square';
+        } else {
+          faceShape = 'oval';
+        }
+
+        onAnalysisComplete(faceShape);
+      } else {
+        setError('Impossible de détecter la forme du visage. Veuillez réessayer.');
       }
-
-      const faceShape = calculateFaceShape(landmarks[0]);
-      onAnalysisComplete(faceShape);
     } catch (err) {
       console.error('Error analyzing face:', err);
       setError('Une erreur est survenue lors de l\'analyse. Veuillez réessayer.');
@@ -291,13 +154,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
           mirrored
           className="w-full h-full object-cover"
           videoConstraints={{
-            width: 1280,
-            height: 960,
+            width: 640,
+            height: 480,
             facingMode: "user"
           }}
           onUserMediaError={() => {
             setError('Impossible d\'accéder à la caméra. Veuillez vérifier les permissions.');
           }}
+          onLoadedData={() => setIsVideoReady(true)}
         />
         
         <div className={`absolute inset-[15%] border-4 transition-colors duration-300 ${
@@ -328,15 +192,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete, onLandm
             ) : 'En attente de détection'
           )}
         </div>
-
-        {isModelLoading && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <div className="text-white text-center">
-              <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2" />
-              <p>Chargement du modèle...</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {error && (
