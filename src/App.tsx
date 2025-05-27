@@ -6,6 +6,7 @@ import Catalog from './pages/Catalog';
 import ProductDetail from './pages/ProductDetail';
 import TryOn from './pages/TryOn';
 import AnalysisResults from './pages/AnalysisResults';
+import VirtualTryOn from './components/VirtualTryOn';
 
 function App() {
   return (
