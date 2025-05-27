@@ -24,8 +24,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   useEffect(() => {
     if (!containerRef.current) return;
 
-    console.log('Initializing Three.js scene...');
-
     // Initialize Three.js scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xf5f5f5);
@@ -72,8 +70,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
 
     // Load glasses model
     const modelPath = '/glasses.glb';
-    console.log('Attempting to load 3D model from:', modelPath);
-
     const loader = new GLTFLoader();
     setLoadingError(null);
     setIsLoading(true);
@@ -85,13 +81,10 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     );
     testCube.position.set(0, 0, 0);
     scene.add(testCube);
-    console.log('Added test cube to scene');
 
     loader.load(
       modelPath,
       (gltf) => {
-        console.log('Model loaded successfully:', gltf);
-        
         const model = gltf.scene;
         model.scale.set(1, 1, 1);
         model.position.set(0, 0, 0);
@@ -229,6 +222,71 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm">
+        <h3 className="text-xl font-medium mb-4">Caractéristiques du Visage</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 className="font-medium text-lg mb-3">Forme Générale</h4>
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">Type de Visage</span>
+                  <span className="text-sm font-medium text-primary-600 capitalize">{faceShape}</span>
+                </div>
+                <p className="text-sm text-gray-600">
+                  {faceShape === 'round' && "Visage aux contours doux et arrondis"}
+                  {faceShape === 'square' && "Visage aux angles marqués et mâchoire forte"}
+                  {faceShape === 'oval' && "Visage aux proportions harmonieuses et équilibrées"}
+                  {faceShape === 'heart' && "Visage plus large en haut qu'en bas"}
+                  {faceShape === 'oblong' && "Visage allongé aux traits réguliers"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-lg mb-3">Recommandations</h4>
+            <ul className="space-y-2 text-sm text-gray-600">
+              {faceShape === 'round' && (
+                <>
+                  <li>• Optez pour des montures angulaires</li>
+                  <li>• Privilégiez les formes rectangulaires</li>
+                  <li>• Évitez les montures rondes</li>
+                </>
+              )}
+              {faceShape === 'square' && (
+                <>
+                  <li>• Choisissez des montures arrondies</li>
+                  <li>• Les formes ovales adouciront vos traits</li>
+                  <li>• Évitez les montures carrées</li>
+                </>
+              )}
+              {faceShape === 'oval' && (
+                <>
+                  <li>• La plupart des styles vous iront bien</li>
+                  <li>• Gardez des proportions équilibrées</li>
+                  <li>• Évitez les montures trop grandes</li>
+                </>
+              )}
+              {faceShape === 'heart' && (
+                <>
+                  <li>• Optez pour des montures plus larges en bas</li>
+                  <li>• Les formes papillon vous avantageront</li>
+                  <li>• Évitez les montures trop larges en haut</li>
+                </>
+              )}
+              {faceShape === 'oblong' && (
+                <>
+                  <li>• Choisissez des montures larges</li>
+                  <li>• Les formes oversize vous iront bien</li>
+                  <li>• Évitez les montures étroites</li>
+                </>
+              )}
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
