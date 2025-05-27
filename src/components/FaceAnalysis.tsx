@@ -38,9 +38,12 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   useEffect(() => {
     const initializeDetectors = async () => {
       try {
+        console.log('Initializing TensorFlow backend...');
         await tf.setBackend('webgl');
         await tf.ready();
+        console.log('TensorFlow backend initialized:', tf.getBackend());
         
+        console.log('Loading face detection and landmarks models...');
         const [detector, landmarksDetector] = await Promise.all([
           faceDetection.createDetector(
             faceDetection.SupportedModels.MediaPipeFaceDetector,
@@ -62,6 +65,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         
         detectorRef.current = detector;
         landmarksDetectorRef.current = landmarksDetector;
+        console.log('Face detector loaded:', !!detector);
+        console.log('Landmarks detector loaded:', !!landmarksDetector);
         setIsModelLoading(false);
         setError(null);
       } catch (err) {
@@ -122,15 +127,20 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Video or landmarks detector not ready');
     }
 
+    console.log('Starting face landmarks detection...');
     const landmarks = await landmarksDetectorRef.current.estimateFaces(webcamRef.current.video);
-    console.log('Full landmarks detection result:', landmarks);
+    console.log('Landmarks detection result:', landmarks);
 
-    if (!landmarks || landmarks.length === 0 || !landmarks[0].mesh) {
-      throw new Error('No face landmarks detected');
+    if (!landmarks || landmarks.length === 0) {
+      throw new Error('No face landmarks detected. Please ensure your face is well-lit and clearly visible.');
+    }
+
+    if (!landmarks[0].mesh) {
+      throw new Error('Face mesh data not available. Please try again.');
     }
 
     const faceMesh = landmarks[0].mesh;
-    console.log('Face mesh points:', faceMesh);
+    console.log('Face mesh points available:', faceMesh.length);
 
     // MediaPipe Face Mesh landmark indices
     const LEFT_EYE = 133;
@@ -145,6 +155,18 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const RIGHT_TEMPLE = 454;
     const LEFT_JAW = 172;
     const RIGHT_JAW = 397;
+
+    // Validate landmark indices
+    const requiredPoints = [
+      LEFT_EYE, RIGHT_EYE, NOSE_BRIDGE, NOSE_TIP, FOREHEAD, CHIN,
+      LEFT_CHEEK, RIGHT_CHEEK, LEFT_TEMPLE, RIGHT_TEMPLE, LEFT_JAW, RIGHT_JAW
+    ];
+
+    for (const point of requiredPoints) {
+      if (!faceMesh[point]) {
+        throw new Error(`Missing required facial landmark at index ${point}. Please adjust your position.`);
+      }
+    }
 
     // Calculate basic measurements
     const box = face.box;
@@ -205,6 +227,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
+    console.log('Face characteristics calculated successfully');
     return {
       symmetry,
       jawlineStrength,
@@ -237,15 +260,18 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setError(null);
 
     try {
+      console.log('Starting face detection...');
       const faces = await detectorRef.current.estimateFaces(webcamRef.current!.video!);
+      console.log('Faces detected:', faces);
       
       if (!faces || faces.length === 0) {
-        setError('Unable to detect face. Please try again.');
-        return;
+        throw new Error('Unable to detect face. Please ensure your face is clearly visible.');
       }
 
       const face = faces[0];
+      console.log('Analyzing face characteristics...');
       const faceCharacteristics = await analyzeFaceCharacteristics(face);
+      console.log('Face characteristics:', faceCharacteristics);
       
       // Determine face shape using characteristics
       const ratio = faceCharacteristics.faceLength / faceCharacteristics.faceWidth;
@@ -262,10 +288,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         faceShape = 'oval';
       }
 
+      console.log('Face shape determined:', faceShape);
       onAnalysisComplete(faceShape, faceCharacteristics);
     } catch (err) {
       console.error('Error analyzing face:', err);
-      setError('An error occurred during analysis. Please try again.');
+      setError(err instanceof Error ? err.message : 'An error occurred during analysis. Please try again.');
     } finally {
       setIsAnalyzing(false);
     }
