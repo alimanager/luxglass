@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Glasses } from '../types/glasses';
-import { Sliders, RotateCcw, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 
 interface VirtualTryOnProps {
   glasses: Glasses;
@@ -20,12 +20,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   const animationFrameRef = useRef<number>();
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const [adjustments, setAdjustments] = useState({
-    scale: 1,
-    height: 0,
-    depth: 0
-  });
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -82,7 +76,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
 
     const loader = new GLTFLoader();
     setLoadingError(null);
-    console.log('setIsLoading:', true);
     setIsLoading(true);
 
     // Create a test cube to verify scene rendering
@@ -100,8 +93,8 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         console.log('Model loaded successfully:', gltf);
         
         const model = gltf.scene;
-        model.scale.set(adjustments.scale, adjustments.scale, adjustments.scale);
-        model.position.set(0, adjustments.height, adjustments.depth);
+        model.scale.set(1, 1, 1);
+        model.position.set(0, 0, 0);
         
         // Remove test cube
         scene.remove(testCube);
@@ -114,7 +107,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
         glassesModelRef.current = model;
         scene.add(model);
         
-        console.log('setIsLoading:', false);
         setIsLoading(false);
       },
       (progress) => {
@@ -134,7 +126,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
           - Error message: ${error.message}
           - Error type: ${error.type || 'Unknown'}
         `);
-        console.log('setIsLoading:', false);
         setIsLoading(false);
       }
     );
@@ -202,29 +193,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
     };
   }, []);
 
-  useEffect(() => {
-    if (glassesModelRef.current) {
-      glassesModelRef.current.scale.set(
-        adjustments.scale,
-        adjustments.scale,
-        adjustments.scale
-      );
-      glassesModelRef.current.position.set(
-        0,
-        adjustments.height,
-        adjustments.depth
-      );
-    }
-  }, [adjustments]);
-
-  const resetAdjustments = () => {
-    setAdjustments({
-      scale: 1,
-      height: 0,
-      depth: 0
-    });
-  };
-
   if (loadingError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -261,78 +229,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
             </div>
           </div>
         )}
-      </div>
-      
-      <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-medium flex items-center">
-            <Sliders className="h-5 w-5 mr-2" />
-            Adjustments
-          </h3>
-          <button
-            onClick={resetAdjustments}
-            className="text-secondary-600 hover:text-secondary-900 transition-colors flex items-center"
-          >
-            <RotateCcw className="h-4 w-4 mr-1" />
-            Reset
-          </button>
-        </div>
-        
-        <div className="space-y-3">
-          <div>
-            <label className="text-sm text-secondary-600 block mb-1">
-              Size
-            </label>
-            <input
-              type="range"
-              min="0.5"
-              max="1.5"
-              step="0.1"
-              value={adjustments.scale}
-              onChange={(e) => setAdjustments(prev => ({
-                ...prev,
-                scale: parseFloat(e.target.value)
-              }))}
-              className="w-full"
-            />
-          </div>
-          
-          <div>
-            <label className="text-sm text-secondary-600 block mb-1">
-              Height
-            </label>
-            <input
-              type="range"
-              min="-1"
-              max="1"
-              step="0.1"
-              value={adjustments.height}
-              onChange={(e) => setAdjustments(prev => ({
-                ...prev,
-                height: parseFloat(e.target.value)
-              }))}
-              className="w-full"
-            />
-          </div>
-          
-          <div>
-            <label className="text-sm text-secondary-600 block mb-1">
-              Depth
-            </label>
-            <input
-              type="range"
-              min="-1"
-              max="1"
-              step="0.1"
-              value={adjustments.depth}
-              onChange={(e) => setAdjustments(prev => ({
-                ...prev,
-                depth: parseFloat(e.target.value)
-              }))}
-              className="w-full"
-            />
-          </div>
-        </div>
       </div>
     </div>
   );
