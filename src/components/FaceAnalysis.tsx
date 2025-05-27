@@ -38,12 +38,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   useEffect(() => {
     const initializeDetectors = async () => {
       try {
-        console.log('Initializing TensorFlow backend...');
         await tf.setBackend('webgl');
         await tf.ready();
-        console.log('TensorFlow backend initialized:', tf.getBackend());
         
-        console.log('Loading face detection and landmarks models...');
         const [detector, landmarksDetector] = await Promise.all([
           faceDetection.createDetector(
             faceDetection.SupportedModels.MediaPipeFaceDetector,
@@ -63,8 +60,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           )
         ]);
         
-        console.log('Face detector loaded:', detector);
-        console.log('Landmarks detector loaded:', landmarksDetector);
+        console.log('Landmark detector created:', landmarksDetector);
         
         detectorRef.current = detector;
         landmarksDetectorRef.current = landmarksDetector;
@@ -128,19 +124,24 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Video or landmarks detector not ready');
     }
 
-    console.log('Starting face landmarks detection...');
+    console.log('Input to estimateFaces:', {
+      videoWidth: webcamRef.current.video.videoWidth,
+      videoHeight: webcamRef.current.video.videoHeight,
+      readyState: webcamRef.current.video.readyState
+    });
+
     const landmarks = await landmarksDetectorRef.current.estimateFaces(webcamRef.current.video);
-    console.log('Landmarks detection result:', landmarks);
+    console.log('estimateFaces result:', landmarks);
 
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected. Please ensure your face is well-lit and clearly visible.');
     }
 
-    if (!landmarks[0].mesh) {
+    const faceMesh = landmarks[0].keypoints;
+    if (!faceMesh) {
       throw new Error('Face mesh data not available. Please try again.');
     }
 
-    const faceMesh = landmarks[0].mesh;
     console.log('Face mesh points:', faceMesh);
 
     // MediaPipe Face Mesh landmark indices
@@ -165,6 +166,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     for (const point of requiredPoints) {
       if (!faceMesh[point]) {
+        console.error('Missing landmark point:', point);
         throw new Error(`Missing required facial landmark at index ${point}. Please adjust your position.`);
       }
     }
@@ -228,7 +230,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
-    console.log('Face characteristics calculated successfully');
     return {
       symmetry,
       jawlineStrength,
@@ -261,18 +262,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setError(null);
 
     try {
-      console.log('Starting face detection...');
       const faces = await detectorRef.current.estimateFaces(webcamRef.current!.video!);
-      console.log('Faces detected:', faces);
       
       if (!faces || faces.length === 0) {
         throw new Error('Unable to detect face. Please ensure your face is clearly visible.');
       }
 
       const face = faces[0];
-      console.log('Analyzing face characteristics...');
       const faceCharacteristics = await analyzeFaceCharacteristics(face);
-      console.log('Face characteristics:', faceCharacteristics);
       
       // Determine face shape using characteristics
       const ratio = faceCharacteristics.faceLength / faceCharacteristics.faceWidth;
@@ -289,7 +286,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         faceShape = 'oval';
       }
 
-      console.log('Face shape determined:', faceShape);
       onAnalysisComplete(faceShape, faceCharacteristics);
     } catch (err) {
       console.error('Error analyzing face:', err);
