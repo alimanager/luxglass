@@ -63,10 +63,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           )
         ]);
         
+        console.log('Face detector loaded:', detector);
+        console.log('Landmarks detector loaded:', landmarksDetector);
+        
         detectorRef.current = detector;
         landmarksDetectorRef.current = landmarksDetector;
-        console.log('Face detector loaded:', !!detector);
-        console.log('Landmarks detector loaded:', !!landmarksDetector);
         setIsModelLoading(false);
         setError(null);
       } catch (err) {
@@ -140,7 +141,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     }
 
     const faceMesh = landmarks[0].mesh;
-    console.log('Face mesh points available:', faceMesh.length);
+    console.log('Face mesh points:', faceMesh);
 
     // MediaPipe Face Mesh landmark indices
     const LEFT_EYE = 133;
