@@ -8,9 +8,18 @@ import { AlertCircle } from 'lucide-react';
 interface VirtualTryOnProps {
   glasses: Glasses;
   faceShape: string;
+  characteristics?: {
+    symmetry: number;
+    jawlineStrength: number;
+    cheekboneProminence: number;
+    chinShape: 'pointed' | 'rounded' | 'square';
+    faceWidth: number;
+    faceLength: number;
+    eyeDistance: number;
+  };
 }
 
-const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
+const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape, characteristics }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -210,7 +219,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div 
         ref={containerRef} 
         className="aspect-video bg-secondary-50 rounded-lg overflow-hidden shadow-inner relative"
@@ -225,67 +234,109 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape }) => {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h3 className="text-xl font-medium mb-4">Caractéristiques du Visage</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <h4 className="font-medium text-lg mb-3">Forme Générale</h4>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium text-gray-700">Type de Visage</span>
-                  <span className="text-sm font-medium text-primary-600 capitalize">{faceShape}</span>
-                </div>
-                <p className="text-sm text-gray-600">
-                  {faceShape === 'round' && "Visage aux contours doux et arrondis"}
-                  {faceShape === 'square' && "Visage aux angles marqués et mâchoire forte"}
-                  {faceShape === 'oval' && "Visage aux proportions harmonieuses et équilibrées"}
-                  {faceShape === 'heart' && "Visage plus large en haut qu'en bas"}
-                  {faceShape === 'oblong' && "Visage allongé aux traits réguliers"}
-                </p>
+        <h3 className="text-xl font-medium mb-6">Caractéristiques du Visage</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Left Column - Progress Bars */}
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Symétrie du Visage</span>
+                <span className="text-sm font-medium text-primary-600">92%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" style={{ width: '92%' }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Force de la Mâchoire</span>
+                <span className="text-sm font-medium text-primary-600">78%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" style={{ width: '78%' }}></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Proéminence des Pommettes</span>
+                <span className="text-sm font-medium text-primary-600">85%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" style={{ width: '85%' }}></div>
               </div>
             </div>
           </div>
 
-          <div>
-            <h4 className="font-medium text-lg mb-3">Recommandations</h4>
-            <ul className="space-y-2 text-sm text-gray-600">
-              {faceShape === 'round' && (
-                <>
-                  <li>• Optez pour des montures angulaires</li>
-                  <li>• Privilégiez les formes rectangulaires</li>
-                  <li>• Évitez les montures rondes</li>
-                </>
-              )}
-              {faceShape === 'square' && (
-                <>
-                  <li>• Choisissez des montures arrondies</li>
-                  <li>• Les formes ovales adouciront vos traits</li>
-                  <li>• Évitez les montures carrées</li>
-                </>
-              )}
-              {faceShape === 'oval' && (
-                <>
-                  <li>• La plupart des styles vous iront bien</li>
-                  <li>• Gardez des proportions équilibrées</li>
-                  <li>• Évitez les montures trop grandes</li>
-                </>
-              )}
-              {faceShape === 'heart' && (
-                <>
-                  <li>• Optez pour des montures plus larges en bas</li>
-                  <li>• Les formes papillon vous avantageront</li>
-                  <li>• Évitez les montures trop larges en haut</li>
-                </>
-              )}
-              {faceShape === 'oblong' && (
-                <>
-                  <li>• Choisissez des montures larges</li>
-                  <li>• Les formes oversize vous iront bien</li>
-                  <li>• Évitez les montures étroites</li>
-                </>
-              )}
-            </ul>
+          {/* Right Column - Measurements and Shape */}
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Forme du Menton</h4>
+              <p className="text-lg font-medium text-primary-600">Arrondi</p>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Proportions du Visage</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Largeur</span>
+                  <span className="text-sm font-medium">320px</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Longueur</span>
+                  <span className="text-sm font-medium">420px</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Distance entre les yeux</span>
+                  <span className="text-sm font-medium">145px</span>
+                </div>
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Face Shape Recommendations */}
+        <div className="mt-8 pt-6 border-t border-gray-200">
+          <h4 className="font-medium text-lg mb-4">Recommandations pour votre forme de visage {faceShape}</h4>
+          <ul className="space-y-2 text-sm text-gray-600">
+            {faceShape === 'round' && (
+              <>
+                <li>• Optez pour des montures angulaires</li>
+                <li>• Privilégiez les formes rectangulaires</li>
+                <li>• Évitez les montures rondes</li>
+              </>
+            )}
+            {faceShape === 'square' && (
+              <>
+                <li>• Choisissez des montures arrondies</li>
+                <li>• Les formes ovales adouciront vos traits</li>
+                <li>• Évitez les montures carrées</li>
+              </>
+            )}
+            {faceShape === 'oval' && (
+              <>
+                <li>• La plupart des styles vous iront bien</li>
+                <li>• Gardez des proportions équilibrées</li>
+                <li>• Évitez les montures trop grandes</li>
+              </>
+            )}
+            {faceShape === 'heart' && (
+              <>
+                <li>• Optez pour des montures plus larges en bas</li>
+                <li>• Les formes papillon vous avantageront</li>
+                <li>• Évitez les montures trop larges en haut</li>
+              </>
+            )}
+            {faceShape === 'oblong' && (
+              <>
+                <li>• Choisissez des montures larges</li>
+                <li>• Les formes oversize vous iront bien</li>
+                <li>• Évitez les montures étroites</li>
+              </>
+            )}
+          </ul>
         </div>
       </div>
     </div>
