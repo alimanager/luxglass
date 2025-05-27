@@ -2,10 +2,26 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import FaceAnalysis from '../components/FaceAnalysis';
 
+interface FaceCharacteristics {
+  symmetry: number;
+  jawlineStrength: number;
+  foreheadHeight: number;
+  cheekboneProminence: number;
+  chinShape: 'pointed' | 'rounded' | 'square';
+  faceLength: number;
+  faceWidth: number;
+  eyeDistance: number;
+  noseLength: number;
+  noseBridgeWidth: number;
+  templeLength: number;
+  interpupillaryDistance: number;
+  foreheadToEyebrowDistance: number;
+}
+
 const TryOn: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleAnalysisComplete = (shape: string, characteristics: any) => {
+  const handleAnalysisComplete = (shape: string, characteristics: FaceCharacteristics) => {
     navigate('/analysis-results', {
       state: { faceShape: shape, characteristics }
     });
