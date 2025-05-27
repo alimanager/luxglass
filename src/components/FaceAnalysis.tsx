@@ -124,11 +124,17 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Video or landmarks detector not ready');
     }
 
+    // Log video state before estimation
     console.log('Input to estimateFaces:', {
       videoWidth: webcamRef.current.video.videoWidth,
       videoHeight: webcamRef.current.video.videoHeight,
       readyState: webcamRef.current.video.readyState
     });
+
+    // Wait for video to be ready
+    if (webcamRef.current.video.readyState !== 4) {
+      throw new Error('Video stream is not ready. Please wait a moment and try again.');
+    }
 
     const landmarks = await landmarksDetectorRef.current.estimateFaces(webcamRef.current.video);
     console.log('estimateFaces result:', landmarks);
@@ -178,47 +184,83 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     // Calculate interpupillary distance using actual landmarks
     const interpupillaryDistance = Math.round(
-      calculateDistance(faceMesh[LEFT_EYE], faceMesh[RIGHT_EYE])
+      calculateDistance(
+        [faceMesh[LEFT_EYE].x, faceMesh[LEFT_EYE].y],
+        [faceMesh[RIGHT_EYE].x, faceMesh[RIGHT_EYE].y]
+      )
     );
 
     // Calculate nose measurements
     const noseLength = Math.round(
-      calculateDistance(faceMesh[NOSE_BRIDGE], faceMesh[NOSE_TIP])
+      calculateDistance(
+        [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y],
+        [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+      )
     );
     const noseBridgeWidth = Math.round(faceWidth * 0.15);
 
     // Calculate temple length using actual landmarks
     const templeLength = Math.round(
-      (calculateDistance(faceMesh[LEFT_TEMPLE], faceMesh[RIGHT_TEMPLE]) / 2)
+      calculateDistance(
+        [faceMesh[LEFT_TEMPLE].x, faceMesh[LEFT_TEMPLE].y],
+        [faceMesh[RIGHT_TEMPLE].x, faceMesh[RIGHT_TEMPLE].y]
+      ) / 2
     );
 
     // Calculate forehead measurements
     const foreheadToEyebrowDistance = Math.round(
-      calculateDistance(faceMesh[FOREHEAD], faceMesh[NOSE_BRIDGE])
+      calculateDistance(
+        [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
+        [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+      )
     );
     const foreheadHeight = Math.round(
-      calculateDistance(faceMesh[FOREHEAD], faceMesh[NOSE_BRIDGE])
+      calculateDistance(
+        [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
+        [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+      )
     );
 
     // Calculate facial symmetry
-    const leftSide = calculateDistance(faceMesh[LEFT_CHEEK], faceMesh[NOSE_TIP]);
-    const rightSide = calculateDistance(faceMesh[RIGHT_CHEEK], faceMesh[NOSE_TIP]);
+    const leftSide = calculateDistance(
+      [faceMesh[LEFT_CHEEK].x, faceMesh[LEFT_CHEEK].y],
+      [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+    );
+    const rightSide = calculateDistance(
+      [faceMesh[RIGHT_CHEEK].x, faceMesh[RIGHT_CHEEK].y],
+      [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+    );
     const symmetry = Math.round(100 - (Math.abs(leftSide - rightSide) / ((leftSide + rightSide) / 2)) * 100);
 
     // Calculate jawline strength
     const jawlineLength = (
-      calculateDistance(faceMesh[LEFT_JAW], faceMesh[CHIN]) +
-      calculateDistance(faceMesh[RIGHT_JAW], faceMesh[CHIN])
+      calculateDistance(
+        [faceMesh[LEFT_JAW].x, faceMesh[LEFT_JAW].y],
+        [faceMesh[CHIN].x, faceMesh[CHIN].y]
+      ) +
+      calculateDistance(
+        [faceMesh[RIGHT_JAW].x, faceMesh[RIGHT_JAW].y],
+        [faceMesh[CHIN].x, faceMesh[CHIN].y]
+      )
     ) / 2;
     const jawlineStrength = Math.round((jawlineLength / faceWidth) * 100);
 
     // Calculate cheekbone prominence
-    const cheekboneWidth = calculateDistance(faceMesh[LEFT_CHEEK], faceMesh[RIGHT_CHEEK]);
+    const cheekboneWidth = calculateDistance(
+      [faceMesh[LEFT_CHEEK].x, faceMesh[LEFT_CHEEK].y],
+      [faceMesh[RIGHT_CHEEK].x, faceMesh[RIGHT_CHEEK].y]
+    );
     const cheekboneProminence = Math.round((cheekboneWidth / faceWidth) * 100);
 
     // Determine chin shape based on measurements
-    const chinWidth = calculateDistance(faceMesh[LEFT_JAW], faceMesh[RIGHT_JAW]);
-    const chinHeight = calculateDistance(faceMesh[CHIN], faceMesh[NOSE_TIP]);
+    const chinWidth = calculateDistance(
+      [faceMesh[LEFT_JAW].x, faceMesh[LEFT_JAW].y],
+      [faceMesh[RIGHT_JAW].x, faceMesh[RIGHT_JAW].y]
+    );
+    const chinHeight = calculateDistance(
+      [faceMesh[CHIN].x, faceMesh[CHIN].y],
+      [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+    );
     let chinShape: 'pointed' | 'rounded' | 'square';
     
     const chinRatio = chinHeight / chinWidth;
