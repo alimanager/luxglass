@@ -5,9 +5,16 @@ import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 
-interface FaceAnalysisProps {
-  onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
+declare global {
+  interface Window {
+    __models?: {
+      faceDetector?: faceDetection.FaceDetector;
+      landmarksDetector?: faceLandmarksDetection.FaceLandmarksDetector;
+    };
+  }
 }
+
+type SkinTone = 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
 
 interface FaceCharacteristics {
   symmetry: number;
@@ -23,10 +30,16 @@ interface FaceCharacteristics {
   templeLength: number;
   interpupillaryDistance: number;
   foreheadToEyebrowDistance: number;
+  skinTone: SkinTone;
+}
+
+interface FaceAnalysisProps {
+  onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
 }
 
 const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const webcamRef = useRef<Webcam>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [faceDetected, setFaceDetected] = useState(false);
@@ -38,30 +51,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   useEffect(() => {
     const initializeDetectors = async () => {
       try {
-        await tf.setBackend('webgl');
-        await tf.ready();
+        if (!window.__models?.faceDetector || !window.__models?.landmarksDetector) {
+          throw new Error('Models not initialized in global context');
+        }
+
+        detectorRef.current = window.__models.faceDetector;
+        landmarksDetectorRef.current = window.__models.landmarksDetector;
+        canvasRef.current = document.createElement('canvas');
         
-        const [detector, landmarksDetector] = await Promise.all([
-          faceDetection.createDetector(
-            faceDetection.SupportedModels.MediaPipeFaceDetector,
-            {
-              runtime: 'tfjs',
-              modelType: 'full',
-              maxFaces: 1
-            }
-          ),
-          faceLandmarksDetection.createDetector(
-            faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-            {
-              runtime: 'tfjs',
-              refineLandmarks: true,
-              maxFaces: 1
-            }
-          )
-        ]);
-        
-        detectorRef.current = detector;
-        landmarksDetectorRef.current = landmarksDetector;
         setIsModelLoading(false);
         setError(null);
       } catch (err) {
@@ -87,7 +84,15 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       isDetecting = true;
 
       try {
-        const faces = await detectorRef.current.estimateFaces(webcamRef.current.video);
+        const video = webcamRef.current.video;
+        
+        if (video.readyState !== 4) {
+          isDetecting = false;
+          animationFrame = requestAnimationFrame(detectFace);
+          return;
+        }
+
+        const faces = await detectorRef.current.estimateFaces(video);
         setFaceDetected(faces.length > 0);
         setError(faces.length === 0 ? 'No face detected. Please ensure your face is clearly visible in the frame.' : null);
       } catch (err) {
@@ -110,6 +115,22 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   }, [isVideoReady, isModelLoading]);
 
+  const captureVideoFrame = (): HTMLCanvasElement | null => {
+    if (!webcamRef.current?.video || !canvasRef.current) return null;
+
+    const video = webcamRef.current.video;
+    const canvas = canvasRef.current;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    
+    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+    return canvas;
+  };
+
   const calculateDistance = (point1: number[], point2: number[]) => {
     return Math.sqrt(
       Math.pow(point2[0] - point1[0], 2) + 
@@ -117,13 +138,50 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     );
   };
 
-  const analyzeFaceCharacteristics = async (face: faceDetection.Face): Promise<FaceCharacteristics> => {
-    if (!webcamRef.current?.video || !landmarksDetectorRef.current) {
-      throw new Error('Video or landmarks detector not ready');
+  const analyzeSkinTone = (canvas: HTMLCanvasElement, faceMesh: any): SkinTone => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas context not available');
+
+    const samplePoints = [
+      [faceMesh[10].x, faceMesh[10].y],   // Forehead
+      [faceMesh[123].x, faceMesh[123].y],  // Left cheek
+      [faceMesh[352].x, faceMesh[352].y],  // Right cheek
+    ];
+
+    let totalR = 0, totalG = 0, totalB = 0;
+    const samples = samplePoints.length;
+
+    samplePoints.forEach(([x, y]) => {
+      const pixel = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+      totalR += pixel[0];
+      totalG += pixel[1];
+      totalB += pixel[2];
+    });
+
+    const avgR = totalR / samples;
+    const avgG = totalG / samples;
+    const avgB = totalB / samples;
+
+    const max = Math.max(avgR, avgG, avgB);
+    const min = Math.min(avgR, avgG, avgB);
+    const v = max / 255;
+    const s = max === 0 ? 0 : (max - min) / max;
+    
+    if (v > 0.8 && s < 0.3) return 'Fair';
+    if (v > 0.7 && s < 0.35) return 'Light';
+    if (v > 0.6 && s < 0.4) return 'Medium Light';
+    if (v > 0.5 && s < 0.45) return 'Medium';
+    if (v > 0.4 && s < 0.5) return 'Medium Dark';
+    if (v > 0.3 && s < 0.55) return 'Dark';
+    return 'Deep';
+  };
+
+  const analyzeFaceCharacteristics = async (face: faceDetection.Face, frameCanvas: HTMLCanvasElement): Promise<FaceCharacteristics> => {
+    if (!landmarksDetectorRef.current) {
+      throw new Error('Landmarks detector not ready');
     }
 
-    const landmarks = await landmarksDetectorRef.current.estimateFaces(webcamRef.current.video);
-    console.log('Face landmarks:', landmarks);
+    const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
 
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected');
@@ -147,32 +205,43 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const RIGHT_TEMPLE = 454;
     const LEFT_JAW = 172;
     const RIGHT_JAW = 397;
-    const LEFT_NOSE_BRIDGE = 102;  // Left side of nose bridge
-    const RIGHT_NOSE_BRIDGE = 331; // Right side of nose bridge
-    const LEFT_PUPIL = 468;        // Left pupil center
-    const RIGHT_PUPIL = 473;       // Right pupil center
+    const LEFT_NOSE_BRIDGE = 102;
+    const RIGHT_NOSE_BRIDGE = 331;
+    const LEFT_PUPIL = 468;
+    const RIGHT_PUPIL = 473;
 
-    // Calculate interpupillary distance (IPD)
-    const interpupillaryDistance = calculateDistance(
-      [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
-      [faceMesh[RIGHT_PUPIL].x, faceMesh[RIGHT_PUPIL].y]
-    );
+    const requiredPoints = [
+      LEFT_EYE, RIGHT_EYE, NOSE_BRIDGE, NOSE_TIP, FOREHEAD, CHIN,
+      LEFT_CHEEK, RIGHT_CHEEK, LEFT_TEMPLE, RIGHT_TEMPLE, LEFT_JAW, RIGHT_JAW,
+      LEFT_NOSE_BRIDGE, RIGHT_NOSE_BRIDGE, LEFT_PUPIL, RIGHT_PUPIL
+    ];
 
-    // Calculate nose bridge width
-    const noseBridgeWidth = calculateDistance(
-      [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
-      [faceMesh[RIGHT_NOSE_BRIDGE].x, faceMesh[RIGHT_NOSE_BRIDGE].y]
-    );
-
-    // Log measurements for verification
-    console.log('IPD (mm):', interpupillaryDistance.toFixed(2));
-    console.log('Nose Bridge Width (mm):', noseBridgeWidth.toFixed(2));
+    for (const point of requiredPoints) {
+      if (!faceMesh[point]) {
+        throw new Error(`Missing required facial landmark at index ${point}`);
+      }
+    }
 
     const box = face.box;
     const faceWidth = Math.round(box.width);
     const faceLength = Math.round(box.height);
 
-    // Calculate other measurements...
+    // Calculate interpupillary distance using pupil landmarks
+    const interpupillaryDistance = Math.round(
+      calculateDistance(
+        [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
+        [faceMesh[RIGHT_PUPIL].x, faceMesh[RIGHT_PUPIL].y]
+      )
+    );
+
+    // Calculate nose bridge width using specific nose bridge landmarks
+    const noseBridgeWidth = Math.round(
+      calculateDistance(
+        [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
+        [faceMesh[RIGHT_NOSE_BRIDGE].x, faceMesh[RIGHT_NOSE_BRIDGE].y]
+      )
+    );
+
     const noseLength = Math.round(
       calculateDistance(
         [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y],
@@ -249,6 +318,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
+    const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
+
     return {
       symmetry,
       jawlineStrength,
@@ -262,7 +333,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       noseBridgeWidth,
       templeLength,
       interpupillaryDistance,
-      foreheadToEyebrowDistance
+      foreheadToEyebrowDistance,
+      skinTone
     };
   };
 
@@ -281,14 +353,19 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setError(null);
 
     try {
-      const faces = await detectorRef.current.estimateFaces(webcamRef.current!.video!);
+      const frameCanvas = captureVideoFrame();
+      if (!frameCanvas) {
+        throw new Error('Failed to capture video frame');
+      }
+
+      const faces = await detectorRef.current.estimateFaces(frameCanvas);
       
       if (!faces || faces.length === 0) {
         throw new Error('Unable to detect face. Please ensure your face is clearly visible.');
       }
 
       const face = faces[0];
-      const faceCharacteristics = await analyzeFaceCharacteristics(face);
+      const faceCharacteristics = await analyzeFaceCharacteristics(face, frameCanvas);
       
       const ratio = faceCharacteristics.faceLength / faceCharacteristics.faceWidth;
       const cheekboneRatio = faceCharacteristics.cheekboneProminence / 100;
@@ -344,6 +421,15 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
             faceDetected ? 'Face detected' : 'Waiting for face detection'
           )}
         </div>
+
+        {isAnalyzing && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-4 flex items-center space-x-3">
+              <RefreshCw className="h-5 w-5 animate-spin text-primary-600" />
+              <span>Analyzing face shape...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
