@@ -123,6 +123,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     }
 
     const landmarks = await landmarksDetectorRef.current.estimateFaces(webcamRef.current.video);
+    console.log('Face landmarks:', landmarks);
 
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected');
@@ -146,25 +147,32 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const RIGHT_TEMPLE = 454;
     const LEFT_JAW = 172;
     const RIGHT_JAW = 397;
-    const LEFT_NOSE_BRIDGE = 102;
-    const RIGHT_NOSE_BRIDGE = 331;
-    const LEFT_PUPIL = 468;
-    const RIGHT_PUPIL = 473;
+    const LEFT_NOSE_BRIDGE = 102;  // Left side of nose bridge
+    const RIGHT_NOSE_BRIDGE = 331; // Right side of nose bridge
+    const LEFT_PUPIL = 468;        // Left pupil center
+    const RIGHT_PUPIL = 473;       // Right pupil center
 
+    // Calculate interpupillary distance (IPD)
     const interpupillaryDistance = calculateDistance(
       [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
       [faceMesh[RIGHT_PUPIL].x, faceMesh[RIGHT_PUPIL].y]
     );
 
+    // Calculate nose bridge width
     const noseBridgeWidth = calculateDistance(
       [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
       [faceMesh[RIGHT_NOSE_BRIDGE].x, faceMesh[RIGHT_NOSE_BRIDGE].y]
     );
 
+    // Log measurements for verification
+    console.log('IPD (mm):', interpupillaryDistance.toFixed(2));
+    console.log('Nose Bridge Width (mm):', noseBridgeWidth.toFixed(2));
+
     const box = face.box;
     const faceWidth = Math.round(box.width);
     const faceLength = Math.round(box.height);
 
+    // Calculate other measurements...
     const noseLength = Math.round(
       calculateDistance(
         [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y],
