@@ -48,52 +48,23 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   useEffect(() => {
     const initializeDetectors = async () => {
       try {
-        if (window.__models?.faceDetector && window.__models?.landmarksDetector) {
-          console.log('Using pre-initialized models from global context');
-          detectorRef.current = window.__models.faceDetector;
-          landmarksDetectorRef.current = window.__models.landmarksDetector;
-          setIsModelLoading(false);
-          setError(null);
-
-          const testImage = new Image();
-          testImage.crossOrigin = "anonymous";
-          testImage.src = "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800";
-          
-          testImage.onload = async () => {
-            try {
-              console.log('Testing landmark detection with static image...');
-              console.log('Test image dimensions:', {
-                width: testImage.width,
-                height: testImage.height,
-                naturalWidth: testImage.naturalWidth,
-                naturalHeight: testImage.naturalHeight
-              });
-
-              const imageTensor = tf.browser.fromPixels(testImage);
-              console.log('Image tensor shape:', imageTensor.shape);
-
-              const faces = await detectorRef.current?.estimateFaces(testImage);
-              console.log('Face detection results:', faces);
-
-              if (faces && faces.length > 0) {
-                const landmarks = await landmarksDetectorRef.current?.estimateFaces(testImage);
-                console.log('Landmark detection results:', landmarks);
-                
-                if (!landmarks || landmarks.length === 0) {
-                  console.error('No landmarks detected in static image test');
-                }
-              } else {
-                console.error('No faces detected in static image test');
-              }
-
-              imageTensor.dispose();
-            } catch (err) {
-              console.error('Static image test failed:', err);
-            }
-          };
-        } else {
+        if (!window.__models?.faceDetector || !window.__models?.landmarksDetector) {
           throw new Error('Models not initialized in global context');
         }
+
+        console.log('Using pre-initialized models:', {
+          faceDetector: window.__models.faceDetector,
+          landmarksDetector: window.__models.landmarksDetector
+        });
+
+        detectorRef.current = window.__models.faceDetector;
+        landmarksDetectorRef.current = window.__models.landmarksDetector;
+
+        // Initialize canvas with proper dimensions
+        canvasRef.current = document.createElement('canvas');
+        
+        setIsModelLoading(false);
+        setError(null);
       } catch (err) {
         console.error('Error initializing detectors:', err);
         setError('Failed to initialize face detection. Please refresh the page.');
@@ -102,9 +73,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
 
     initializeDetectors();
-
-    // Initialize canvas
-    canvasRef.current = document.createElement('canvas');
   }, []);
 
   useEffect(() => {
@@ -120,23 +88,25 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       isDetecting = true;
 
       try {
-        const videoState = {
-          width: webcamRef.current.video.videoWidth,
-          height: webcamRef.current.video.videoHeight,
-          readyState: webcamRef.current.video.readyState
-        };
-        console.log('Video state:', videoState);
+        const video = webcamRef.current.video;
+        console.log('Video state:', {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          readyState: video.readyState
+        });
 
-        const videoTensor = tf.browser.fromPixels(webcamRef.current.video);
-        console.log('Video tensor shape:', videoTensor.shape);
+        if (video.readyState !== 4) {
+          console.log('Video not ready yet, waiting...');
+          isDetecting = false;
+          animationFrame = requestAnimationFrame(detectFace);
+          return;
+        }
 
-        const faces = await detectorRef.current.estimateFaces(webcamRef.current.video);
+        const faces = await detectorRef.current.estimateFaces(video);
         console.log('Face detection result:', faces);
         
         setFaceDetected(faces.length > 0);
         setError(faces.length === 0 ? 'No face detected. Please ensure your face is clearly visible in the frame.' : null);
-
-        videoTensor.dispose();
       } catch (err) {
         console.error('Error detecting face:', err);
         setError('An error occurred during face detection.');
@@ -163,13 +133,22 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const video = webcamRef.current.video;
     const canvas = canvasRef.current;
     
+    // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
+    console.log('Canvas dimensions:', {
+      width: canvas.width,
+      height: canvas.height,
+      videoWidth: video.videoWidth,
+      videoHeight: video.videoHeight
+    });
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Draw the full video frame onto the canvas
+    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
     return canvas;
   };
 
@@ -185,7 +164,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Landmarks detector not ready');
     }
 
-    console.log('Analyzing face characteristics using frame canvas:', {
+    console.log('Input to estimateFaces:', {
+      canvas: frameCanvas,
       width: frameCanvas.width,
       height: frameCanvas.height
     });
@@ -198,12 +178,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     }
 
     const faceMesh = landmarks[0].keypoints;
+    console.log('Face mesh keypoints:', faceMesh);
+
     if (!faceMesh) {
-      throw new Error('Face mesh data not available. Please try again.');
+      throw new Error('Face mesh data not available');
     }
 
-    console.log('Face mesh points:', faceMesh);
-
+    // MediaPipe Face Mesh landmark indices
     const LEFT_EYE = 133;
     const RIGHT_EYE = 362;
     const NOSE_BRIDGE = 168;
@@ -217,6 +198,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const LEFT_JAW = 172;
     const RIGHT_JAW = 397;
 
+    // Validate landmark indices
     const requiredPoints = [
       LEFT_EYE, RIGHT_EYE, NOSE_BRIDGE, NOSE_TIP, FOREHEAD, CHIN,
       LEFT_CHEEK, RIGHT_CHEEK, LEFT_TEMPLE, RIGHT_TEMPLE, LEFT_JAW, RIGHT_JAW
@@ -225,7 +207,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     for (const point of requiredPoints) {
       if (!faceMesh[point]) {
         console.error('Missing landmark point:', point);
-        throw new Error(`Missing required facial landmark at index ${point}. Please adjust your position.`);
+        throw new Error(`Missing required facial landmark at index ${point}`);
       }
     }
 
@@ -348,13 +330,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setError(null);
 
     try {
-      // Capture a single frame from the video stream
       const frameCanvas = captureVideoFrame();
       if (!frameCanvas) {
-        throw new Error('Failed to capture video frame. Please try again.');
+        throw new Error('Failed to capture video frame');
       }
 
-      // Use the same frame for both face detection and landmark detection
       const faces = await detectorRef.current.estimateFaces(frameCanvas);
       console.log('Face detection result in analyzeFaceShape:', faces);
       
@@ -366,17 +346,23 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       const faceCharacteristics = await analyzeFaceCharacteristics(face, frameCanvas);
       
       const ratio = faceCharacteristics.faceLength / faceCharacteristics.faceWidth;
-      let faceShape = 'oval';
+      const cheekboneRatio = faceCharacteristics.cheekboneProminence / 100;
+
+      let faceShape;
       if (ratio > 1.35) {
         faceShape = 'oblong';
-      } else if (ratio < 1.15) {
+      } else if (ratio < 1.15 && cheekboneRatio > 0.8) {
         faceShape = 'round';
+      } else if (faceCharacteristics.jawlineStrength > 85 && ratio < 1.25) {
+        faceShape = 'square';
+      } else {
+        faceShape = 'oval';
       }
 
       onAnalysisComplete(faceShape, faceCharacteristics);
     } catch (err) {
       console.error('Error analyzing face:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred during analysis. Please try again.');
+      setError(err instanceof Error ? err.message : 'An error occurred during analysis');
     } finally {
       setIsAnalyzing(false);
     }
