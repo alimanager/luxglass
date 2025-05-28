@@ -44,7 +44,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [error, setError] = useState<string | null>(null);
   const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
   const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
-  const lastLandmarksRef = useRef<any>(null);
 
   useEffect(() => {
     const initializeDetectors = async () => {
@@ -53,15 +52,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           throw new Error('Models not initialized in global context');
         }
 
-        console.log('Using pre-initialized models:', {
-          faceDetector: window.__models.faceDetector,
-          landmarksDetector: window.__models.landmarksDetector
-        });
-
         detectorRef.current = window.__models.faceDetector;
         landmarksDetectorRef.current = window.__models.landmarksDetector;
-
-        // Initialize canvas with proper dimensions
         canvasRef.current = document.createElement('canvas');
         
         setIsModelLoading(false);
@@ -90,23 +82,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
       try {
         const video = webcamRef.current.video;
-        console.log('Video state:', {
-          width: video.videoWidth,
-          height: video.videoHeight,
-          readyState: video.readyState,
-          timestamp: Date.now()
-        });
-
+        
         if (video.readyState !== 4) {
-          console.log('Video not ready yet, waiting...');
           isDetecting = false;
           animationFrame = requestAnimationFrame(detectFace);
           return;
         }
 
         const faces = await detectorRef.current.estimateFaces(video);
-        console.log('Face detection result:', faces);
-        
         setFaceDetected(faces.length > 0);
         setError(faces.length === 0 ? 'No face detected. Please ensure your face is clearly visible in the frame.' : null);
       } catch (err) {
@@ -135,22 +118,12 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const video = webcamRef.current.video;
     const canvas = canvasRef.current;
     
-    // Set canvas dimensions to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
-    console.log('Canvas dimensions:', {
-      width: canvas.width,
-      height: canvas.height,
-      videoWidth: video.videoWidth,
-      videoHeight: video.videoHeight,
-      timestamp: Date.now()
-    });
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
     
-    // Draw the full video frame onto the canvas
     ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
     return canvas;
   };
@@ -167,34 +140,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Landmarks detector not ready');
     }
 
-    console.log('Input to estimateFaces:', {
-      canvas: frameCanvas,
-      width: frameCanvas.width,
-      height: frameCanvas.height,
-      timestamp: Date.now()
-    });
-
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
-    console.log('Landmark detection result:', landmarks);
-
-    // Store landmarks for comparison
-    const previousLandmarks = lastLandmarksRef.current;
-    lastLandmarksRef.current = landmarks;
-
-    // Compare with previous landmarks to verify they're changing
-    if (previousLandmarks) {
-      console.log('Landmarks changed from previous detection:', 
-        JSON.stringify(landmarks) !== JSON.stringify(previousLandmarks)
-      );
-    }
 
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected. Please ensure your face is well-lit and clearly visible.');
     }
 
     const faceMesh = landmarks[0].keypoints;
-    console.log('Face mesh keypoints:', faceMesh);
-
     if (!faceMesh) {
       throw new Error('Face mesh data not available');
     }
@@ -221,7 +173,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     for (const point of requiredPoints) {
       if (!faceMesh[point]) {
-        console.error('Missing landmark point:', point);
         throw new Error(`Missing required facial landmark at index ${point}`);
       }
     }
@@ -351,7 +302,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       }
 
       const faces = await detectorRef.current.estimateFaces(frameCanvas);
-      console.log('Face detection result in analyzeFaceShape:', faces);
       
       if (!faces || faces.length === 0) {
         throw new Error('Unable to detect face. Please ensure your face is clearly visible.');
@@ -414,6 +364,15 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
             faceDetected ? 'Face detected' : 'Waiting for face detection'
           )}
         </div>
+
+        {isAnalyzing && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+            <div className="bg-white rounded-lg p-4 flex items-center space-x-3">
+              <RefreshCw className="h-5 w-5 animate-spin text-primary-600" />
+              <span>Analyzing face shape...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && (
