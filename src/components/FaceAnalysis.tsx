@@ -44,6 +44,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [error, setError] = useState<string | null>(null);
   const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
   const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
+  const lastLandmarksRef = useRef<any>(null);
 
   useEffect(() => {
     const initializeDetectors = async () => {
@@ -92,7 +93,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         console.log('Video state:', {
           width: video.videoWidth,
           height: video.videoHeight,
-          readyState: video.readyState
+          readyState: video.readyState,
+          timestamp: Date.now()
         });
 
         if (video.readyState !== 4) {
@@ -141,7 +143,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       width: canvas.width,
       height: canvas.height,
       videoWidth: video.videoWidth,
-      videoHeight: video.videoHeight
+      videoHeight: video.videoHeight,
+      timestamp: Date.now()
     });
 
     const ctx = canvas.getContext('2d');
@@ -167,11 +170,23 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     console.log('Input to estimateFaces:', {
       canvas: frameCanvas,
       width: frameCanvas.width,
-      height: frameCanvas.height
+      height: frameCanvas.height,
+      timestamp: Date.now()
     });
 
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
     console.log('Landmark detection result:', landmarks);
+
+    // Store landmarks for comparison
+    const previousLandmarks = lastLandmarksRef.current;
+    lastLandmarksRef.current = landmarks;
+
+    // Compare with previous landmarks to verify they're changing
+    if (previousLandmarks) {
+      console.log('Landmarks changed from previous detection:', 
+        JSON.stringify(landmarks) !== JSON.stringify(previousLandmarks)
+      );
+    }
 
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected. Please ensure your face is well-lit and clearly visible.');
