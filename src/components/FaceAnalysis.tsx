@@ -14,9 +14,7 @@ declare global {
   }
 }
 
-interface FaceAnalysisProps {
-  onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
-}
+type SkinTone = 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
 
 interface FaceCharacteristics {
   symmetry: number;
@@ -32,6 +30,11 @@ interface FaceCharacteristics {
   templeLength: number;
   interpupillaryDistance: number;
   foreheadToEyebrowDistance: number;
+  skinTone: SkinTone;
+}
+
+interface FaceAnalysisProps {
+  onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
 }
 
 const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
@@ -135,6 +138,47 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     );
   };
 
+  const analyzeSkinTone = (canvas: HTMLCanvasElement, faceMesh: any): SkinTone => {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas context not available');
+
+    // Sample multiple points on the face for more accurate skin tone detection
+    const samplePoints = [
+      [faceMesh[10].x, faceMesh[10].y],   // Forehead
+      [faceMesh[123].x, faceMesh[123].y],  // Left cheek
+      [faceMesh[352].x, faceMesh[352].y],  // Right cheek
+    ];
+
+    let totalR = 0, totalG = 0, totalB = 0;
+    const samples = samplePoints.length;
+
+    samplePoints.forEach(([x, y]) => {
+      const pixel = ctx.getImageData(Math.round(x), Math.round(y), 1, 1).data;
+      totalR += pixel[0];
+      totalG += pixel[1];
+      totalB += pixel[2];
+    });
+
+    const avgR = totalR / samples;
+    const avgG = totalG / samples;
+    const avgB = totalB / samples;
+
+    // Convert RGB to HSV for better skin tone classification
+    const max = Math.max(avgR, avgG, avgB);
+    const min = Math.min(avgR, avgG, avgB);
+    const v = max / 255;
+    const s = max === 0 ? 0 : (max - min) / max;
+    
+    // Determine skin tone based on value (brightness) and saturation
+    if (v > 0.8 && s < 0.3) return 'Fair';
+    if (v > 0.7 && s < 0.35) return 'Light';
+    if (v > 0.6 && s < 0.4) return 'Medium Light';
+    if (v > 0.5 && s < 0.45) return 'Medium';
+    if (v > 0.4 && s < 0.5) return 'Medium Dark';
+    if (v > 0.3 && s < 0.55) return 'Dark';
+    return 'Deep';
+  };
+
   const analyzeFaceCharacteristics = async (face: faceDetection.Face, frameCanvas: HTMLCanvasElement): Promise<FaceCharacteristics> => {
     if (!landmarksDetectorRef.current) {
       throw new Error('Landmarks detector not ready');
@@ -165,7 +209,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const LEFT_JAW = 172;
     const RIGHT_JAW = 397;
 
-    // Validate landmark indices
     const requiredPoints = [
       LEFT_EYE, RIGHT_EYE, NOSE_BRIDGE, NOSE_TIP, FOREHEAD, CHIN,
       LEFT_CHEEK, RIGHT_CHEEK, LEFT_TEMPLE, RIGHT_TEMPLE, LEFT_JAW, RIGHT_JAW
@@ -264,6 +307,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
+    const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
+
     return {
       symmetry,
       jawlineStrength,
@@ -277,7 +322,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       noseBridgeWidth,
       templeLength,
       interpupillaryDistance,
-      foreheadToEyebrowDistance
+      foreheadToEyebrowDistance,
+      skinTone
     };
   };
 
