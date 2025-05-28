@@ -5,7 +5,6 @@ import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 
-// Credit card dimensions in millimeters (standard size)
 const CREDIT_CARD_WIDTH_MM = 85.60;
 const CREDIT_CARD_HEIGHT_MM = 53.98;
 
@@ -130,7 +129,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const video = webcamRef.current.video;
     const pixelWidth = calibrationBox.width;
     
-    // Calculate scaling factor (mm/pixel)
     const newScalingFactor = CREDIT_CARD_WIDTH_MM / pixelWidth;
     console.log('Calibration Data:', {
       creditCardWidthMM: CREDIT_CARD_WIDTH_MM,
@@ -216,61 +214,96 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Landmarks detector or calibration not ready');
     }
 
+    console.group('Face Analysis Measurements');
+    console.log('Scaling Factor:', scalingFactor, 'mm/pixel');
+    console.log('Video Resolution:', {
+      width: frameCanvas.width,
+      height: frameCanvas.height
+    });
+
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
+    console.log('Raw Landmarks:', landmarks);
 
     if (!landmarks || landmarks.length === 0) {
+      console.error('No face landmarks detected');
+      console.groupEnd();
       throw new Error('No face landmarks detected');
     }
 
     const faceMesh = landmarks[0].keypoints;
     if (!faceMesh) {
+      console.error('Face mesh data not available');
+      console.groupEnd();
       throw new Error('Face mesh data not available');
     }
 
-    const LEFT_EYE = 133;
-    const RIGHT_EYE = 362;
-    const NOSE_BRIDGE = 168;
-    const NOSE_TIP = 1;
-    const FOREHEAD = 10;
-    const CHIN = 152;
-    const LEFT_CHEEK = 123;
-    const RIGHT_CHEEK = 352;
-    const LEFT_TEMPLE = 234;
-    const RIGHT_TEMPLE = 454;
-    const LEFT_JAW = 172;
-    const RIGHT_JAW = 397;
-    const LEFT_NOSE_BRIDGE = 102;
-    const RIGHT_NOSE_BRIDGE = 331;
-    const LEFT_PUPIL = 468;
-    const RIGHT_PUPIL = 473;
+    console.group('Raw Landmark Coordinates');
+    console.log('Left Eye:', faceMesh[133]);
+    console.log('Right Eye:', faceMesh[362]);
+    console.log('Nose Bridge:', faceMesh[168]);
+    console.log('Nose Tip:', faceMesh[1]);
+    console.log('Left Pupil:', faceMesh[468]);
+    console.log('Right Pupil:', faceMesh[473]);
+    console.groupEnd();
 
     const box = face.box;
     const faceWidth = pixelsToMillimeters(Math.round(box.width));
     const faceLength = pixelsToMillimeters(Math.round(box.height));
 
+    console.group('Face Dimensions');
+    console.log('Face Box (pixels):', box);
+    console.log('Face Width:', {
+      pixels: Math.round(box.width),
+      mm: faceWidth.toFixed(1) + 'mm'
+    });
+    console.log('Face Length:', {
+      pixels: Math.round(box.height),
+      mm: faceLength.toFixed(1) + 'mm'
+    });
+    console.groupEnd();
+
     const interpupillaryDistance = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
-          [faceMesh[RIGHT_PUPIL].x, faceMesh[RIGHT_PUPIL].y]
+          [faceMesh[468].x, faceMesh[468].y],
+          [faceMesh[473].x, faceMesh[473].y]
         )
       )
     );
+
+    console.group('Key Measurements');
+    console.log('Interpupillary Distance:', {
+      pixels: Math.round(calculateDistance(
+        [faceMesh[468].x, faceMesh[468].y],
+        [faceMesh[473].x, faceMesh[473].y]
+      )),
+      mm: interpupillaryDistance.toFixed(1) + 'mm',
+      valid: interpupillaryDistance >= 45 && interpupillaryDistance <= 80
+    });
 
     const noseBridgeWidth = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
-          [faceMesh[RIGHT_NOSE_BRIDGE].x, faceMesh[RIGHT_NOSE_BRIDGE].y]
+          [faceMesh[102].x, faceMesh[102].y],
+          [faceMesh[331].x, faceMesh[331].y]
         )
       )
     );
 
+    console.log('Nose Bridge Width:', {
+      pixels: Math.round(calculateDistance(
+        [faceMesh[102].x, faceMesh[102].y],
+        [faceMesh[331].x, faceMesh[331].y]
+      )),
+      mm: noseBridgeWidth.toFixed(1) + 'mm',
+      valid: noseBridgeWidth >= 15 && noseBridgeWidth <= 25
+    });
+
     const noseLength = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y],
-          [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+          [faceMesh[168].x, faceMesh[168].y],
+          [faceMesh[1].x, faceMesh[1].y]
         )
       )
     );
@@ -278,8 +311,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const templeLength = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[LEFT_TEMPLE].x, faceMesh[LEFT_TEMPLE].y],
-          [faceMesh[RIGHT_TEMPLE].x, faceMesh[RIGHT_TEMPLE].y]
+          [faceMesh[234].x, faceMesh[234].y],
+          [faceMesh[454].x, faceMesh[454].y]
         ) / 2
       )
     );
@@ -287,8 +320,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const foreheadToEyebrowDistance = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
-          [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+          [faceMesh[10].x, faceMesh[10].y],
+          [faceMesh[168].x, faceMesh[168].y]
         )
       )
     );
@@ -296,47 +329,47 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const foreheadHeight = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
-          [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+          [faceMesh[10].x, faceMesh[10].y],
+          [faceMesh[168].x, faceMesh[168].y]
         )
       )
     );
 
     const leftSide = calculateDistance(
-      [faceMesh[LEFT_CHEEK].x, faceMesh[LEFT_CHEEK].y],
-      [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+      [faceMesh[123].x, faceMesh[123].y],
+      [faceMesh[1].x, faceMesh[1].y]
     );
     const rightSide = calculateDistance(
-      [faceMesh[RIGHT_CHEEK].x, faceMesh[RIGHT_CHEEK].y],
-      [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+      [faceMesh[352].x, faceMesh[352].y],
+      [faceMesh[1].x, faceMesh[1].y]
     );
     const symmetry = Math.round(100 - (Math.abs(leftSide - rightSide) / ((leftSide + rightSide) / 2)) * 100);
 
     const jawlineLength = (
       calculateDistance(
-        [faceMesh[LEFT_JAW].x, faceMesh[LEFT_JAW].y],
-        [faceMesh[CHIN].x, faceMesh[CHIN].y]
+        [faceMesh[172].x, faceMesh[172].y],
+        [faceMesh[152].x, faceMesh[152].y]
       ) +
       calculateDistance(
-        [faceMesh[RIGHT_JAW].x, faceMesh[RIGHT_JAW].y],
-        [faceMesh[CHIN].x, faceMesh[CHIN].y]
+        [faceMesh[397].x, faceMesh[397].y],
+        [faceMesh[152].x, faceMesh[152].y]
       )
     ) / 2;
     const jawlineStrength = Math.round((jawlineLength / box.width) * 100);
 
     const cheekboneWidth = calculateDistance(
-      [faceMesh[LEFT_CHEEK].x, faceMesh[LEFT_CHEEK].y],
-      [faceMesh[RIGHT_CHEEK].x, faceMesh[RIGHT_CHEEK].y]
+      [faceMesh[123].x, faceMesh[123].y],
+      [faceMesh[352].x, faceMesh[352].y]
     );
     const cheekboneProminence = Math.round((cheekboneWidth / box.width) * 100);
 
     const chinWidth = calculateDistance(
-      [faceMesh[LEFT_JAW].x, faceMesh[LEFT_JAW].y],
-      [faceMesh[RIGHT_JAW].x, faceMesh[RIGHT_JAW].y]
+      [faceMesh[172].x, faceMesh[172].y],
+      [faceMesh[397].x, faceMesh[397].y]
     );
     const chinHeight = calculateDistance(
-      [faceMesh[CHIN].x, faceMesh[CHIN].y],
-      [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+      [faceMesh[152].x, faceMesh[152].y],
+      [faceMesh[1].x, faceMesh[1].y]
     );
     
     const chinRatio = chinHeight / chinWidth;
@@ -353,11 +386,36 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const eyeDistance = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[LEFT_EYE].x, faceMesh[LEFT_EYE].y],
-          [faceMesh[RIGHT_EYE].x, faceMesh[RIGHT_EYE].y]
+          [faceMesh[133].x, faceMesh[133].y],
+          [faceMesh[362].x, faceMesh[362].y]
         )
       )
     );
+
+    console.log('Measurement Validation Summary:', {
+      interpupillaryDistance: {
+        value: interpupillaryDistance,
+        valid: interpupillaryDistance >= 45 && interpupillaryDistance <= 80,
+        expectedRange: '45-80mm'
+      },
+      noseBridgeWidth: {
+        value: noseBridgeWidth,
+        valid: noseBridgeWidth >= 15 && noseBridgeWidth <= 25,
+        expectedRange: '15-25mm'
+      },
+      faceWidth: {
+        value: faceWidth,
+        valid: faceWidth >= 120 && faceWidth <= 160,
+        expectedRange: '120-160mm'
+      },
+      faceLength: {
+        value: faceLength,
+        valid: faceLength >= 180 && faceLength <= 230,
+        expectedRange: '180-230mm'
+      }
+    });
+
+    console.groupEnd();
 
     const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
 
