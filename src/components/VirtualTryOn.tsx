@@ -16,7 +16,9 @@ interface VirtualTryOnProps {
     faceWidth: number;
     faceLength: number;
     eyeDistance: number;
-    skinTone: string;
+    skinTone: 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
+    noseBridgeWidth: number;
+    interpupillaryDistance: number;
   };
 }
 
@@ -90,9 +92,19 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape, charact
         console.log('Model loaded successfully:', gltf);
         const model = gltf.scene;
 
-        // Initial model positioning
-        model.scale.set(1, 1, 1);
-        model.position.set(0, 0, 0);
+        // Position the model based on face characteristics
+        if (characteristics) {
+          const scale = characteristics.interpupillaryDistance / 63; // Standard IPD is ~63mm
+          model.scale.set(scale, scale, scale);
+          
+          // Adjust position based on nose bridge width
+          const xOffset = characteristics.noseBridgeWidth / 2;
+          model.position.set(0, 0, -xOffset);
+        } else {
+          model.scale.set(1, 1, 1);
+          model.position.set(0, 0, 0);
+        }
+
         model.rotation.set(0, 0, 0);
 
         // Remove any existing model
@@ -124,10 +136,6 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape, charact
       
       if (controlsRef.current) {
         controlsRef.current.update();
-      }
-      
-      if (glassesModelRef.current) {
-        // Add any model animations here if needed
       }
       
       rendererRef.current.render(sceneRef.current, cameraRef.current);
@@ -177,7 +185,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape, charact
         containerRef.current.removeChild(rendererRef.current.domElement);
       }
     };
-  }, []);
+  }, [characteristics]);
 
   if (loadingError) {
     return (
@@ -210,10 +218,93 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape, charact
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-sm">
-        <h3 className="text-xl font-medium mb-4">Model Controls</h3>
-        <p className="text-gray-600 mb-4">
-          Use your mouse to rotate and zoom the model. Click and drag to rotate, scroll to zoom.
-        </p>
+        <h3 className="text-xl font-medium mb-6">Caractéristiques du Visage</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Left Column - Progress Bars */}
+          <div className="space-y-6">
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Symétrie du Visage</span>
+                <span className="text-sm font-medium text-primary-600">
+                  {characteristics?.symmetry.toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${characteristics?.symmetry}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Force de la Mâchoire</span>
+                <span className="text-sm font-medium text-primary-600">
+                  {characteristics?.jawlineStrength.toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${characteristics?.jawlineStrength}%` }}
+                ></div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-sm font-medium text-gray-700">Proéminence des Pommettes</span>
+                <span className="text-sm font-medium text-primary-600">
+                  {characteristics?.cheekboneProminence.toFixed(1)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div 
+                  className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" 
+                  style={{ width: `${characteristics?.cheekboneProminence}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Measurements and Shape */}
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Forme du Menton</h4>
+              <p className="text-lg font-medium text-primary-600 capitalize">
+                {characteristics?.chinShape === 'pointed' ? 'Pointu' : 
+                 characteristics?.chinShape === 'rounded' ? 'Arrondi' : 'Carré'}
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Teint de Peau</h4>
+              <p className="text-lg font-medium text-primary-600">
+                {characteristics?.skinTone}
+              </p>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">Mesures Importantes</h4>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Distance interpupillaire</span>
+                  <span className="text-sm font-medium">
+                    {characteristics?.interpupillaryDistance.toFixed(1)}mm
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Largeur du pont nasal</span>
+                  <span className="text-sm font-medium">
+                    {characteristics?.noseBridgeWidth.toFixed(1)}mm
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
