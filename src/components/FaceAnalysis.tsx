@@ -41,24 +41,21 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         await tf.setBackend('webgl');
         await tf.ready();
         
-        const [detector, landmarksDetector] = await Promise.all([
-          faceDetection.createDetector(
-            faceDetection.SupportedModels.MediaPipeFaceDetector,
-            {
-              runtime: 'tfjs',
-              modelType: 'full',
-              maxFaces: 1
-            }
-          ),
-          faceLandmarksDetection.createDetector(
-            faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-            {
-              runtime: 'tfjs',
-              refineLandmarks: true,
-              maxFaces: 1
-            }
-          )
-        ]);
+        // Create face detector with default options
+        const detector = await faceDetection.createDetector(
+          faceDetection.SupportedModels.MediaPipeFaceDetector,
+          {
+            runtime: 'tfjs'
+          }
+        );
+
+        // Create landmarks detector with minimal options
+        const landmarksDetector = await faceLandmarksDetection.createDetector(
+          faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+          {
+            runtime: 'tfjs'
+          }
+        );
         
         console.log('Landmark detector created:', landmarksDetector);
         
@@ -66,6 +63,20 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         landmarksDetectorRef.current = landmarksDetector;
         setIsModelLoading(false);
         setError(null);
+
+        // Test with static image
+        const testImage = new Image();
+        testImage.crossOrigin = "anonymous";
+        testImage.src = "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800";
+        testImage.onload = async () => {
+          try {
+            console.log('Testing landmark detection with static image...');
+            const landmarks = await landmarksDetector.estimateFaces(testImage);
+            console.log('Static image test results:', landmarks);
+          } catch (err) {
+            console.error('Static image test failed:', err);
+          }
+        };
       } catch (err) {
         console.error('Error initializing detectors:', err);
         setError('Failed to initialize face detection. Please refresh the page.');
@@ -125,17 +136,19 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     }
 
     // Log video state before estimation
-    console.log('Input to estimateFaces:', {
+    const videoState = {
       videoWidth: webcamRef.current.video.videoWidth,
       videoHeight: webcamRef.current.video.videoHeight,
       readyState: webcamRef.current.video.readyState
-    });
+    };
+    console.log('Input to estimateFaces:', videoState);
 
     // Wait for video to be ready
     if (webcamRef.current.video.readyState !== 4) {
       throw new Error('Video stream is not ready. Please wait a moment and try again.');
     }
 
+    // Try landmark detection without mirroring
     const landmarks = await landmarksDetectorRef.current.estimateFaces(webcamRef.current.video);
     console.log('estimateFaces result:', landmarks);
 
@@ -313,19 +326,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       const face = faces[0];
       const faceCharacteristics = await analyzeFaceCharacteristics(face);
       
-      // Determine face shape using characteristics
+      // Simple face shape determination based on ratio
       const ratio = faceCharacteristics.faceLength / faceCharacteristics.faceWidth;
-      const cheekboneRatio = faceCharacteristics.cheekboneProminence / 100;
-
-      let faceShape;
+      let faceShape = 'oval';
       if (ratio > 1.35) {
         faceShape = 'oblong';
-      } else if (ratio < 1.15 && cheekboneRatio > 0.8) {
+      } else if (ratio < 1.15) {
         faceShape = 'round';
-      } else if (faceCharacteristics.jawlineStrength > 85 && ratio < 1.25) {
-        faceShape = 'square';
-      } else {
-        faceShape = 'oval';
       }
 
       onAnalysisComplete(faceShape, faceCharacteristics);
@@ -342,7 +349,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       <div className="aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden relative">
         <Webcam
           ref={webcamRef}
-          mirrored
+          mirrored={false}
           className="w-full h-full object-cover"
           videoConstraints={{
             width: 640,
