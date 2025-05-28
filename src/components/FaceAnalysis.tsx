@@ -5,6 +5,15 @@ import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 
+declare global {
+  interface Window {
+    __models?: {
+      faceDetector?: faceDetection.FaceDetector;
+      landmarksDetector?: faceLandmarksDetection.FaceLandmarksDetector;
+    };
+  }
+}
+
 interface FaceAnalysisProps {
   onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
 }
@@ -38,45 +47,59 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   useEffect(() => {
     const initializeDetectors = async () => {
       try {
-        await tf.setBackend('webgl');
-        await tf.ready();
-        
-        // Create face detector with default options
-        const detector = await faceDetection.createDetector(
-          faceDetection.SupportedModels.MediaPipeFaceDetector,
-          {
-            runtime: 'tfjs'
-          }
-        );
+        // Check if models are already initialized globally
+        if (window.__models?.faceDetector && window.__models?.landmarksDetector) {
+          console.log('Using pre-initialized models from global context');
+          detectorRef.current = window.__models.faceDetector;
+          landmarksDetectorRef.current = window.__models.landmarksDetector;
+          setIsModelLoading(false);
+          setError(null);
 
-        // Create landmarks detector with minimal options
-        const landmarksDetector = await faceLandmarksDetection.createDetector(
-          faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-          {
-            runtime: 'tfjs'
-          }
-        );
-        
-        console.log('Landmark detector created:', landmarksDetector);
-        
-        detectorRef.current = detector;
-        landmarksDetectorRef.current = landmarksDetector;
-        setIsModelLoading(false);
-        setError(null);
+          // Test with static image
+          const testImage = new Image();
+          testImage.crossOrigin = "anonymous";
+          testImage.src = "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800";
+          
+          testImage.onload = async () => {
+            try {
+              console.log('Testing landmark detection with static image...');
+              // Log the image dimensions
+              console.log('Test image dimensions:', {
+                width: testImage.width,
+                height: testImage.height,
+                naturalWidth: testImage.naturalWidth,
+                naturalHeight: testImage.naturalHeight
+              });
 
-        // Test with static image
-        const testImage = new Image();
-        testImage.crossOrigin = "anonymous";
-        testImage.src = "https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=800";
-        testImage.onload = async () => {
-          try {
-            console.log('Testing landmark detection with static image...');
-            const landmarks = await landmarksDetector.estimateFaces(testImage);
-            console.log('Static image test results:', landmarks);
-          } catch (err) {
-            console.error('Static image test failed:', err);
-          }
-        };
+              // Create a tensor from the image
+              const imageTensor = tf.browser.fromPixels(testImage);
+              console.log('Image tensor shape:', imageTensor.shape);
+
+              // Test face detection first
+              const faces = await detectorRef.current?.estimateFaces(testImage);
+              console.log('Face detection results:', faces);
+
+              if (faces && faces.length > 0) {
+                // Test landmark detection
+                const landmarks = await landmarksDetectorRef.current?.estimateFaces(testImage);
+                console.log('Landmark detection results:', landmarks);
+                
+                if (!landmarks || landmarks.length === 0) {
+                  console.error('No landmarks detected in static image test');
+                }
+              } else {
+                console.error('No faces detected in static image test');
+              }
+
+              // Clean up tensor
+              imageTensor.dispose();
+            } catch (err) {
+              console.error('Static image test failed:', err);
+            }
+          };
+        } else {
+          throw new Error('Models not initialized in global context');
+        }
       } catch (err) {
         console.error('Error initializing detectors:', err);
         setError('Failed to initialize face detection. Please refresh the page.');
@@ -100,9 +123,26 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       isDetecting = true;
 
       try {
+        // Log video state
+        const videoState = {
+          width: webcamRef.current.video.videoWidth,
+          height: webcamRef.current.video.videoHeight,
+          readyState: webcamRef.current.video.readyState
+        };
+        console.log('Video state:', videoState);
+
+        // Create tensor from video
+        const videoTensor = tf.browser.fromPixels(webcamRef.current.video);
+        console.log('Video tensor shape:', videoTensor.shape);
+
         const faces = await detectorRef.current.estimateFaces(webcamRef.current.video);
+        console.log('Face detection result:', faces);
+        
         setFaceDetected(faces.length > 0);
         setError(faces.length === 0 ? 'No face detected. Please ensure your face is clearly visible in the frame.' : null);
+
+        // Clean up tensor
+        videoTensor.dispose();
       } catch (err) {
         console.error('Error detecting face:', err);
         setError('An error occurred during face detection.');
@@ -148,9 +188,16 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Video stream is not ready. Please wait a moment and try again.');
     }
 
-    // Try landmark detection without mirroring
+    // Create tensor from video frame
+    const videoTensor = tf.browser.fromPixels(webcamRef.current.video);
+    console.log('Video tensor shape before landmark detection:', videoTensor.shape);
+
+    // Try landmark detection
     const landmarks = await landmarksDetectorRef.current.estimateFaces(webcamRef.current.video);
-    console.log('estimateFaces result:', landmarks);
+    console.log('Landmark detection result:', landmarks);
+
+    // Clean up tensor
+    videoTensor.dispose();
 
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected. Please ensure your face is well-lit and clearly visible.');
@@ -318,6 +365,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     try {
       const faces = await detectorRef.current.estimateFaces(webcamRef.current!.video!);
+      console.log('Face detection result in analyzeFaceShape:', faces);
       
       if (!faces || faces.length === 0) {
         throw new Error('Unable to detect face. Please ensure your face is clearly visible.');
