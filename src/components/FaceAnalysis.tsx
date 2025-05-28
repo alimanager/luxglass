@@ -1,20 +1,24 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import { AlertCircle, Camera, RefreshCw } from 'lucide-react';
+import { AlertCircle, Camera, RefreshCw, CreditCard } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 
-declare global {
-  interface Window {
-    __models?: {
-      faceDetector?: faceDetection.FaceDetector;
-      landmarksDetector?: faceLandmarksDetection.FaceLandmarksDetector;
-    };
-  }
+// Credit card dimensions in millimeters (standard size)
+const CREDIT_CARD_WIDTH_MM = 85.60;
+const CREDIT_CARD_HEIGHT_MM = 53.98;
+
+interface CalibrationBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-type SkinTone = 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
+interface FaceAnalysisProps {
+  onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
+}
 
 interface FaceCharacteristics {
   symmetry: number;
@@ -30,11 +34,7 @@ interface FaceCharacteristics {
   templeLength: number;
   interpupillaryDistance: number;
   foreheadToEyebrowDistance: number;
-  skinTone: SkinTone;
-}
-
-interface FaceAnalysisProps {
-  onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
+  skinTone: 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
 }
 
 const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
@@ -45,6 +45,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [faceDetected, setFaceDetected] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isCalibrating, setIsCalibrating] = useState(true);
+  const [calibrationBox, setCalibrationBox] = useState<CalibrationBox>({
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 125
+  });
+  const [scalingFactor, setScalingFactor] = useState<number | null>(null);
   const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
   const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
 
@@ -58,6 +66,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         detectorRef.current = window.__models.faceDetector;
         landmarksDetectorRef.current = window.__models.landmarksDetector;
         canvasRef.current = document.createElement('canvas');
+        canvasRef.current.willReadFrequently = true;
         
         setIsModelLoading(false);
         setError(null);
@@ -104,7 +113,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       animationFrame = requestAnimationFrame(detectFace);
     };
 
-    if (isVideoReady && !isModelLoading) {
+    if (isVideoReady && !isModelLoading && !isCalibrating) {
       detectFace();
     }
 
@@ -113,75 +122,32 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         cancelAnimationFrame(animationFrame);
       }
     };
-  }, [isVideoReady, isModelLoading]);
+  }, [isVideoReady, isModelLoading, isCalibrating]);
 
-  const pixelsToMillimeters = (pixels: number, dpi = 96): number => {
-    return (pixels * 25.4) / dpi;
-  };
-
-  const validateMeasurements = (measurements: {
-    interpupillaryDistance: number;
-    noseBridgeWidth: number;
-    faceWidth: number;
-    faceLength: number;
-  }) => {
-    const avgMeasurements = {
-      ipd: { min: 54, max: 74 },
-      noseBridge: { min: 15, max: 25 },
-      faceWidth: { min: 120, max: 160 },
-      faceLength: { min: 180, max: 230 },
-    };
-
-    const convertedMeasurements = {
-      ipd: pixelsToMillimeters(measurements.interpupillaryDistance),
-      noseBridge: pixelsToMillimeters(measurements.noseBridgeWidth),
-      faceWidth: pixelsToMillimeters(measurements.faceWidth),
-      faceLength: pixelsToMillimeters(measurements.faceLength),
-    };
-
-    console.log('Face Measurements Validation:');
-    console.log('----------------------------');
-    console.log('Interpupillary Distance:');
-    console.log(`  - Measured: ${convertedMeasurements.ipd.toFixed(1)}mm`);
-    console.log(`  - Expected Range: ${avgMeasurements.ipd.min}-${avgMeasurements.ipd.max}mm`);
-    console.log(`  - Valid: ${convertedMeasurements.ipd >= avgMeasurements.ipd.min && 
-      convertedMeasurements.ipd <= avgMeasurements.ipd.max}`);
-
-    console.log('\nNose Bridge Width:');
-    console.log(`  - Measured: ${convertedMeasurements.noseBridge.toFixed(1)}mm`);
-    console.log(`  - Expected Range: ${avgMeasurements.noseBridge.min}-${avgMeasurements.noseBridge.max}mm`);
-    console.log(`  - Valid: ${convertedMeasurements.noseBridge >= avgMeasurements.noseBridge.min && 
-      convertedMeasurements.noseBridge <= avgMeasurements.noseBridge.max}`);
-
-    console.log('\nFace Width:');
-    console.log(`  - Measured: ${convertedMeasurements.faceWidth.toFixed(1)}mm`);
-    console.log(`  - Expected Range: ${avgMeasurements.faceWidth.min}-${avgMeasurements.faceWidth.max}mm`);
-    console.log(`  - Valid: ${convertedMeasurements.faceWidth >= avgMeasurements.faceWidth.min && 
-      convertedMeasurements.faceWidth <= avgMeasurements.faceWidth.max}`);
-
-    console.log('\nFace Length:');
-    console.log(`  - Measured: ${convertedMeasurements.faceLength.toFixed(1)}mm`);
-    console.log(`  - Expected Range: ${avgMeasurements.faceLength.min}-${avgMeasurements.faceLength.max}mm`);
-    console.log(`  - Valid: ${convertedMeasurements.faceLength >= avgMeasurements.faceLength.min && 
-      convertedMeasurements.faceLength <= avgMeasurements.faceLength.max}`);
-
-    return convertedMeasurements;
-  };
-
-  const captureVideoFrame = (): HTMLCanvasElement | null => {
-    if (!webcamRef.current?.video || !canvasRef.current) return null;
+  const handleCalibration = () => {
+    if (!webcamRef.current?.video) return;
 
     const video = webcamRef.current.video;
-    const canvas = canvasRef.current;
+    const pixelWidth = calibrationBox.width;
     
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // Calculate scaling factor (mm/pixel)
+    const newScalingFactor = CREDIT_CARD_WIDTH_MM / pixelWidth;
+    console.log('Calibration Data:', {
+      creditCardWidthMM: CREDIT_CARD_WIDTH_MM,
+      pixelWidth,
+      scalingFactor: newScalingFactor
+    });
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
-    
-    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-    return canvas;
+    setScalingFactor(newScalingFactor);
+    setIsCalibrating(false);
+  };
+
+  const pixelsToMillimeters = (pixels: number): number => {
+    if (!scalingFactor) {
+      console.error('No scaling factor available');
+      return pixels;
+    }
+    return pixels * scalingFactor;
   };
 
   const calculateDistance = (point1: number[], point2: number[]) => {
@@ -191,7 +157,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     );
   };
 
-  const analyzeSkinTone = (canvas: HTMLCanvasElement, faceMesh: any): SkinTone => {
+  const analyzeSkinTone = (canvas: HTMLCanvasElement, faceMesh: any): FaceCharacteristics['skinTone'] => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context not available');
 
@@ -229,9 +195,25 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     return 'Deep';
   };
 
+  const captureVideoFrame = (): HTMLCanvasElement | null => {
+    if (!webcamRef.current?.video || !canvasRef.current) return null;
+
+    const video = webcamRef.current.video;
+    const canvas = canvasRef.current;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    
+    ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+    return canvas;
+  };
+
   const analyzeFaceCharacteristics = async (face: faceDetection.Face, frameCanvas: HTMLCanvasElement): Promise<FaceCharacteristics> => {
-    if (!landmarksDetectorRef.current) {
-      throw new Error('Landmarks detector not ready');
+    if (!landmarksDetectorRef.current || !scalingFactor) {
+      throw new Error('Landmarks detector or calibration not ready');
     }
 
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
@@ -262,61 +244,61 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const LEFT_PUPIL = 468;
     const RIGHT_PUPIL = 473;
 
-    const requiredPoints = [
-      LEFT_EYE, RIGHT_EYE, NOSE_BRIDGE, NOSE_TIP, FOREHEAD, CHIN,
-      LEFT_CHEEK, RIGHT_CHEEK, LEFT_TEMPLE, RIGHT_TEMPLE, LEFT_JAW, RIGHT_JAW,
-      LEFT_NOSE_BRIDGE, RIGHT_NOSE_BRIDGE, LEFT_PUPIL, RIGHT_PUPIL
-    ];
-
-    for (const point of requiredPoints) {
-      if (!faceMesh[point]) {
-        throw new Error(`Missing required facial landmark at index ${point}`);
-      }
-    }
-
     const box = face.box;
-    const faceWidth = Math.round(box.width);
-    const faceLength = Math.round(box.height);
+    const faceWidth = pixelsToMillimeters(Math.round(box.width));
+    const faceLength = pixelsToMillimeters(Math.round(box.height));
 
-    const interpupillaryDistance = Math.round(
-      calculateDistance(
-        [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
-        [faceMesh[RIGHT_PUPIL].x, faceMesh[RIGHT_PUPIL].y]
+    const interpupillaryDistance = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
+          [faceMesh[RIGHT_PUPIL].x, faceMesh[RIGHT_PUPIL].y]
+        )
       )
     );
 
-    const noseBridgeWidth = Math.round(
-      calculateDistance(
-        [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
-        [faceMesh[RIGHT_NOSE_BRIDGE].x, faceMesh[RIGHT_NOSE_BRIDGE].y]
+    const noseBridgeWidth = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
+          [faceMesh[RIGHT_NOSE_BRIDGE].x, faceMesh[RIGHT_NOSE_BRIDGE].y]
+        )
       )
     );
 
-    const noseLength = Math.round(
-      calculateDistance(
-        [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y],
-        [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+    const noseLength = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y],
+          [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
+        )
       )
     );
 
-    const templeLength = Math.round(
-      calculateDistance(
-        [faceMesh[LEFT_TEMPLE].x, faceMesh[LEFT_TEMPLE].y],
-        [faceMesh[RIGHT_TEMPLE].x, faceMesh[RIGHT_TEMPLE].y]
-      ) / 2
-    );
-
-    const foreheadToEyebrowDistance = Math.round(
-      calculateDistance(
-        [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
-        [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+    const templeLength = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[LEFT_TEMPLE].x, faceMesh[LEFT_TEMPLE].y],
+          [faceMesh[RIGHT_TEMPLE].x, faceMesh[RIGHT_TEMPLE].y]
+        ) / 2
       )
     );
 
-    const foreheadHeight = Math.round(
-      calculateDistance(
-        [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
-        [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+    const foreheadToEyebrowDistance = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
+          [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+        )
+      )
+    );
+
+    const foreheadHeight = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
+          [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
+        )
       )
     );
 
@@ -340,13 +322,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         [faceMesh[CHIN].x, faceMesh[CHIN].y]
       )
     ) / 2;
-    const jawlineStrength = Math.round((jawlineLength / faceWidth) * 100);
+    const jawlineStrength = Math.round((jawlineLength / box.width) * 100);
 
     const cheekboneWidth = calculateDistance(
       [faceMesh[LEFT_CHEEK].x, faceMesh[LEFT_CHEEK].y],
       [faceMesh[RIGHT_CHEEK].x, faceMesh[RIGHT_CHEEK].y]
     );
-    const cheekboneProminence = Math.round((cheekboneWidth / faceWidth) * 100);
+    const cheekboneProminence = Math.round((cheekboneWidth / box.width) * 100);
 
     const chinWidth = calculateDistance(
       [faceMesh[LEFT_JAW].x, faceMesh[LEFT_JAW].y],
@@ -368,23 +350,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
-    const measurements = {
-      interpupillaryDistance,
-      noseBridgeWidth,
-      faceWidth,
-      faceLength
-    };
-
-    const validatedMeasurements = validateMeasurements(measurements);
-
-    console.log('\nAdditional Measurements (pixels):');
-    console.log('--------------------------------');
-    console.log(`Temple Length: ${templeLength}px`);
-    console.log(`Nose Length: ${noseLength}px`);
-    console.log(`Forehead Height: ${foreheadHeight}px`);
-    console.log(`Eye Distance: ${interpupillaryDistance}px`);
-    console.log(`Jaw Line Length: ${jawlineLength}px`);
-    console.log(`Cheekbone Width: ${cheekboneWidth}px`);
+    const eyeDistance = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[LEFT_EYE].x, faceMesh[LEFT_EYE].y],
+          [faceMesh[RIGHT_EYE].x, faceMesh[RIGHT_EYE].y]
+        )
+      )
+    );
 
     const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
 
@@ -394,13 +367,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       foreheadHeight,
       cheekboneProminence,
       chinShape,
-      faceLength: validatedMeasurements.faceLength,
-      faceWidth: validatedMeasurements.faceWidth,
-      eyeDistance: interpupillaryDistance,
+      faceLength,
+      faceWidth,
+      eyeDistance,
       noseLength,
-      noseBridgeWidth: validatedMeasurements.noseBridge,
+      noseBridgeWidth,
       templeLength,
-      interpupillaryDistance: validatedMeasurements.ipd,
+      interpupillaryDistance,
       foreheadToEyebrowDistance,
       skinTone
     };
@@ -466,8 +439,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           mirrored={false}
           className="w-full h-full object-cover"
           videoConstraints={{
-            width: 640,
-            height: 480,
+            width: 1280,
+            height: 720,
             facingMode: "user"
           }}
           onUserMediaError={() => {
@@ -476,19 +449,47 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           onLoadedData={() => setIsVideoReady(true)}
         />
         
-        <div className={`absolute inset-[15%] border-4 transition-colors duration-300 ${
-          faceDetected ? 'border-green-500' : 'border-gray-300'
-        } rounded-lg`}>
-          <div className="absolute inset-0 border-2 border-dashed border-white/50 rounded-lg"></div>
-        </div>
+        {isCalibrating ? (
+          <>
+            <div 
+              className="absolute border-2 border-primary-500 border-dashed"
+              style={{
+                left: `${calibrationBox.x}px`,
+                top: `${calibrationBox.y}px`,
+                width: `${calibrationBox.width}px`,
+                height: `${calibrationBox.height}px`
+              }}
+            />
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 text-center">
+              <div className="flex items-center justify-center mb-2">
+                <CreditCard className="h-6 w-6 text-primary-600 mr-2" />
+                <span>Alignez une carte bancaire avec le rectangle</span>
+              </div>
+              <button
+                onClick={handleCalibration}
+                className="btn btn-primary"
+              >
+                Calibrer
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className={`absolute inset-[15%] border-4 transition-colors duration-300 ${
+              faceDetected ? 'border-green-500' : 'border-gray-300'
+            } rounded-lg`}>
+              <div className="absolute inset-0 border-2 border-dashed border-white/50 rounded-lg"></div>
+            </div>
 
-        <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full transition-colors ${
-          faceDetected ? 'bg-green-500' : 'bg-gray-500'
-        } text-white text-sm flex items-center`}>
-          {!isVideoReady ? 'Initializing camera...' : (
-            faceDetected ? 'Face detected' : 'Waiting for face detection'
-          )}
-        </div>
+            <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full transition-colors ${
+              faceDetected ? 'bg-green-500' : 'bg-gray-500'
+            } text-white text-sm flex items-center`}>
+              {!isVideoReady ? 'Initializing camera...' : (
+                faceDetected ? 'Face detected' : 'Waiting for face detection'
+              )}
+            </div>
+          </>
+        )}
 
         {isAnalyzing && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -510,9 +511,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       <div className="flex justify-center">
         <button
           onClick={analyzeFaceShape}
-          disabled={isAnalyzing || isModelLoading || !isVideoReady || !faceDetected}
+          disabled={isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || isCalibrating}
           className={`px-6 py-3 rounded-lg flex items-center justify-center transition-colors ${
-            isAnalyzing || isModelLoading || !isVideoReady || !faceDetected
+            isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || isCalibrating
               ? 'bg-gray-300 cursor-not-allowed'
               : 'bg-primary-600 hover:bg-primary-700 text-white'
           }`}
@@ -531,6 +532,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
             <>
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
               Analyzing...
+            </>
+          ) : isCalibrating ? (
+            <>
+              <CreditCard className="h-5 w-5 mr-2" />
+              Please calibrate first
             </>
           ) : (
             <>
