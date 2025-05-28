@@ -12,6 +12,7 @@ interface LocationState {
     faceWidth: number;
     faceLength: number;
     eyeDistance: number;
+    skinTone: 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
   };
 }
 
@@ -110,6 +111,13 @@ const AnalysisResults: React.FC = () => {
                     ></div>
                   </div>
                 </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-2">Teint de Peau</h3>
+                  <p className="text-lg font-medium text-primary-600">
+                    {characteristics.skinTone}
+                  </p>
+                </div>
               </div>
 
               {/* Right Column - Measurements and Shape */}
@@ -154,7 +162,7 @@ const AnalysisResults: React.FC = () => {
             <h2 className="text-2xl font-medium mb-6">Recommandations</h2>
             <div className="space-y-4">
               <p className="text-gray-600">
-                Basé sur votre forme de visage {faceShape}, voici nos recommandations pour le choix de vos lunettes :
+                Basé sur votre forme de visage {faceShape} et votre teint {characteristics.skinTone.toLowerCase()}, voici nos recommandations pour le choix de vos lunettes :
               </p>
               <ul className="space-y-2 text-gray-600">
                 {faceShape === 'round' && (
