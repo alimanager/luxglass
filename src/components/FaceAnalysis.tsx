@@ -115,6 +115,59 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   }, [isVideoReady, isModelLoading]);
 
+  const pixelsToMillimeters = (pixels: number, dpi = 96): number => {
+    return (pixels * 25.4) / dpi;
+  };
+
+  const validateMeasurements = (measurements: {
+    interpupillaryDistance: number;
+    noseBridgeWidth: number;
+    faceWidth: number;
+    faceLength: number;
+  }) => {
+    const avgMeasurements = {
+      ipd: { min: 54, max: 74 },
+      noseBridge: { min: 15, max: 25 },
+      faceWidth: { min: 120, max: 160 },
+      faceLength: { min: 180, max: 230 },
+    };
+
+    const convertedMeasurements = {
+      ipd: pixelsToMillimeters(measurements.interpupillaryDistance),
+      noseBridge: pixelsToMillimeters(measurements.noseBridgeWidth),
+      faceWidth: pixelsToMillimeters(measurements.faceWidth),
+      faceLength: pixelsToMillimeters(measurements.faceLength),
+    };
+
+    console.log('Face Measurements Validation:');
+    console.log('----------------------------');
+    console.log('Interpupillary Distance:');
+    console.log(`  - Measured: ${convertedMeasurements.ipd.toFixed(1)}mm`);
+    console.log(`  - Expected Range: ${avgMeasurements.ipd.min}-${avgMeasurements.ipd.max}mm`);
+    console.log(`  - Valid: ${convertedMeasurements.ipd >= avgMeasurements.ipd.min && 
+      convertedMeasurements.ipd <= avgMeasurements.ipd.max}`);
+
+    console.log('\nNose Bridge Width:');
+    console.log(`  - Measured: ${convertedMeasurements.noseBridge.toFixed(1)}mm`);
+    console.log(`  - Expected Range: ${avgMeasurements.noseBridge.min}-${avgMeasurements.noseBridge.max}mm`);
+    console.log(`  - Valid: ${convertedMeasurements.noseBridge >= avgMeasurements.noseBridge.min && 
+      convertedMeasurements.noseBridge <= avgMeasurements.noseBridge.max}`);
+
+    console.log('\nFace Width:');
+    console.log(`  - Measured: ${convertedMeasurements.faceWidth.toFixed(1)}mm`);
+    console.log(`  - Expected Range: ${avgMeasurements.faceWidth.min}-${avgMeasurements.faceWidth.max}mm`);
+    console.log(`  - Valid: ${convertedMeasurements.faceWidth >= avgMeasurements.faceWidth.min && 
+      convertedMeasurements.faceWidth <= avgMeasurements.faceWidth.max}`);
+
+    console.log('\nFace Length:');
+    console.log(`  - Measured: ${convertedMeasurements.faceLength.toFixed(1)}mm`);
+    console.log(`  - Expected Range: ${avgMeasurements.faceLength.min}-${avgMeasurements.faceLength.max}mm`);
+    console.log(`  - Valid: ${convertedMeasurements.faceLength >= avgMeasurements.faceLength.min && 
+      convertedMeasurements.faceLength <= avgMeasurements.faceLength.max}`);
+
+    return convertedMeasurements;
+  };
+
   const captureVideoFrame = (): HTMLCanvasElement | null => {
     if (!webcamRef.current?.video || !canvasRef.current) return null;
 
@@ -143,9 +196,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     if (!ctx) throw new Error('Canvas context not available');
 
     const samplePoints = [
-      [faceMesh[10].x, faceMesh[10].y],   // Forehead
-      [faceMesh[123].x, faceMesh[123].y],  // Left cheek
-      [faceMesh[352].x, faceMesh[352].y],  // Right cheek
+      [faceMesh[10].x, faceMesh[10].y],
+      [faceMesh[123].x, faceMesh[123].y],
+      [faceMesh[352].x, faceMesh[352].y],
     ];
 
     let totalR = 0, totalG = 0, totalB = 0;
@@ -192,7 +245,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Face mesh data not available');
     }
 
-    // MediaPipe Face Mesh landmark indices
     const LEFT_EYE = 133;
     const RIGHT_EYE = 362;
     const NOSE_BRIDGE = 168;
@@ -226,7 +278,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const faceWidth = Math.round(box.width);
     const faceLength = Math.round(box.height);
 
-    // Calculate interpupillary distance using pupil landmarks
     const interpupillaryDistance = Math.round(
       calculateDistance(
         [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
@@ -234,7 +285,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       )
     );
 
-    // Calculate nose bridge width using specific nose bridge landmarks
     const noseBridgeWidth = Math.round(
       calculateDistance(
         [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
@@ -318,6 +368,24 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
+    const measurements = {
+      interpupillaryDistance,
+      noseBridgeWidth,
+      faceWidth,
+      faceLength
+    };
+
+    const validatedMeasurements = validateMeasurements(measurements);
+
+    console.log('\nAdditional Measurements (pixels):');
+    console.log('--------------------------------');
+    console.log(`Temple Length: ${templeLength}px`);
+    console.log(`Nose Length: ${noseLength}px`);
+    console.log(`Forehead Height: ${foreheadHeight}px`);
+    console.log(`Eye Distance: ${interpupillaryDistance}px`);
+    console.log(`Jaw Line Length: ${jawlineLength}px`);
+    console.log(`Cheekbone Width: ${cheekboneWidth}px`);
+
     const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
 
     return {
@@ -326,13 +394,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       foreheadHeight,
       cheekboneProminence,
       chinShape,
-      faceLength,
-      faceWidth,
+      faceLength: validatedMeasurements.faceLength,
+      faceWidth: validatedMeasurements.faceWidth,
       eyeDistance: interpupillaryDistance,
       noseLength,
-      noseBridgeWidth,
+      noseBridgeWidth: validatedMeasurements.noseBridge,
       templeLength,
-      interpupillaryDistance,
+      interpupillaryDistance: validatedMeasurements.ipd,
       foreheadToEyebrowDistance,
       skinTone
     };
