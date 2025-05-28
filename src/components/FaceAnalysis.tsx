@@ -142,7 +142,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context not available');
 
-    // Sample multiple points on the face for more accurate skin tone detection
     const samplePoints = [
       [faceMesh[10].x, faceMesh[10].y],   // Forehead
       [faceMesh[123].x, faceMesh[123].y],  // Left cheek
@@ -163,13 +162,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const avgG = totalG / samples;
     const avgB = totalB / samples;
 
-    // Convert RGB to HSV for better skin tone classification
     const max = Math.max(avgR, avgG, avgB);
     const min = Math.min(avgR, avgG, avgB);
     const v = max / 255;
     const s = max === 0 ? 0 : (max - min) / max;
     
-    // Determine skin tone based on value (brightness) and saturation
     if (v > 0.8 && s < 0.3) return 'Fair';
     if (v > 0.7 && s < 0.35) return 'Light';
     if (v > 0.6 && s < 0.4) return 'Medium Light';
@@ -187,7 +184,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
 
     if (!landmarks || landmarks.length === 0) {
-      throw new Error('No face landmarks detected. Please ensure your face is well-lit and clearly visible.');
+      throw new Error('No face landmarks detected');
     }
 
     const faceMesh = landmarks[0].keypoints;
@@ -208,10 +205,15 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const RIGHT_TEMPLE = 454;
     const LEFT_JAW = 172;
     const RIGHT_JAW = 397;
+    const LEFT_NOSE_BRIDGE = 102;
+    const RIGHT_NOSE_BRIDGE = 331;
+    const LEFT_PUPIL = 468;
+    const RIGHT_PUPIL = 473;
 
     const requiredPoints = [
       LEFT_EYE, RIGHT_EYE, NOSE_BRIDGE, NOSE_TIP, FOREHEAD, CHIN,
-      LEFT_CHEEK, RIGHT_CHEEK, LEFT_TEMPLE, RIGHT_TEMPLE, LEFT_JAW, RIGHT_JAW
+      LEFT_CHEEK, RIGHT_CHEEK, LEFT_TEMPLE, RIGHT_TEMPLE, LEFT_JAW, RIGHT_JAW,
+      LEFT_NOSE_BRIDGE, RIGHT_NOSE_BRIDGE, LEFT_PUPIL, RIGHT_PUPIL
     ];
 
     for (const point of requiredPoints) {
@@ -224,10 +226,19 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const faceWidth = Math.round(box.width);
     const faceLength = Math.round(box.height);
 
+    // Calculate interpupillary distance using pupil landmarks
     const interpupillaryDistance = Math.round(
       calculateDistance(
-        [faceMesh[LEFT_EYE].x, faceMesh[LEFT_EYE].y],
-        [faceMesh[RIGHT_EYE].x, faceMesh[RIGHT_EYE].y]
+        [faceMesh[LEFT_PUPIL].x, faceMesh[LEFT_PUPIL].y],
+        [faceMesh[RIGHT_PUPIL].x, faceMesh[RIGHT_PUPIL].y]
+      )
+    );
+
+    // Calculate nose bridge width using specific nose bridge landmarks
+    const noseBridgeWidth = Math.round(
+      calculateDistance(
+        [faceMesh[LEFT_NOSE_BRIDGE].x, faceMesh[LEFT_NOSE_BRIDGE].y],
+        [faceMesh[RIGHT_NOSE_BRIDGE].x, faceMesh[RIGHT_NOSE_BRIDGE].y]
       )
     );
 
@@ -237,7 +248,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         [faceMesh[NOSE_TIP].x, faceMesh[NOSE_TIP].y]
       )
     );
-    const noseBridgeWidth = Math.round(faceWidth * 0.15);
 
     const templeLength = Math.round(
       calculateDistance(
@@ -252,6 +262,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         [faceMesh[NOSE_BRIDGE].x, faceMesh[NOSE_BRIDGE].y]
       )
     );
+
     const foreheadHeight = Math.round(
       calculateDistance(
         [faceMesh[FOREHEAD].x, faceMesh[FOREHEAD].y],
