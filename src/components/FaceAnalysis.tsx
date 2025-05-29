@@ -40,6 +40,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [isCalibrating, setIsCalibrating] = useState(true);
   const [calibrationStep, setCalibrationStep] = useState<'face' | 'complete'>('face');
   const [scalingFactor, setScalingFactor] = useState<number | null>(null);
+  const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
   const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
   const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
 
@@ -54,6 +55,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         landmarksDetectorRef.current = window.__models.landmarksDetector;
         canvasRef.current = document.createElement('canvas');
         canvasRef.current.willReadFrequently = true;
+        
+        console.log('Detectors initialized:', {
+          faceDetector: detectorRef.current,
+          landmarksDetector: landmarksDetectorRef.current
+        });
         
         setIsModelLoading(false);
         setError(null);
@@ -111,43 +117,15 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   }, [isVideoReady, isModelLoading, isCalibrating]);
 
-  const calculateIrisScalingFactor = async (faceMesh: any): Promise<number> => {
-    const leftIris = faceMesh.slice(468, 473);
-    const rightIris = faceMesh.slice(473, 478);
-
-    const leftIrisDiameter = calculateIrisDiameter(leftIris);
-    const rightIrisDiameter = calculateIrisDiameter(rightIris);
-
-    const avgIrisDiameterPixels = (leftIrisDiameter + rightIrisDiameter) / 2;
-    const scalingFactor = IRIS_DIAMETER_MM / avgIrisDiameterPixels;
-
-    console.log('Iris Calibration:', {
-      leftIrisDiameter,
-      rightIrisDiameter,
-      avgIrisDiameterPixels,
-      scalingFactor
-    });
-
-    return scalingFactor;
-  };
-
-  const calculateIrisDiameter = (irisPoints: any[]): number => {
-    let maxDistance = 0;
-    for (let i = 0; i < irisPoints.length; i++) {
-      for (let j = i + 1; j < irisPoints.length; j++) {
-        const distance = calculateDistance(
-          [irisPoints[i].x, irisPoints[i].y],
-          [irisPoints[j].x, irisPoints[j].y]
-        );
-        maxDistance = Math.max(maxDistance, distance);
-      }
-    }
-    return maxDistance;
-  };
-
-  const handleFaceCalibrationComplete = () => {
+  const handleFaceCalibrationComplete = (newScalingFactor: number) => {
+    console.log('Calibration complete with scaling factor:', newScalingFactor);
+    setScalingFactor(newScalingFactor);
     setCalibrationStep('complete');
     setIsCalibrating(false);
+  };
+
+  const handleLandmarksUpdate = (landmarks: any) => {
+    setCurrentLandmarks(landmarks);
   };
 
   const calculateDistance = (point1: number[], point2: number[]) => {
@@ -221,10 +199,15 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
   const analyzeFaceCharacteristics = async (face: faceDetection.Face, frameCanvas: HTMLCanvasElement): Promise<FaceCharacteristics> => {
     if (!landmarksDetectorRef.current || !scalingFactor) {
+      console.error('Dependencies not ready:', {
+        landmarksDetector: !!landmarksDetectorRef.current,
+        scalingFactor
+      });
       throw new Error('Landmarks detector or calibration not ready');
     }
 
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
+    console.log('Face landmarks detected:', landmarks);
     
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected');
@@ -234,6 +217,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     if (!faceMesh) {
       throw new Error('Face mesh data not available');
     }
+
+    console.log('Processing face mesh with scaling factor:', scalingFactor);
 
     const box = face.box;
     const faceWidth = pixelsToMillimeters(Math.round(box.width));
@@ -247,6 +232,12 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         )
       )
     );
+
+    console.log('Key measurements:', {
+      faceWidth,
+      faceLength,
+      interpupillaryDistance
+    });
 
     const noseBridgeWidth = pixelsToMillimeters(
       Math.round(
@@ -381,6 +372,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       return;
     }
 
+    if (!scalingFactor) {
+      setError('Calibration not complete. Please wait for calibration to finish.');
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
 
@@ -444,6 +440,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           <FaceCalibration
             onCalibrationComplete={handleFaceCalibrationComplete}
             isCalibrating={isCalibrating}
+            onLandmarksUpdate={handleLandmarksUpdate}
+            webcamRef={webcamRef.current?.video || null}
+            landmarksDetector={landmarksDetectorRef.current}
           />
         ) : (
           <>
