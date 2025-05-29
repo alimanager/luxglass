@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Check, RefreshCw } from 'lucide-react';
 
@@ -19,6 +19,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 }) => {
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const irisDataRef = useRef<{ leftIris: number[]; rightIris: number[] }[]>([]);
 
   useEffect(() => {
     if (!isCalibrating || !webcam || !landmarksDetector) {
@@ -33,7 +34,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     let animationFrame: number;
     const startTime = Date.now();
     const duration = steps[step].duration;
-    let irisData: { leftIris: number[]; rightIris: number[] }[] = [];
+    irisDataRef.current = []; // Reset iris data at the start of each step
 
     const updateCalibration = async () => {
       try {
@@ -47,10 +48,21 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
 
-          // Collect iris measurements during calibration
+          // Extract iris keypoints
           const leftIris = faceMesh.slice(468, 473);
           const rightIris = faceMesh.slice(473, 478);
-          irisData.push({ leftIris, rightIris });
+
+          // Validate iris data before adding
+          if (leftIris.length === 5 && rightIris.length === 5 && 
+              leftIris.every(point => point && typeof point.x === 'number' && typeof point.y === 'number') &&
+              rightIris.every(point => point && typeof point.x === 'number' && typeof point.y === 'number')) {
+            irisDataRef.current.push({ leftIris, rightIris });
+            console.log('Collected iris data:', { 
+              leftIrisPoints: leftIris,
+              rightIrisPoints: rightIris,
+              totalFrames: irisDataRef.current.length 
+            });
+          }
         }
 
         const elapsed = Date.now() - startTime;
@@ -65,19 +77,39 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
             setProgress(0);
           } else {
             // Calculate final scaling factor from collected iris data
-            const avgLeftIris = calculateAverageIrisDiameter(irisData.map(d => d.leftIris));
-            const avgRightIris = calculateAverageIrisDiameter(irisData.map(d => d.rightIris));
+            const avgLeftIris = calculateAverageIrisDiameter(irisDataRef.current.map(d => d.leftIris));
+            const avgRightIris = calculateAverageIrisDiameter(irisDataRef.current.map(d => d.rightIris));
+            
+            console.log('Final iris measurements:', {
+              avgLeftIris,
+              avgRightIris,
+              totalFrames: irisDataRef.current.length
+            });
+
+            if (isNaN(avgLeftIris) || isNaN(avgRightIris) || avgLeftIris <= 0 || avgRightIris <= 0) {
+              console.error('Invalid iris measurements detected');
+              onCalibrationComplete(NaN);
+              return;
+            }
+
             const avgIrisDiameter = (avgLeftIris + avgRightIris) / 2;
-            const scalingFactor = 11.7 / avgIrisDiameter; // 11.7mm is average human iris diameter
+            const AVERAGE_IRIS_DIAMETER_MM = 11.7; // Average human iris diameter in millimeters
+            const scalingFactor = AVERAGE_IRIS_DIAMETER_MM / avgIrisDiameter;
 
             console.log('Calibration complete:', {
               avgLeftIris,
               avgRightIris,
               avgIrisDiameter,
-              scalingFactor
+              scalingFactor,
+              totalValidFrames: irisDataRef.current.length
             });
 
-            onCalibrationComplete(scalingFactor);
+            if (scalingFactor > 0 && isFinite(scalingFactor)) {
+              onCalibrationComplete(scalingFactor);
+            } else {
+              console.error('Invalid scaling factor calculated:', scalingFactor);
+              onCalibrationComplete(NaN);
+            }
           }
         }
       } catch (error) {
@@ -92,6 +124,31 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       if (animationFrame) cancelAnimationFrame(animationFrame);
     };
   }, [step, isCalibrating, webcam, landmarksDetector, onCalibrationComplete, onLandmarksUpdate]);
+
+  const calculateAverageIrisDiameter = (irisPoints: any[]): number => {
+    if (!irisPoints.length) return NaN;
+
+    const validDiameters = irisPoints.map(points => {
+      if (!points || points.length < 2) return NaN;
+
+      let maxDiameter = 0;
+      for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
+          if (!points[i] || !points[j]) continue;
+          
+          const distance = Math.sqrt(
+            Math.pow(points[j].x - points[i].x, 2) + 
+            Math.pow(points[j].y - points[i].y, 2)
+          );
+          maxDiameter = Math.max(maxDiameter, distance);
+        }
+      }
+      return maxDiameter > 0 ? maxDiameter : NaN;
+    }).filter(d => !isNaN(d) && d > 0);
+
+    if (validDiameters.length === 0) return NaN;
+    return validDiameters.reduce((a, b) => a + b, 0) / validDiameters.length;
+  };
 
   const steps = [
     {
@@ -110,24 +167,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       duration: 3000
     }
   ];
-
-  const calculateAverageIrisDiameter = (irisPoints: any[]) => {
-    const diameters = irisPoints.map(points => {
-      let maxDiameter = 0;
-      for (let i = 0; i < points.length; i++) {
-        for (let j = i + 1; j < points.length; j++) {
-          const distance = Math.sqrt(
-            Math.pow(points[j].x - points[i].x, 2) + 
-            Math.pow(points[j].y - points[i].y, 2)
-          );
-          maxDiameter = Math.max(maxDiameter, distance);
-        }
-      }
-      return maxDiameter;
-    });
-
-    return diameters.reduce((a, b) => a + b, 0) / diameters.length;
-  };
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
