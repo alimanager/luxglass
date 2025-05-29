@@ -1,20 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import { AlertCircle, Camera, RefreshCw, CreditCard } from 'lucide-react';
+import { AlertCircle, Camera, RefreshCw } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import FaceCalibration from './FaceCalibration';
 
-const CREDIT_CARD_WIDTH_MM = 85.60;
-const CREDIT_CARD_HEIGHT_MM = 53.98;
-
-interface CalibrationBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+const IRIS_DIAMETER_MM = 11.7; // Average human iris diameter in millimeters
 
 interface FaceAnalysisProps {
   onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
@@ -46,17 +38,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCalibrating, setIsCalibrating] = useState(true);
-  const [calibrationStep, setCalibrationStep] = useState<'initial' | 'face' | 'complete'>('initial');
-  const [calibrationData, setCalibrationData] = useState<{
-    landmarks: number[][];
-    scalingFactor: number;
-  } | null>(null);
-  const [calibrationBox, setCalibrationBox] = useState<CalibrationBox>({
-    x: 0,
-    y: 0,
-    width: 200,
-    height: 125
-  });
+  const [calibrationStep, setCalibrationStep] = useState<'face' | 'complete'>('face');
   const [scalingFactor, setScalingFactor] = useState<number | null>(null);
   const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
   const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
@@ -129,46 +111,50 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   }, [isVideoReady, isModelLoading, isCalibrating]);
 
-  useEffect(() => {
-    if (!webcamRef.current?.video) return;
+  const calculateIrisScalingFactor = async (faceMesh: any): Promise<number> => {
+    const leftIris = faceMesh.slice(468, 473);
+    const rightIris = faceMesh.slice(473, 478);
 
-    const video = webcamRef.current.video;
-    const videoAspect = video.videoWidth / video.videoHeight;
-    
-    const boxWidth = Math.round(video.videoWidth * 0.6);
-    const boxHeight = Math.round(boxWidth * (CREDIT_CARD_HEIGHT_MM / CREDIT_CARD_WIDTH_MM));
-    
-    const boxX = Math.round((video.videoWidth - boxWidth) / 2);
-    const boxY = Math.round((video.videoHeight - boxHeight) / 2);
+    const leftIrisDiameter = calculateIrisDiameter(leftIris);
+    const rightIrisDiameter = calculateIrisDiameter(rightIris);
 
-    setCalibrationBox({
-      x: boxX,
-      y: boxY,
-      width: boxWidth,
-      height: boxHeight
-    });
-  }, [isVideoReady]);
+    const avgIrisDiameterPixels = (leftIrisDiameter + rightIrisDiameter) / 2;
+    const scalingFactor = IRIS_DIAMETER_MM / avgIrisDiameterPixels;
 
-  const handleCalibrationComplete = () => {
-    if (!webcamRef.current?.video) return;
-
-    const video = webcamRef.current.video;
-    const pixelWidth = calibrationBox.width;
-    
-    const newScalingFactor = CREDIT_CARD_WIDTH_MM / pixelWidth;
-    console.log('Calibration Data:', {
-      creditCardWidthMM: CREDIT_CARD_WIDTH_MM,
-      pixelWidth,
-      scalingFactor: newScalingFactor
+    console.log('Iris Calibration:', {
+      leftIrisDiameter,
+      rightIrisDiameter,
+      avgIrisDiameterPixels,
+      scalingFactor
     });
 
-    setScalingFactor(newScalingFactor);
-    setCalibrationStep('face');
+    return scalingFactor;
+  };
+
+  const calculateIrisDiameter = (irisPoints: any[]): number => {
+    let maxDistance = 0;
+    for (let i = 0; i < irisPoints.length; i++) {
+      for (let j = i + 1; j < irisPoints.length; j++) {
+        const distance = calculateDistance(
+          [irisPoints[i].x, irisPoints[i].y],
+          [irisPoints[j].x, irisPoints[j].y]
+        );
+        maxDistance = Math.max(maxDistance, distance);
+      }
+    }
+    return maxDistance;
   };
 
   const handleFaceCalibrationComplete = () => {
     setCalibrationStep('complete');
     setIsCalibrating(false);
+  };
+
+  const calculateDistance = (point1: number[], point2: number[]) => {
+    return Math.sqrt(
+      Math.pow(point2[0] - point1[0], 2) + 
+      Math.pow(point2[1] - point1[1], 2)
+    );
   };
 
   const pixelsToMillimeters = (pixels: number): number => {
@@ -177,13 +163,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       return pixels;
     }
     return pixels * scalingFactor;
-  };
-
-  const calculateDistance = (point1: number[], point2: number[]) => {
-    return Math.sqrt(
-      Math.pow(point2[0] - point1[0], 2) + 
-      Math.pow(point2[1] - point1[1], 2)
-    );
   };
 
   const analyzeSkinTone = (canvas: HTMLCanvasElement, faceMesh: any): FaceCharacteristics['skinTone'] => {
@@ -245,53 +224,20 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Landmarks detector or calibration not ready');
     }
 
-    console.group('Face Analysis Measurements');
-    console.log('Scaling Factor:', scalingFactor, 'mm/pixel');
-    console.log('Video Resolution:', {
-      width: frameCanvas.width,
-      height: frameCanvas.height
-    });
-
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
-    console.log('Raw Landmarks:', landmarks);
-
+    
     if (!landmarks || landmarks.length === 0) {
-      console.error('No face landmarks detected');
-      console.groupEnd();
       throw new Error('No face landmarks detected');
     }
 
     const faceMesh = landmarks[0].keypoints;
     if (!faceMesh) {
-      console.error('Face mesh data not available');
-      console.groupEnd();
       throw new Error('Face mesh data not available');
     }
-
-    console.group('Raw Landmark Coordinates');
-    console.log('Left Eye:', faceMesh[133]);
-    console.log('Right Eye:', faceMesh[362]);
-    console.log('Nose Bridge:', faceMesh[168]);
-    console.log('Nose Tip:', faceMesh[1]);
-    console.log('Left Pupil:', faceMesh[468]);
-    console.log('Right Pupil:', faceMesh[473]);
-    console.groupEnd();
 
     const box = face.box;
     const faceWidth = pixelsToMillimeters(Math.round(box.width));
     const faceLength = pixelsToMillimeters(Math.round(box.height));
-
-    console.group('Face Dimensions');
-    console.log('Face Box (pixels):', box);
-    console.log('Face Width:', {
-      pixels: Math.round(box.width),
-      mm: faceWidth.toFixed(1) + 'mm'
-    });
-    console.log('Face Length:', {
-      pixels: Math.round(box.height),
-      mm: faceLength.toFixed(1) + 'mm'
-    });
-    console.groupEnd();
 
     const interpupillaryDistance = pixelsToMillimeters(
       Math.round(
@@ -302,16 +248,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       )
     );
 
-    console.group('Key Measurements');
-    console.log('Interpupillary Distance:', {
-      pixels: Math.round(calculateDistance(
-        [faceMesh[468].x, faceMesh[468].y],
-        [faceMesh[473].x, faceMesh[473].y]
-      )),
-      mm: interpupillaryDistance.toFixed(1) + 'mm',
-      valid: interpupillaryDistance >= 45 && interpupillaryDistance <= 80
-    });
-
     const noseBridgeWidth = pixelsToMillimeters(
       Math.round(
         calculateDistance(
@@ -320,20 +256,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         )
       )
     );
-
-    console.log('Nose Bridge Width:', {
-      pixels: Math.round(calculateDistance(
-        [faceMesh[168].x - 15, faceMesh[168].y],
-        [faceMesh[168].x + 15, faceMesh[168].y]
-      )),
-      mm: noseBridgeWidth.toFixed(1) + 'mm',
-      valid: noseBridgeWidth >= 15 && noseBridgeWidth <= 25,
-      landmarks: {
-        noseCenter: faceMesh[168],
-        leftOffset: [faceMesh[168].x - 15, faceMesh[168].y],
-        rightOffset: [faceMesh[168].x + 15, faceMesh[168].y]
-      }
-    });
 
     const noseLength = pixelsToMillimeters(
       Math.round(
@@ -428,31 +350,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       )
     );
 
-    console.log('Measurement Validation Summary:', {
-      interpupillaryDistance: {
-        value: interpupillaryDistance,
-        valid: interpupillaryDistance >= 45 && interpupillaryDistance <= 80,
-        expectedRange: '45-80mm'
-      },
-      noseBridgeWidth: {
-        value: noseBridgeWidth,
-        valid: noseBridgeWidth >= 15 && noseBridgeWidth <= 25,
-        expectedRange: '15-25mm'
-      },
-      faceWidth: {
-        value: faceWidth,
-        valid: faceWidth >= 120 && faceWidth <= 160,
-        expectedRange: '120-160mm'
-      },
-      faceLength: {
-        value: faceLength,
-        valid: faceLength >= 180 && faceLength <= 230,
-        expectedRange: '180-230mm'
-      }
-    });
-
-    console.groupEnd();
-
     const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
 
     return {
@@ -543,50 +440,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           onLoadedData={() => setIsVideoReady(true)}
         />
         
-        {calibrationStep === 'initial' ? (
-          <>
-            <div 
-              className="absolute border-4 border-primary-500 border-dashed transition-all duration-300"
-              style={{
-                left: `${calibrationBox.x}px`,
-                top: `${calibrationBox.y}px`,
-                width: `${calibrationBox.width}px`,
-                height: `${calibrationBox.height}px`
-              }}
-            />
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-6 text-center max-w-md w-full mx-4">
-              <div className="flex items-center justify-center mb-4">
-                <CreditCard className="h-8 w-8 text-primary-600 mr-3" />
-                <div className="text-left">
-                  <h3 className="font-medium text-lg mb-1">Calibration avec carte bancaire</h3>
-                  <p className="text-sm text-gray-600">
-                    Placez une carte bancaire dans le rectangle. La carte doit remplir le cadre au maximum.
-                  </p>
-                </div>
-              </div>
-              <ul className="text-sm text-left space-y-2 mb-4">
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-primary-600 rounded-full mr-2"></span>
-                  Tenez la carte à environ 15-20 cm de la caméra
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-primary-600 rounded-full mr-2"></span>
-                  Alignez les bords de la carte avec le rectangle
-                </li>
-                <li className="flex items-center">
-                  <span className="w-2 h-2 bg-primary-600 rounded-full mr-2"></span>
-                  Évitez les reflets sur la carte
-                </li>
-              </ul>
-              <button
-                onClick={handleCalibrationComplete}
-                className="btn btn-primary w-full justify-center"
-              >
-                Continuer
-              </button>
-            </div>
-          </>
-        ) : calibrationStep === 'face' ? (
+        {calibrationStep === 'face' ? (
           <FaceCalibration
             onCalibrationComplete={handleFaceCalibrationComplete}
             isCalibrating={isCalibrating}
