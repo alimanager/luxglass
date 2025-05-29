@@ -441,7 +441,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
             onCalibrationComplete={handleFaceCalibrationComplete}
             isCalibrating={isCalibrating}
             onLandmarksUpdate={handleLandmarksUpdate}
-            webcamRef={webcamRef.current?.video || null}
+            webcamRef={webcamRef.current?.video}
             landmarksDetector={landmarksDetectorRef.current}
           />
         ) : (
