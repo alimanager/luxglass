@@ -6,7 +6,7 @@ interface FaceCalibrationProps {
   onCalibrationComplete: (scalingFactor: number) => void;
   isCalibrating: boolean;
   onLandmarksUpdate: (landmarks: any) => void;
-  webcamRef: React.RefObject<HTMLVideoElement>;
+  webcamRef: HTMLVideoElement | null;
   landmarksDetector: any;
 }
 
@@ -43,7 +43,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   ];
 
   useEffect(() => {
-    if (!isCalibrating || !webcamRef.current || !landmarksDetector) return;
+    if (!isCalibrating || !webcamRef || !landmarksDetector) return;
 
     let animationFrame: number;
     const startTime = Date.now();
@@ -52,13 +52,12 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
     const updateCalibration = async () => {
       try {
-        const video = webcamRef.current;
-        if (!video || video.readyState !== 4) {
+        if (!webcamRef || webcamRef.readyState !== 4) {
           animationFrame = requestAnimationFrame(updateCalibration);
           return;
         }
 
-        const landmarks = await landmarksDetector.estimateFaces(video);
+        const landmarks = await landmarksDetector.estimateFaces(webcamRef);
         if (landmarks && landmarks.length > 0) {
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
