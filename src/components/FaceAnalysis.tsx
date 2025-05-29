@@ -6,8 +6,6 @@ import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import FaceCalibration from './FaceCalibration';
 
-const IRIS_DIAMETER_MM = 11.7; // Average human iris diameter in millimeters
-
 interface FaceAnalysisProps {
   onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
 }
@@ -31,7 +29,6 @@ interface FaceCharacteristics {
 
 const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const webcamRef = useRef<Webcam>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isVideoReady, setIsVideoReady] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
   const [faceDetected, setFaceDetected] = useState(false);
@@ -40,9 +37,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [isCalibrating, setIsCalibrating] = useState(true);
   const [calibrationStep, setCalibrationStep] = useState<'face' | 'complete'>('face');
   const [scalingFactor, setScalingFactor] = useState<number | null>(null);
-  const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
   const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
   const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
 
   useEffect(() => {
     const initializeDetectors = async () => {
@@ -441,7 +439,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
             onCalibrationComplete={handleFaceCalibrationComplete}
             isCalibrating={isCalibrating}
             onLandmarksUpdate={handleLandmarksUpdate}
-            webcamRef={webcamRef.current?.video}
+            webcam={webcamRef.current?.video}
             landmarksDetector={landmarksDetectorRef.current}
           />
         ) : (
