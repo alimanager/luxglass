@@ -4,6 +4,7 @@ import { AlertCircle, Camera, RefreshCw, CreditCard } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
+import FaceCalibration from './FaceCalibration';
 
 const CREDIT_CARD_WIDTH_MM = 85.60;
 const CREDIT_CARD_HEIGHT_MM = 53.98;
@@ -45,6 +46,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isCalibrating, setIsCalibrating] = useState(true);
+  const [calibrationStep, setCalibrationStep] = useState<'initial' | 'face' | 'complete'>('initial');
+  const [calibrationData, setCalibrationData] = useState<{
+    landmarks: number[][];
+    scalingFactor: number;
+  } | null>(null);
   const [calibrationBox, setCalibrationBox] = useState<CalibrationBox>({
     x: 0,
     y: 0,
@@ -123,7 +129,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   }, [isVideoReady, isModelLoading, isCalibrating]);
 
-  const handleCalibration = () => {
+  const handleCalibrationComplete = () => {
     if (!webcamRef.current?.video) return;
 
     const video = webcamRef.current.video;
@@ -137,6 +143,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     });
 
     setScalingFactor(newScalingFactor);
+    setCalibrationStep('face');
+  };
+
+  const handleFaceCalibrationComplete = () => {
+    setCalibrationStep('complete');
     setIsCalibrating(false);
   };
 
@@ -507,7 +518,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           onLoadedData={() => setIsVideoReady(true)}
         />
         
-        {isCalibrating ? (
+        {calibrationStep === 'initial' ? (
           <>
             <div 
               className="absolute border-2 border-primary-500 border-dashed"
@@ -524,13 +535,18 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
                 <span>Alignez une carte bancaire avec le rectangle</span>
               </div>
               <button
-                onClick={handleCalibration}
+                onClick={handleCalibrationComplete}
                 className="btn btn-primary"
               >
-                Calibrer
+                Continuer
               </button>
             </div>
           </>
+        ) : calibrationStep === 'face' ? (
+          <FaceCalibration
+            onCalibrationComplete={handleFaceCalibrationComplete}
+            isCalibrating={isCalibrating}
+          />
         ) : (
           <>
             <div className={`absolute inset-[15%] border-4 transition-colors duration-300 ${
@@ -569,9 +585,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       <div className="flex justify-center">
         <button
           onClick={analyzeFaceShape}
-          disabled={isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || isCalibrating}
+          disabled={isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || calibrationStep !== 'complete'}
           className={`px-6 py-3 rounded-lg flex items-center justify-center transition-colors ${
-            isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || isCalibrating
+            isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || calibrationStep !== 'complete'
               ? 'bg-gray-300 cursor-not-allowed'
               : 'bg-primary-600 hover:bg-primary-700 text-white'
           }`}
@@ -591,10 +607,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
               Analyzing...
             </>
-          ) : isCalibrating ? (
+          ) : calibrationStep !== 'complete' ? (
             <>
-              <CreditCard className="h-5 w-5 mr-2" />
-              Please calibrate first
+              <RefreshCw className="h-5 w-5 mr-2" />
+              Complete calibration first
             </>
           ) : (
             <>
