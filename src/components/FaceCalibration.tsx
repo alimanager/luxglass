@@ -20,6 +20,95 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const irisDataRef = useRef<{ leftIris: number[]; rightIris: number[] }[]>([]);
+  const AVERAGE_IRIS_DIAMETER_MM = 11.7; // Average human iris diameter in millimeters
+  const MIN_VALID_FRAMES = 10; // Minimum number of valid frames needed for calibration
+
+  const calculateIrisDiameter = (points: any[]): number => {
+    if (!points || points.length < 5) return NaN;
+
+    // Calculate center point
+    const centerX = points[0].x;
+    const centerY = points[0].y;
+
+    // Calculate average radius using the other 4 points
+    const radii = points.slice(1).map(point => 
+      Math.sqrt(Math.pow(point.x - centerX, 2) + Math.pow(point.y - centerY, 2))
+    );
+
+    // Get average radius and multiply by 2 for diameter
+    const avgRadius = radii.reduce((a, b) => a + b, 0) / radii.length;
+    return avgRadius * 2;
+  };
+
+  const validateIrisData = (leftIris: any[], rightIris: any[]): boolean => {
+    if (!leftIris || !rightIris || leftIris.length !== 5 || rightIris.length !== 5) {
+      console.log('Invalid iris array length:', { leftLength: leftIris?.length, rightLength: rightIris?.length });
+      return false;
+    }
+
+    const isValidPoint = (point: any) => 
+      point && 
+      typeof point.x === 'number' && 
+      typeof point.y === 'number' && 
+      !isNaN(point.x) && 
+      !isNaN(point.y);
+
+    const allPointsValid = [...leftIris, ...rightIris].every(isValidPoint);
+    if (!allPointsValid) {
+      console.log('Invalid iris points detected');
+      return false;
+    }
+
+    return true;
+  };
+
+  const calculateFinalScalingFactor = (): number => {
+    const validFrames = irisDataRef.current.filter(frame => 
+      validateIrisData(frame.leftIris as any, frame.rightIris as any)
+    );
+
+    console.log(`Processing ${validFrames.length} valid frames out of ${irisDataRef.current.length} total frames`);
+
+    if (validFrames.length < MIN_VALID_FRAMES) {
+      console.error(`Insufficient valid frames: ${validFrames.length} < ${MIN_VALID_FRAMES}`);
+      return NaN;
+    }
+
+    const diameters = validFrames.map(frame => {
+      const leftDiameter = calculateIrisDiameter(frame.leftIris as any);
+      const rightDiameter = calculateIrisDiameter(frame.rightIris as any);
+      
+      if (isNaN(leftDiameter) || isNaN(rightDiameter)) {
+        return NaN;
+      }
+
+      return (leftDiameter + rightDiameter) / 2;
+    }).filter(d => !isNaN(d) && d > 0);
+
+    if (diameters.length < MIN_VALID_FRAMES) {
+      console.error(`Insufficient valid diameter measurements: ${diameters.length} < ${MIN_VALID_FRAMES}`);
+      return NaN;
+    }
+
+    // Sort diameters and take the middle 60% to remove outliers
+    diameters.sort((a, b) => a - b);
+    const startIndex = Math.floor(diameters.length * 0.2);
+    const endIndex = Math.floor(diameters.length * 0.8);
+    const trimmedDiameters = diameters.slice(startIndex, endIndex);
+
+    const avgDiameter = trimmedDiameters.reduce((a, b) => a + b, 0) / trimmedDiameters.length;
+    const scalingFactor = AVERAGE_IRIS_DIAMETER_MM / avgDiameter;
+
+    console.log('Scaling factor calculation:', {
+      avgDiameter,
+      scalingFactor,
+      validMeasurements: trimmedDiameters.length,
+      minDiameter: Math.min(...trimmedDiameters),
+      maxDiameter: Math.max(...trimmedDiameters)
+    });
+
+    return scalingFactor;
+  };
 
   useEffect(() => {
     if (!isCalibrating || !webcam || !landmarksDetector) {
@@ -34,7 +123,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     let animationFrame: number;
     const startTime = Date.now();
     const duration = steps[step].duration;
-    irisDataRef.current = []; // Reset iris data at the start of each step
+    irisDataRef.current = [];
 
     const updateCalibration = async () => {
       try {
@@ -48,20 +137,11 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
 
-          // Extract iris keypoints
           const leftIris = faceMesh.slice(468, 473);
           const rightIris = faceMesh.slice(473, 478);
 
-          // Validate iris data before adding
-          if (leftIris.length === 5 && rightIris.length === 5 && 
-              leftIris.every(point => point && typeof point.x === 'number' && typeof point.y === 'number') &&
-              rightIris.every(point => point && typeof point.x === 'number' && typeof point.y === 'number')) {
+          if (validateIrisData(leftIris, rightIris)) {
             irisDataRef.current.push({ leftIris, rightIris });
-            console.log('Collected iris data:', { 
-              leftIrisPoints: leftIris,
-              rightIrisPoints: rightIris,
-              totalFrames: irisDataRef.current.length 
-            });
           }
         }
 
@@ -76,39 +156,16 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
             setStep(step + 1);
             setProgress(0);
           } else {
-            // Calculate final scaling factor from collected iris data
-            const avgLeftIris = calculateAverageIrisDiameter(irisDataRef.current.map(d => d.leftIris));
-            const avgRightIris = calculateAverageIrisDiameter(irisDataRef.current.map(d => d.rightIris));
+            const scalingFactor = calculateFinalScalingFactor();
             
-            console.log('Final iris measurements:', {
-              avgLeftIris,
-              avgRightIris,
-              totalFrames: irisDataRef.current.length
-            });
-
-            if (isNaN(avgLeftIris) || isNaN(avgRightIris) || avgLeftIris <= 0 || avgRightIris <= 0) {
-              console.error('Invalid iris measurements detected');
-              onCalibrationComplete(NaN);
-              return;
-            }
-
-            const avgIrisDiameter = (avgLeftIris + avgRightIris) / 2;
-            const AVERAGE_IRIS_DIAMETER_MM = 11.7; // Average human iris diameter in millimeters
-            const scalingFactor = AVERAGE_IRIS_DIAMETER_MM / avgIrisDiameter;
-
-            console.log('Calibration complete:', {
-              avgLeftIris,
-              avgRightIris,
-              avgIrisDiameter,
-              scalingFactor,
-              totalValidFrames: irisDataRef.current.length
-            });
-
-            if (scalingFactor > 0 && isFinite(scalingFactor)) {
+            if (isFinite(scalingFactor) && scalingFactor > 0) {
+              console.log('Calibration successful:', { scalingFactor });
               onCalibrationComplete(scalingFactor);
             } else {
-              console.error('Invalid scaling factor calculated:', scalingFactor);
-              onCalibrationComplete(NaN);
+              console.error('Invalid scaling factor:', scalingFactor);
+              // Retry calibration by resetting to first step
+              setStep(0);
+              setProgress(0);
             }
           }
         }
@@ -124,31 +181,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       if (animationFrame) cancelAnimationFrame(animationFrame);
     };
   }, [step, isCalibrating, webcam, landmarksDetector, onCalibrationComplete, onLandmarksUpdate]);
-
-  const calculateAverageIrisDiameter = (irisPoints: any[]): number => {
-    if (!irisPoints.length) return NaN;
-
-    const validDiameters = irisPoints.map(points => {
-      if (!points || points.length < 2) return NaN;
-
-      let maxDiameter = 0;
-      for (let i = 0; i < points.length; i++) {
-        for (let j = i + 1; j < points.length; j++) {
-          if (!points[i] || !points[j]) continue;
-          
-          const distance = Math.sqrt(
-            Math.pow(points[j].x - points[i].x, 2) + 
-            Math.pow(points[j].y - points[i].y, 2)
-          );
-          maxDiameter = Math.max(maxDiameter, distance);
-        }
-      }
-      return maxDiameter > 0 ? maxDiameter : NaN;
-    }).filter(d => !isNaN(d) && d > 0);
-
-    if (validDiameters.length === 0) return NaN;
-    return validDiameters.reduce((a, b) => a + b, 0) / validDiameters.length;
-  };
 
   const steps = [
     {
