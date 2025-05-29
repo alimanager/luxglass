@@ -295,19 +295,24 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const noseBridgeWidth = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[102].x, faceMesh[102].y],
-          [faceMesh[331].x, faceMesh[331].y]
+          [faceMesh[168].x - 15, faceMesh[168].y],
+          [faceMesh[168].x + 15, faceMesh[168].y]
         )
       )
     );
 
     console.log('Nose Bridge Width:', {
       pixels: Math.round(calculateDistance(
-        [faceMesh[102].x, faceMesh[102].y],
-        [faceMesh[331].x, faceMesh[331].y]
+        [faceMesh[168].x - 15, faceMesh[168].y],
+        [faceMesh[168].x + 15, faceMesh[168].y]
       )),
       mm: noseBridgeWidth.toFixed(1) + 'mm',
-      valid: noseBridgeWidth >= 15 && noseBridgeWidth <= 25
+      valid: noseBridgeWidth >= 15 && noseBridgeWidth <= 25,
+      landmarks: {
+        noseCenter: faceMesh[168],
+        leftOffset: [faceMesh[168].x - 15, faceMesh[168].y],
+        rightOffset: [faceMesh[168].x + 15, faceMesh[168].y]
+      }
     });
 
     const noseLength = pixelsToMillimeters(
