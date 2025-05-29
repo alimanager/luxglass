@@ -175,12 +175,49 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
     const updateCalibration = async () => {
       try {
-        if (!webcam || webcam.readyState !== 4) {
+        if (!webcam) {
+          console.log('No webcam available');
           animationFrame = requestAnimationFrame(updateCalibration);
           return;
         }
 
+        // Log video properties for debugging
+        console.log('Video properties:', {
+          width: webcam.videoWidth,
+          height: webcam.videoHeight,
+          readyState: webcam.readyState,
+          paused: webcam.paused,
+          ended: webcam.ended
+        });
+
+        // Ensure video is ready and has valid dimensions
+        if (webcam.readyState !== 4 || webcam.videoWidth === 0 || webcam.videoHeight === 0) {
+          console.log('Video not ready or invalid dimensions');
+          animationFrame = requestAnimationFrame(updateCalibration);
+          return;
+        }
+
+        // Ensure video is playing
+        if (webcam.paused || webcam.ended) {
+          console.log('Video is paused or ended, attempting to play');
+          try {
+            await webcam.play();
+          } catch (error) {
+            console.error('Error playing video:', error);
+            animationFrame = requestAnimationFrame(updateCalibration);
+            return;
+          }
+        }
+
+        // Log input to estimateFaces
+        console.log('Calling estimateFaces with video element:', {
+          element: webcam,
+          dimensions: `${webcam.videoWidth}x${webcam.videoHeight}`
+        });
+
         const landmarks = await landmarksDetector.estimateFaces(webcam);
+        console.log('Landmarks detection result:', landmarks);
+
         if (landmarks && landmarks.length > 0) {
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
@@ -192,6 +229,8 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           if (validateIrisData(leftIris, rightIris)) {
             irisDataRef.current.push({ leftIris, rightIris });
           }
+        } else {
+          console.log('No face detected in frame');
         }
 
         const elapsed = Date.now() - startTime;
