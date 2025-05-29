@@ -129,6 +129,26 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   }, [isVideoReady, isModelLoading, isCalibrating]);
 
+  useEffect(() => {
+    if (!webcamRef.current?.video) return;
+
+    const video = webcamRef.current.video;
+    const videoAspect = video.videoWidth / video.videoHeight;
+    
+    const boxWidth = Math.round(video.videoWidth * 0.6);
+    const boxHeight = Math.round(boxWidth * (CREDIT_CARD_HEIGHT_MM / CREDIT_CARD_WIDTH_MM));
+    
+    const boxX = Math.round((video.videoWidth - boxWidth) / 2);
+    const boxY = Math.round((video.videoHeight - boxHeight) / 2);
+
+    setCalibrationBox({
+      x: boxX,
+      y: boxY,
+      width: boxWidth,
+      height: boxHeight
+    });
+  }, [isVideoReady]);
+
   const handleCalibrationComplete = () => {
     if (!webcamRef.current?.video) return;
 
@@ -526,7 +546,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         {calibrationStep === 'initial' ? (
           <>
             <div 
-              className="absolute border-2 border-primary-500 border-dashed"
+              className="absolute border-4 border-primary-500 border-dashed transition-all duration-300"
               style={{
                 left: `${calibrationBox.x}px`,
                 top: `${calibrationBox.y}px`,
@@ -534,14 +554,33 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
                 height: `${calibrationBox.height}px`
               }}
             />
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-4 text-center">
-              <div className="flex items-center justify-center mb-2">
-                <CreditCard className="h-6 w-6 text-primary-600 mr-2" />
-                <span>Alignez une carte bancaire avec le rectangle</span>
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-6 text-center max-w-md w-full mx-4">
+              <div className="flex items-center justify-center mb-4">
+                <CreditCard className="h-8 w-8 text-primary-600 mr-3" />
+                <div className="text-left">
+                  <h3 className="font-medium text-lg mb-1">Calibration avec carte bancaire</h3>
+                  <p className="text-sm text-gray-600">
+                    Placez une carte bancaire dans le rectangle. La carte doit remplir le cadre au maximum.
+                  </p>
+                </div>
               </div>
+              <ul className="text-sm text-left space-y-2 mb-4">
+                <li className="flex items-center">
+                  <span className="w-2 h-2 bg-primary-600 rounded-full mr-2"></span>
+                  Tenez la carte à environ 15-20 cm de la caméra
+                </li>
+                <li className="flex items-center">
+                  <span className="w-2 h-2 bg-primary-600 rounded-full mr-2"></span>
+                  Alignez les bords de la carte avec le rectangle
+                </li>
+                <li className="flex items-center">
+                  <span className="w-2 h-2 bg-primary-600 rounded-full mr-2"></span>
+                  Évitez les reflets sur la carte
+                </li>
+              </ul>
               <button
                 onClick={handleCalibrationComplete}
-                className="btn btn-primary"
+                className="btn btn-primary w-full justify-center"
               >
                 Continuer
               </button>
