@@ -6,7 +6,7 @@ interface FaceCalibrationProps {
   onCalibrationComplete: (scalingFactor: number) => void;
   isCalibrating: boolean;
   onLandmarksUpdate: (landmarks: any) => void;
-  webcamRef: HTMLVideoElement | null;
+  webcam: HTMLVideoElement | null;
   landmarksDetector: any;
 }
 
@@ -14,36 +14,21 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   onCalibrationComplete, 
   isCalibrating, 
   onLandmarksUpdate,
-  webcamRef,
+  webcam,
   landmarksDetector 
 }) => {
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
-  const [calibrationData, setCalibrationData] = useState<{
-    leftIris: number;
-    rightIris: number;
-  } | null>(null);
-
-  const steps = [
-    {
-      title: "Centrez votre visage",
-      instruction: "Positionnez votre visage dans l'ovale et regardez droit devant",
-      duration: 3000
-    },
-    {
-      title: "Tournez lentement la tête",
-      instruction: "Tournez lentement la tête vers la gauche puis vers la droite",
-      duration: 5000
-    },
-    {
-      title: "Restez immobile",
-      instruction: "Gardez la tête immobile pendant quelques secondes",
-      duration: 3000
-    }
-  ];
 
   useEffect(() => {
-    if (!isCalibrating || !webcamRef || !landmarksDetector) return;
+    if (!isCalibrating || !webcam || !landmarksDetector) {
+      console.log('Waiting for dependencies:', {
+        isCalibrating,
+        hasWebcam: !!webcam,
+        hasDetector: !!landmarksDetector
+      });
+      return;
+    }
 
     let animationFrame: number;
     const startTime = Date.now();
@@ -52,12 +37,12 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
     const updateCalibration = async () => {
       try {
-        if (!webcamRef || webcamRef.readyState !== 4) {
+        if (!webcam || webcam.readyState !== 4) {
           animationFrame = requestAnimationFrame(updateCalibration);
           return;
         }
 
-        const landmarks = await landmarksDetector.estimateFaces(webcamRef);
+        const landmarks = await landmarksDetector.estimateFaces(webcam);
         if (landmarks && landmarks.length > 0) {
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
@@ -106,9 +91,27 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame);
     };
-  }, [step, isCalibrating, webcamRef, landmarksDetector, onCalibrationComplete, onLandmarksUpdate]);
+  }, [step, isCalibrating, webcam, landmarksDetector, onCalibrationComplete, onLandmarksUpdate]);
 
-  const calculateAverageIrisDiameter = (irisPoints: number[][]) => {
+  const steps = [
+    {
+      title: "Centrez votre visage",
+      instruction: "Positionnez votre visage dans l'ovale et regardez droit devant",
+      duration: 3000
+    },
+    {
+      title: "Tournez lentement la tête",
+      instruction: "Tournez lentement la tête vers la gauche puis vers la droite",
+      duration: 5000
+    },
+    {
+      title: "Restez immobile",
+      instruction: "Gardez la tête immobile pendant quelques secondes",
+      duration: 3000
+    }
+  ];
+
+  const calculateAverageIrisDiameter = (irisPoints: any[]) => {
     const diameters = irisPoints.map(points => {
       let maxDiameter = 0;
       for (let i = 0; i < points.length; i++) {
