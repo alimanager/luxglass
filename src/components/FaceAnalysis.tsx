@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { AlertCircle, Camera, RefreshCw } from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
@@ -359,19 +359,38 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   };
 
-  const analyzeFaceShape = async () => {
+  const analyzeFaceShape = useCallback(async () => {
+    console.log('Analyze button clicked. State:', {
+      faceDetected,
+      isModelLoading,
+      isVideoReady,
+      calibrationStep,
+      scalingFactor
+    });
+
     if (!faceDetected) {
       setError('Please ensure a face is detected before analysis.');
       return;
     }
 
     if (!detectorRef.current || !landmarksDetectorRef.current) {
+      console.error('Detectors not ready:', {
+        faceDetector: !!detectorRef.current,
+        landmarksDetector: !!landmarksDetectorRef.current
+      });
       setError('Face detection models are not ready. Please refresh the page.');
       return;
     }
 
     if (!scalingFactor) {
+      console.error('No scaling factor available');
       setError('Calibration not complete. Please wait for calibration to finish.');
+      return;
+    }
+
+    if (!webcamRef.current?.video) {
+      console.error('Video element not available');
+      setError('Camera not ready. Please ensure camera access is granted.');
       return;
     }
 
@@ -379,12 +398,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setError(null);
 
     try {
+      console.log('Starting face analysis...');
       const frameCanvas = captureVideoFrame();
       if (!frameCanvas) {
         throw new Error('Failed to capture video frame');
       }
 
       const faces = await detectorRef.current.estimateFaces(frameCanvas);
+      console.log('Faces detected:', faces.length);
       
       if (!faces || faces.length === 0) {
         throw new Error('Unable to detect face. Please ensure your face is clearly visible.');
@@ -392,6 +413,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
       const face = faces[0];
       const faceCharacteristics = await analyzeFaceCharacteristics(face, frameCanvas);
+      console.log('Face characteristics calculated:', faceCharacteristics);
       
       const ratio = faceCharacteristics.faceLength / faceCharacteristics.faceWidth;
       const cheekboneRatio = faceCharacteristics.cheekboneProminence / 100;
@@ -407,6 +429,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         faceShape = 'oval';
       }
 
+      console.log('Analysis complete. Face shape:', faceShape);
       onAnalysisComplete(faceShape, faceCharacteristics);
     } catch (err) {
       console.error('Error analyzing face:', err);
@@ -414,7 +437,18 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [faceDetected, scalingFactor, onAnalysisComplete]);
+
+  const isButtonDisabled = isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || calibrationStep !== 'complete';
+
+  console.log('Button state:', {
+    isAnalyzing,
+    isModelLoading,
+    isVideoReady,
+    faceDetected,
+    calibrationStep,
+    isButtonDisabled
+  });
 
   return (
     <div className="relative space-y-4">
@@ -470,19 +504,12 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         )}
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
-          <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-          <p>{error}</p>
-        </div>
-      )}
-
       <div className="flex justify-center">
         <button
           onClick={analyzeFaceShape}
-          disabled={isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || calibrationStep !== 'complete'}
+          disabled={isButtonDisabled}
           className={`px-6 py-3 rounded-lg flex items-center justify-center transition-colors ${
-            isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || calibrationStep !== 'complete'
+            isButtonDisabled
               ? 'bg-gray-300 cursor-not-allowed'
               : 'bg-primary-600 hover:bg-primary-700 text-white'
           }`}
@@ -515,6 +542,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           )}
         </button>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start">
+          <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+          <p>{error}</p>
+        </div>
+      )}
     </div>
   );
 };
