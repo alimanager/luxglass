@@ -13,7 +13,7 @@ interface FaceCalibrationProps {
 const AVERAGE_FACE_HEIGHT_MM = 200;
 const MIN_VALID_FRAMES = 10;
 const MAX_RETRIES = 3;
-const IDEAL_FACE_HEIGHT_RATIO = 0.75; // Increased from 0.6 to make oval larger
+const IDEAL_FACE_HEIGHT_RATIO = 0.6;
 
 const FaceCalibration: React.FC<FaceCalibrationProps> = ({ 
   onCalibrationComplete, 
@@ -111,8 +111,8 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const validateFaceHeight = (height: number, frameHeight: number): boolean => {
     if (isNaN(height) || height <= 0) return false;
 
-    const minHeight = frameHeight * 0.4; // Increased from 0.3
-    const maxHeight = frameHeight * 0.9; // Increased from 0.8
+    const minHeight = frameHeight * 0.3;
+    const maxHeight = frameHeight * 0.8;
     const isValid = height > minHeight && height < maxHeight;
 
     if (!isValid) {
@@ -247,32 +247,31 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
   const steps = [
     {
-      title: "Centrez votre visage",
-      instruction: "Placez votre visage au centre de l'ovale et reculez jusqu'à ce qu'il remplisse bien l'espace",
+      title: "Positionnez votre visage",
+      instruction: "Ajustez votre position pour que votre visage remplisse l'ovale",
       duration: 3000
     },
     {
-      title: "Ajustez votre position",
-      instruction: "Gardez votre tête droite et votre visage bien visible",
+      title: "Gardez la tête droite",
+      instruction: "Regardez droit devant vous, visage bien centré",
       duration: 3000
     },
     {
-      title: "Ne bougez plus",
-      instruction: "Maintenez cette position pendant quelques secondes",
+      title: "Restez immobile",
+      instruction: "Maintenez votre position pendant quelques secondes",
       duration: 3000
     }
   ];
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      {/* Larger oval with guide lines */}
       <motion.div
         className="absolute border-4 rounded-full"
         style={{
-          width: '75%', // Increased from 60%
-          height: '85%', // Increased from 80%
-          maxWidth: '600px', // Increased from 400px
-          maxHeight: '700px', // Increased from 500px
+          width: '60%',
+          height: '80%',
+          maxWidth: '400px',
+          maxHeight: '500px',
           borderColor: ovalColor
         }}
         initial={{ scale: 0.9, opacity: 0 }}
@@ -281,15 +280,8 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           opacity: 1
         }}
         transition={{ duration: 0.3 }}
-      >
-        {/* Guide lines */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="w-full border-t border-dashed opacity-30" style={{ borderColor: ovalColor }} />
-          <div className="h-full border-l border-dashed opacity-30" style={{ borderColor: ovalColor }} />
-        </div>
-      </motion.div>
+      />
 
-      {/* Instructions panel */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
         <div className="text-center">
           <h3 className="text-lg font-medium mb-2">{steps[step].title}</h3>
@@ -314,20 +306,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
                 }`}
               />
             ))}
-          </div>
-
-          {/* Stability indicator */}
-          <div className="mt-4 flex items-center justify-center text-sm">
-            <div className={`w-2 h-2 rounded-full mr-2 ${
-              stabilityScore > 0.9 ? 'bg-green-500' :
-              stabilityScore > 0.7 ? 'bg-blue-500' :
-              'bg-yellow-500'
-            }`} />
-            <span className="text-gray-600">
-              {stabilityScore > 0.9 ? 'Position parfaite' :
-               stabilityScore > 0.7 ? 'Bonne position' :
-               'Ajustez votre position'}
-            </span>
           </div>
         </div>
       </div>
