@@ -19,9 +19,11 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 }) => {
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [retryCount, setRetryCount] = useState(0);
   const irisDataRef = useRef<{ leftIris: number[]; rightIris: number[] }[]>([]);
   const AVERAGE_IRIS_DIAMETER_MM = 11.7; // Average human iris diameter in millimeters
   const MIN_VALID_FRAMES = 10; // Minimum number of valid frames needed for calibration
+  const MAX_RETRIES = 3; // Maximum number of calibration retries
   const frameBufferRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -34,6 +36,8 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   }, []);
 
   const validateVideoFrame = (video: HTMLVideoElement): boolean => {
+    if (!video) return false;
+
     const videoState = {
       width: video.videoWidth,
       height: video.videoHeight,
@@ -44,6 +48,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
     console.log('Video state:', videoState);
 
+    // Wait for video to be fully loaded and playing
     return (
       video.readyState === 4 && // HAVE_ENOUGH_DATA
       video.videoWidth > 0 &&
@@ -54,19 +59,19 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   };
 
   const captureVideoFrame = (video: HTMLVideoElement): HTMLCanvasElement | null => {
-    if (!frameBufferRef.current) return null;
+    if (!frameBufferRef.current || !validateVideoFrame(video)) return null;
 
     const canvas = frameBufferRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    // Update canvas dimensions if video dimensions have changed
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    }
-
     try {
+      // Ensure canvas dimensions match video
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
       ctx.drawImage(video, 0, 0);
       return canvas;
     } catch (error) {
@@ -91,8 +96,12 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
         Math.sqrt(Math.pow(point.x - centerX, 2) + Math.pow(point.y - centerY, 2))
       );
 
-      // Filter out any invalid distances
-      const validDistances = distances.filter(d => !isNaN(d) && d > 0);
+      // Filter out any invalid distances and extreme values
+      const validDistances = distances.filter(d => 
+        !isNaN(d) && 
+        d > 0 && 
+        d < Math.max(frameBufferRef.current?.width || 1280, frameBufferRef.current?.height || 720) / 10
+      );
 
       if (validDistances.length < 2) {
         console.log('Not enough valid distances:', validDistances);
@@ -123,8 +132,10 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       typeof point.y === 'number' && 
       !isNaN(point.x) && 
       !isNaN(point.y) &&
-      point.x > 0 &&
-      point.y > 0;
+      point.x >= 0 &&
+      point.y >= 0 &&
+      point.x <= (frameBufferRef.current?.width || 1280) &&
+      point.y <= (frameBufferRef.current?.height || 720);
 
     const allPointsValid = leftIris.every(isValidPoint) && rightIris.every(isValidPoint);
     if (!allPointsValid) {
@@ -142,16 +153,16 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       return false;
     }
 
-    // Check if diameters are within reasonable range (5-25 pixels)
-    if (leftDiameter < 5 || leftDiameter > 25 || rightDiameter < 5 || rightDiameter > 25) {
+    // Check if diameters are within reasonable range (8-20 pixels for typical webcam distances)
+    if (leftDiameter < 8 || leftDiameter > 20 || rightDiameter < 8 || rightDiameter > 20) {
       console.log('Iris diameters out of reasonable range');
       return false;
     }
 
-    // Check if left and right iris diameters are similar (within 20%)
+    // Check if left and right iris diameters are similar (within 15%)
     const diameterDiff = Math.abs(leftDiameter - rightDiameter);
     const avgDiameter = (leftDiameter + rightDiameter) / 2;
-    if (diameterDiff / avgDiameter > 0.2) {
+    if (diameterDiff / avgDiameter > 0.15) {
       console.log('Iris diameters too different');
       return false;
     }
@@ -206,7 +217,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       AVERAGE_IRIS_DIAMETER_MM
     });
 
-    if (!isFinite(scalingFactor) || scalingFactor <= 0 || scalingFactor > 1) {
+    if (!isFinite(scalingFactor) || scalingFactor <= 0) {
       throw new Error(`Invalid scaling factor calculated: ${scalingFactor}`);
     }
 
@@ -231,14 +242,14 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     const updateCalibration = async () => {
       try {
         if (!webcam || !validateVideoFrame(webcam)) {
-          console.log('Invalid video state, skipping frame');
+          console.log('Invalid video state, waiting for valid frame...');
           animationFrame = requestAnimationFrame(updateCalibration);
           return;
         }
 
         const frameCanvas = captureVideoFrame(webcam);
         if (!frameCanvas) {
-          console.log('Failed to capture video frame');
+          console.log('Failed to capture video frame, retrying...');
           animationFrame = requestAnimationFrame(updateCalibration);
           return;
         }
@@ -282,9 +293,15 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
               onCalibrationComplete(scalingFactor);
             } catch (error) {
               console.error('Calibration failed:', error);
-              setStep(0);
-              setProgress(0);
-              irisDataRef.current = [];
+              if (retryCount < MAX_RETRIES) {
+                console.log(`Retrying calibration (${retryCount + 1}/${MAX_RETRIES})`);
+                setRetryCount(prev => prev + 1);
+                setStep(0);
+                setProgress(0);
+                irisDataRef.current = [];
+              } else {
+                throw new Error('Maximum calibration retries exceeded');
+              }
             }
           }
         }
@@ -299,7 +316,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame);
     };
-  }, [step, isCalibrating, webcam, landmarksDetector, onCalibrationComplete, onLandmarksUpdate]);
+  }, [step, isCalibrating, webcam, landmarksDetector, onCalibrationComplete, onLandmarksUpdate, retryCount]);
 
   const steps = [
     {
@@ -308,9 +325,9 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       duration: 3000
     },
     {
-      title: "Tournez lentement la tête",
-      instruction: "Tournez lentement la tête vers la gauche puis vers la droite",
-      duration: 5000
+      title: "Gardez les yeux ouverts",
+      instruction: "Gardez vos yeux bien ouverts et évitez de cligner",
+      duration: 3000
     },
     {
       title: "Restez immobile",
