@@ -10,6 +10,10 @@ interface FaceCalibrationProps {
   landmarksDetector: any;
 }
 
+const AVERAGE_FACE_HEIGHT_MM = 200; // Average face height from forehead to chin
+const MIN_VALID_FRAMES = 5;
+const MAX_RETRIES = 3;
+
 const FaceCalibration: React.FC<FaceCalibrationProps> = ({ 
   onCalibrationComplete, 
   isCalibrating, 
@@ -20,11 +24,9 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
-  const irisDataRef = useRef<{ leftIris: number[]; rightIris: number[] }[]>([]);
-  const AVERAGE_IRIS_DIAMETER_MM = 11.7;
-  const MIN_VALID_FRAMES = 5; // Reduced from 10 to make calibration more forgiving
-  const MAX_RETRIES = 3;
+  const faceHeightDataRef = useRef<number[]>([]);
   const frameBufferRef = useRef<HTMLCanvasElement | null>(null);
+  const [ovalScale, setOvalScale] = useState(1);
 
   useEffect(() => {
     if (!frameBufferRef.current) {
@@ -35,9 +37,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   }, []);
 
   const validateVideoFrame = (video: HTMLVideoElement): boolean => {
-    if (!video) return false;
-
-    // Log video properties for debugging
     console.log('Video state:', {
       width: video.videoWidth,
       height: video.videoHeight,
@@ -47,7 +46,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       currentTime: video.currentTime
     });
 
-    // Add a small delay to ensure video is actually playing
     return (
       video.readyState === 4 &&
       video.videoWidth > 0 &&
@@ -61,7 +59,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const captureVideoFrame = (video: HTMLVideoElement): HTMLCanvasElement | null => {
     if (!frameBufferRef.current) return null;
 
-    // Wait for valid video state
     if (!validateVideoFrame(video)) {
       console.log('Video not ready for capture');
       return null;
@@ -72,17 +69,14 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     if (!ctx) return null;
 
     try {
-      // Update canvas dimensions if needed
       if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
       }
 
-      // Clear canvas before drawing
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(video, 0, 0);
 
-      // Verify the frame was captured
       try {
         ctx.getImageData(0, 0, 1, 1);
       } catch (e) {
@@ -97,103 +91,56 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     }
   };
 
-  const calculateIrisDiameter = (points: any[]): number => {
-    if (!points || points.length < 5) return NaN;
+  const calculateFaceHeight = (landmarks: any[]): number => {
+    if (!landmarks || landmarks.length < 468) return NaN;
 
     try {
-      const centerX = points[0].x;
-      const centerY = points[0].y;
+      // Use forehead (10) to chin (152) for face height
+      const forehead = landmarks[10];
+      const chin = landmarks[152];
 
-      // Calculate distances from center to edge points
-      const distances = points.slice(1).map(point => 
-        Math.sqrt(Math.pow(point.x - centerX, 2) + Math.pow(point.y - centerY, 2))
+      if (!forehead || !chin) return NaN;
+
+      const height = Math.sqrt(
+        Math.pow(chin.x - forehead.x, 2) + 
+        Math.pow(chin.y - forehead.y, 2)
       );
 
-      // More lenient validation
-      const validDistances = distances.filter(d => 
-        !isNaN(d) && 
-        d > 0 && 
-        d < Math.max(frameBufferRef.current?.width || 1280) / 8
-      );
-
-      if (validDistances.length < 2) return NaN;
-
-      // Use median instead of mean for more stability
-      validDistances.sort((a, b) => a - b);
-      const medianRadius = validDistances[Math.floor(validDistances.length / 2)];
-      return medianRadius * 2;
+      return height;
     } catch (error) {
-      console.error('Error calculating iris diameter:', error);
+      console.error('Error calculating face height:', error);
       return NaN;
     }
   };
 
-  const validateIrisData = (leftIris: any[], rightIris: any[]): boolean => {
-    if (!leftIris || !rightIris || leftIris.length < 5 || rightIris.length < 5) {
-      return false;
-    }
+  const validateFaceHeight = (height: number): boolean => {
+    if (isNaN(height) || height <= 0) return false;
 
-    const isValidPoint = (point: any) => 
-      point && 
-      typeof point.x === 'number' && 
-      typeof point.y === 'number' && 
-      !isNaN(point.x) && 
-      !isNaN(point.y) &&
-      point.x >= 0 &&
-      point.y >= 0;
-
-    if (!leftIris.every(isValidPoint) || !rightIris.every(isValidPoint)) {
-      return false;
-    }
-
-    const leftDiameter = calculateIrisDiameter(leftIris);
-    const rightDiameter = calculateIrisDiameter(rightIris);
-
-    if (isNaN(leftDiameter) || isNaN(rightDiameter)) {
-      return false;
-    }
-
-    // More lenient range check (6-25 pixels)
-    if (leftDiameter < 6 || leftDiameter > 25 || rightDiameter < 6 || rightDiameter > 25) {
-      return false;
-    }
-
-    // More lenient symmetry check (within 25%)
-    const diameterDiff = Math.abs(leftDiameter - rightDiameter);
-    const avgDiameter = (leftDiameter + rightDiameter) / 2;
-    return (diameterDiff / avgDiameter) <= 0.25;
+    // Face height should be between 20% and 80% of frame height
+    const frameHeight = frameBufferRef.current?.height || 720;
+    return height > frameHeight * 0.2 && height < frameHeight * 0.8;
   };
 
   const calculateFinalScalingFactor = (): number => {
-    const validFrames = irisDataRef.current.filter(frame => 
-      validateIrisData(frame.leftIris as any, frame.rightIris as any)
+    const validHeights = faceHeightDataRef.current.filter(height => 
+      validateFaceHeight(height)
     );
 
-    console.log(`Valid frames: ${validFrames.length}/${MIN_VALID_FRAMES} required`);
+    console.log(`Valid measurements: ${validHeights.length}/${MIN_VALID_FRAMES} required`);
 
-    if (validFrames.length < MIN_VALID_FRAMES) {
-      throw new Error(`Insufficient valid frames: ${validFrames.length} < ${MIN_VALID_FRAMES}`);
+    if (validHeights.length < MIN_VALID_FRAMES) {
+      throw new Error(`Insufficient valid measurements: ${validHeights.length} < ${MIN_VALID_FRAMES}`);
     }
 
-    const diameters = validFrames.map(frame => {
-      const leftDiameter = calculateIrisDiameter(frame.leftIris as any);
-      const rightDiameter = calculateIrisDiameter(frame.rightIris as any);
-      return (leftDiameter + rightDiameter) / 2;
-    }).filter(d => !isNaN(d) && d > 0);
-
-    if (diameters.length < MIN_VALID_FRAMES) {
-      throw new Error('Insufficient valid measurements');
-    }
-
-    // Use median for more stable results
-    diameters.sort((a, b) => a - b);
-    const medianDiameter = diameters[Math.floor(diameters.length / 2)];
-    const scalingFactor = AVERAGE_IRIS_DIAMETER_MM / medianDiameter;
+    // Use median for stability
+    validHeights.sort((a, b) => a - b);
+    const medianHeight = validHeights[Math.floor(validHeights.length / 2)];
+    const scalingFactor = AVERAGE_FACE_HEIGHT_MM / medianHeight;
 
     console.log('Scaling factor calculated:', {
-      medianDiameter,
+      medianHeight,
       scalingFactor,
-      AVERAGE_IRIS_DIAMETER_MM
+      AVERAGE_FACE_HEIGHT_MM
     });
 
     if (!isFinite(scalingFactor) || scalingFactor <= 0) {
@@ -209,11 +156,10 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     let animationFrame: number;
     const startTime = Date.now();
     const duration = steps[step].duration;
-    irisDataRef.current = [];
+    faceHeightDataRef.current = [];
 
     const updateCalibration = async () => {
       try {
-        // Ensure video is ready
         if (!validateVideoFrame(webcam)) {
           animationFrame = requestAnimationFrame(updateCalibration);
           return;
@@ -232,11 +178,14 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
 
-          const leftIris = faceMesh.slice(468, 473);
-          const rightIris = faceMesh.slice(473, 478);
-
-          if (validateIrisData(leftIris, rightIris)) {
-            irisDataRef.current.push({ leftIris, rightIris });
+          const faceHeight = calculateFaceHeight(faceMesh);
+          if (validateFaceHeight(faceHeight)) {
+            faceHeightDataRef.current.push(faceHeight);
+            
+            // Adjust oval scale based on face height
+            const idealHeight = frameCanvas.height * 0.6;
+            const scale = faceHeight / idealHeight;
+            setOvalScale(Math.min(Math.max(scale, 0.8), 1.2));
           }
         }
 
@@ -260,7 +209,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
                 setRetryCount(prev => prev + 1);
                 setStep(0);
                 setProgress(0);
-                irisDataRef.current = [];
+                faceHeightDataRef.current = [];
               } else {
                 throw new Error('Maximum calibration retries exceeded');
               }
@@ -282,18 +231,18 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
   const steps = [
     {
-      title: "Centrez votre visage",
-      instruction: "Positionnez votre visage dans l'ovale et regardez droit devant",
+      title: "Positionnez votre visage",
+      instruction: "Ajustez votre position pour que votre visage remplisse l'ovale",
       duration: 3000
     },
     {
-      title: "Gardez les yeux ouverts",
-      instruction: "Gardez vos yeux bien ouverts et évitez de cligner",
+      title: "Gardez la tête droite",
+      instruction: "Regardez droit devant vous, du front jusqu'au menton",
       duration: 3000
     },
     {
       title: "Restez immobile",
-      instruction: "Gardez la tête immobile pendant quelques secondes",
+      instruction: "Maintenez votre position pendant quelques secondes",
       duration: 3000
     }
   ];
@@ -309,8 +258,12 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           maxHeight: '500px'
         }}
         initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.5 }}
+        animate={{ 
+          scale: ovalScale,
+          opacity: 1,
+          borderColor: faceHeightDataRef.current.length >= MIN_VALID_FRAMES ? '#10B981' : '#3B82F6'
+        }}
+        transition={{ duration: 0.3 }}
       />
 
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
