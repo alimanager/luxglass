@@ -7,7 +7,8 @@
     "node": "18.x"
   },
   "scripts": {
-    "dev": "npx vite"
+    "dev": "npx vite",
+    "postinstall": "node scripts/download-face-api-models.js"
   },
   "dependencies": {
     "@tensorflow-models/face-detection": "^1.0.3",
