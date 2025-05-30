@@ -197,10 +197,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
   const analyzeFaceCharacteristics = async (face: faceDetection.Face, frameCanvas: HTMLCanvasElement): Promise<FaceCharacteristics> => {
     if (!landmarksDetectorRef.current || !scalingFactor) {
-      console.error('Dependencies not ready:', {
-        landmarksDetector: !!landmarksDetectorRef.current,
-        scalingFactor
-      });
       throw new Error('Landmarks detector or calibration not ready');
     }
 
@@ -221,20 +217,9 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     );
     const faceHeightMm = faceHeightPixels * scalingFactor;
 
-    console.log('Face Height Measurements:', {
-      pixels: faceHeightPixels.toFixed(2),
-      millimeters: faceHeightMm.toFixed(2),
-      scalingFactor: scalingFactor.toFixed(4)
-    });
-
     const box = face.box;
     const faceWidthPixels = box.width;
     const faceWidthMm = pixelsToMillimeters(Math.round(faceWidthPixels));
-
-    console.log('Face Width Measurements:', {
-      pixels: faceWidthPixels.toFixed(2),
-      millimeters: faceWidthMm.toFixed(2)
-    });
 
     const ipdPixels = calculateDistance(
       [faceMesh[468].x, faceMesh[468].y],
@@ -242,29 +227,28 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     );
     const ipdMm = pixelsToMillimeters(Math.round(ipdPixels));
 
-    console.log('Interpupillary Distance (IPD):', {
-      pixels: ipdPixels.toFixed(2),
-      millimeters: ipdMm.toFixed(2),
-      typical: 'Typical range: 54-74mm'
-    });
-
     const noseBridgeWidthPixels = calculateDistance(
       [faceMesh[168].x - 15, faceMesh[168].y],
       [faceMesh[168].x + 15, faceMesh[168].y]
     );
     const noseBridgeWidthMm = pixelsToMillimeters(Math.round(noseBridgeWidthPixels));
 
-    console.log('Nose Bridge Width:', {
-      pixels: noseBridgeWidthPixels.toFixed(2),
-      millimeters: noseBridgeWidthMm.toFixed(2),
-      typical: 'Typical range: 15-25mm'
-    });
+    console.log('Face Measurements Comparison:');
+    console.log('Face Height:');
+    console.log('  Calculated (mm):', faceHeightMm.toFixed(1));
+    console.log('  Manual (mm): ~180-230 (typical range)');
 
-    const faceRatio = faceHeightMm / faceWidthMm;
-    console.log('Face Proportions:', {
-      heightToWidthRatio: faceRatio.toFixed(3),
-      typical: 'Typical range: 1.3-1.7'
-    });
+    console.log('Face Width:');
+    console.log('  Calculated (mm):', faceWidthMm.toFixed(1));
+    console.log('  Manual (mm): ~130-150 (typical range)');
+
+    console.log('Interpupillary Distance (IPD):');
+    console.log('  Calculated (mm):', ipdMm.toFixed(1));
+    console.log('  Manual (mm): ~54-74 (typical range)');
+
+    console.log('Nose Bridge Width:');
+    console.log('  Calculated (mm):', noseBridgeWidthMm.toFixed(1));
+    console.log('  Manual (mm): ~15-25 (typical range)');
 
     const leftSide = calculateDistance(
       [faceMesh[123].x, faceMesh[123].y],
@@ -368,16 +352,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       foreheadToEyebrowDistance,
       skinTone
     };
-
-    console.log('Final Face Characteristics:', {
-      ...characteristics,
-      typicalRanges: {
-        faceHeight: '180-230mm',
-        faceWidth: '130-150mm',
-        ipd: '54-74mm',
-        noseBridgeWidth: '15-25mm'
-      }
-    });
 
     return characteristics;
   };
