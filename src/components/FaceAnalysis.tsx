@@ -211,47 +211,62 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Face mesh data not available');
     }
 
+    // Manual measurements for comparison (typical values)
+    const manualFaceHeight = 180; // mm
+    const manualFaceWidth = 140; // mm
+    const manualIPD = 63; // mm
+    const manualNoseBridgeWidth = 20; // mm
+
+    // Calculate face height
     const faceHeightPixels = calculateDistance(
-      [faceMesh[10].x, faceMesh[10].y],
-      [faceMesh[152].x, faceMesh[152].y]
+      [faceMesh[10].x, faceMesh[10].y], // Forehead point
+      [faceMesh[152].x, faceMesh[152].y] // Chin point
     );
     const faceHeightMm = faceHeightPixels * scalingFactor;
 
+    // Calculate face width
     const faceWidthPixels = calculateDistance(
-      [faceMesh[234].x, faceMesh[234].y],
-      [faceMesh[454].x, faceMesh[454].y]
+      [faceMesh[234].x, faceMesh[234].y], // Left temple
+      [faceMesh[454].x, faceMesh[454].y] // Right temple
     );
     const faceWidthMm = faceWidthPixels * scalingFactor;
 
+    // Calculate IPD (interpupillary distance)
     const ipdPixels = calculateDistance(
-      [faceMesh[468].x, faceMesh[468].y],
-      [faceMesh[473].x, faceMesh[473].y]
+      [faceMesh[468].x, faceMesh[468].y], // Left eye
+      [faceMesh[473].x, faceMesh[473].y] // Right eye
     );
     const ipdMm = ipdPixels * scalingFactor;
 
+    // Calculate nose bridge width
     const noseBridgeWidthPixels = calculateDistance(
-      [faceMesh[168].x - 15, faceMesh[168].y],
-      [faceMesh[168].x + 15, faceMesh[168].y]
+      [faceMesh[168].x - 15, faceMesh[168].y], // Left nose bridge point
+      [faceMesh[168].x + 15, faceMesh[168].y] // Right nose bridge point
     );
     const noseBridgeWidthMm = noseBridgeWidthPixels * scalingFactor;
 
-    console.log('Face Measurements (Calculated vs Manual):');
+    // Log measurements with manual comparisons
+    console.log('\nFace Measurements Comparison:');
     console.log('----------------------------------------');
     console.log('Face Height:');
     console.log('  Calculated:', faceHeightMm.toFixed(1), 'mm');
-    console.log('  Manual: 180-230 mm (typical range)');
+    console.log('  Manual:', manualFaceHeight, 'mm');
+    console.log('  Difference:', Math.abs(faceHeightMm - manualFaceHeight).toFixed(1), 'mm');
     
     console.log('\nFace Width:');
     console.log('  Calculated:', faceWidthMm.toFixed(1), 'mm');
-    console.log('  Manual: 130-150 mm (typical range)');
+    console.log('  Manual:', manualFaceWidth, 'mm');
+    console.log('  Difference:', Math.abs(faceWidthMm - manualFaceWidth).toFixed(1), 'mm');
     
     console.log('\nInterpupillary Distance (IPD):');
     console.log('  Calculated:', ipdMm.toFixed(1), 'mm');
-    console.log('  Manual: 54-74 mm (typical range)');
+    console.log('  Manual:', manualIPD, 'mm');
+    console.log('  Difference:', Math.abs(ipdMm - manualIPD).toFixed(1), 'mm');
     
     console.log('\nNose Bridge Width:');
     console.log('  Calculated:', noseBridgeWidthMm.toFixed(1), 'mm');
-    console.log('  Manual: 15-25 mm (typical range)');
+    console.log('  Manual:', manualNoseBridgeWidth, 'mm');
+    console.log('  Difference:', Math.abs(noseBridgeWidthMm - manualNoseBridgeWidth).toFixed(1), 'mm');
 
     const leftSide = calculateDistance(
       [faceMesh[123].x, faceMesh[123].y],
