@@ -217,38 +217,41 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     );
     const faceHeightMm = faceHeightPixels * scalingFactor;
 
-    const box = face.box;
-    const faceWidthPixels = box.width;
-    const faceWidthMm = pixelsToMillimeters(Math.round(faceWidthPixels));
+    const faceWidthPixels = calculateDistance(
+      [faceMesh[234].x, faceMesh[234].y],
+      [faceMesh[454].x, faceMesh[454].y]
+    );
+    const faceWidthMm = faceWidthPixels * scalingFactor;
 
     const ipdPixels = calculateDistance(
       [faceMesh[468].x, faceMesh[468].y],
       [faceMesh[473].x, faceMesh[473].y]
     );
-    const ipdMm = pixelsToMillimeters(Math.round(ipdPixels));
+    const ipdMm = ipdPixels * scalingFactor;
 
     const noseBridgeWidthPixels = calculateDistance(
       [faceMesh[168].x - 15, faceMesh[168].y],
       [faceMesh[168].x + 15, faceMesh[168].y]
     );
-    const noseBridgeWidthMm = pixelsToMillimeters(Math.round(noseBridgeWidthPixels));
+    const noseBridgeWidthMm = noseBridgeWidthPixels * scalingFactor;
 
-    console.log('Face Measurements Comparison:');
+    console.log('Face Measurements (Calculated vs Manual):');
+    console.log('----------------------------------------');
     console.log('Face Height:');
-    console.log('  Calculated (mm):', faceHeightMm.toFixed(1));
-    console.log('  Manual (mm): ~180-230 (typical range)');
-
-    console.log('Face Width:');
-    console.log('  Calculated (mm):', faceWidthMm.toFixed(1));
-    console.log('  Manual (mm): ~130-150 (typical range)');
-
-    console.log('Interpupillary Distance (IPD):');
-    console.log('  Calculated (mm):', ipdMm.toFixed(1));
-    console.log('  Manual (mm): ~54-74 (typical range)');
-
-    console.log('Nose Bridge Width:');
-    console.log('  Calculated (mm):', noseBridgeWidthMm.toFixed(1));
-    console.log('  Manual (mm): ~15-25 (typical range)');
+    console.log('  Calculated:', faceHeightMm.toFixed(1), 'mm');
+    console.log('  Manual: 180-230 mm (typical range)');
+    
+    console.log('\nFace Width:');
+    console.log('  Calculated:', faceWidthMm.toFixed(1), 'mm');
+    console.log('  Manual: 130-150 mm (typical range)');
+    
+    console.log('\nInterpupillary Distance (IPD):');
+    console.log('  Calculated:', ipdMm.toFixed(1), 'mm');
+    console.log('  Manual: 54-74 mm (typical range)');
+    
+    console.log('\nNose Bridge Width:');
+    console.log('  Calculated:', noseBridgeWidthMm.toFixed(1), 'mm');
+    console.log('  Manual: 15-25 mm (typical range)');
 
     const leftSide = calculateDistance(
       [faceMesh[123].x, faceMesh[123].y],
@@ -270,13 +273,13 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         [faceMesh[152].x, faceMesh[152].y]
       )
     ) / 2;
-    const jawlineStrength = Math.round((jawlineLength / box.width) * 100);
+    const jawlineStrength = Math.round((jawlineLength / face.box.width) * 100);
 
     const cheekboneWidth = calculateDistance(
       [faceMesh[123].x, faceMesh[123].y],
       [faceMesh[352].x, faceMesh[352].y]
     );
-    const cheekboneProminence = Math.round((cheekboneWidth / box.width) * 100);
+    const cheekboneProminence = Math.round((cheekboneWidth / face.box.width) * 100);
 
     const chinWidth = calculateDistance(
       [faceMesh[172].x, faceMesh[172].y],
@@ -336,7 +339,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
 
-    const characteristics = {
+    return {
       symmetry,
       jawlineStrength,
       foreheadHeight,
@@ -352,8 +355,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       foreheadToEyebrowDistance,
       skinTone
     };
-
-    return characteristics;
   };
 
   const analyzeFaceShape = useCallback(async () => {
