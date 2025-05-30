@@ -219,7 +219,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       [faceMesh[10].x, faceMesh[10].y],
       [faceMesh[152].x, faceMesh[152].y]
     );
-
     const faceHeightMm = faceHeightPixels * scalingFactor;
 
     console.log('Face Height Measurements:', {
@@ -229,74 +228,43 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     });
 
     const box = face.box;
-    const faceWidth = pixelsToMillimeters(Math.round(box.width));
-    const faceLength = pixelsToMillimeters(Math.round(box.height));
+    const faceWidthPixels = box.width;
+    const faceWidthMm = pixelsToMillimeters(Math.round(faceWidthPixels));
 
-    console.log('Face Dimensions:', {
-      width: {
-        pixels: box.width.toFixed(2),
-        millimeters: faceWidth.toFixed(2)
-      },
-      length: {
-        pixels: box.height.toFixed(2),
-        millimeters: faceLength.toFixed(2)
-      },
-      aspectRatio: (box.height / box.width).toFixed(3)
+    console.log('Face Width Measurements:', {
+      pixels: faceWidthPixels.toFixed(2),
+      millimeters: faceWidthMm.toFixed(2)
     });
 
-    const interpupillaryDistance = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[468].x, faceMesh[468].y],
-          [faceMesh[473].x, faceMesh[473].y]
-        )
-      )
+    const ipdPixels = calculateDistance(
+      [faceMesh[468].x, faceMesh[468].y],
+      [faceMesh[473].x, faceMesh[473].y]
     );
+    const ipdMm = pixelsToMillimeters(Math.round(ipdPixels));
 
-    const noseBridgeWidth = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[168].x - 15, faceMesh[168].y],
-          [faceMesh[168].x + 15, faceMesh[168].y]
-        )
-      )
-    );
+    console.log('Interpupillary Distance (IPD):', {
+      pixels: ipdPixels.toFixed(2),
+      millimeters: ipdMm.toFixed(2),
+      typical: 'Typical range: 54-74mm'
+    });
 
-    const noseLength = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[168].x, faceMesh[168].y],
-          [faceMesh[1].x, faceMesh[1].y]
-        )
-      )
+    const noseBridgeWidthPixels = calculateDistance(
+      [faceMesh[168].x - 15, faceMesh[168].y],
+      [faceMesh[168].x + 15, faceMesh[168].y]
     );
+    const noseBridgeWidthMm = pixelsToMillimeters(Math.round(noseBridgeWidthPixels));
 
-    const templeLength = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[234].x, faceMesh[234].y],
-          [faceMesh[454].x, faceMesh[454].y]
-        ) / 2
-      )
-    );
+    console.log('Nose Bridge Width:', {
+      pixels: noseBridgeWidthPixels.toFixed(2),
+      millimeters: noseBridgeWidthMm.toFixed(2),
+      typical: 'Typical range: 15-25mm'
+    });
 
-    const foreheadToEyebrowDistance = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[10].x, faceMesh[10].y],
-          [faceMesh[168].x, faceMesh[168].y]
-        )
-      )
-    );
-
-    const foreheadHeight = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[10].x, faceMesh[10].y],
-          [faceMesh[168].x, faceMesh[168].y]
-        )
-      )
-    );
+    const faceRatio = faceHeightMm / faceWidthMm;
+    console.log('Face Proportions:', {
+      heightToWidthRatio: faceRatio.toFixed(3),
+      typical: 'Typical range: 1.3-1.7'
+    });
 
     const leftSide = calculateDistance(
       [faceMesh[123].x, faceMesh[123].y],
@@ -346,11 +314,38 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
-    const eyeDistance = pixelsToMillimeters(
+    const noseLength = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[133].x, faceMesh[133].y],
-          [faceMesh[362].x, faceMesh[362].y]
+          [faceMesh[168].x, faceMesh[168].y],
+          [faceMesh[1].x, faceMesh[1].y]
+        )
+      )
+    );
+
+    const templeLength = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[234].x, faceMesh[234].y],
+          [faceMesh[454].x, faceMesh[454].y]
+        ) / 2
+      )
+    );
+
+    const foreheadToEyebrowDistance = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[10].x, faceMesh[10].y],
+          [faceMesh[168].x, faceMesh[168].y]
+        )
+      )
+    );
+
+    const foreheadHeight = pixelsToMillimeters(
+      Math.round(
+        calculateDistance(
+          [faceMesh[10].x, faceMesh[10].y],
+          [faceMesh[168].x, faceMesh[168].y]
         )
       )
     );
@@ -363,18 +358,26 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       foreheadHeight,
       cheekboneProminence,
       chinShape,
-      faceLength,
-      faceWidth,
-      eyeDistance,
+      faceLength: faceHeightMm,
+      faceWidth: faceWidthMm,
+      eyeDistance: ipdMm,
       noseLength,
-      noseBridgeWidth,
+      noseBridgeWidth: noseBridgeWidthMm,
       templeLength,
-      interpupillaryDistance,
+      interpupillaryDistance: ipdMm,
       foreheadToEyebrowDistance,
       skinTone
     };
 
-    console.log('Final Face Characteristics:', characteristics);
+    console.log('Final Face Characteristics:', {
+      ...characteristics,
+      typicalRanges: {
+        faceHeight: '180-230mm',
+        faceWidth: '130-150mm',
+        ipd: '54-74mm',
+        noseBridgeWidth: '15-25mm'
+      }
+    });
 
     return characteristics;
   };
