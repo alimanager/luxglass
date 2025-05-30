@@ -205,7 +205,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     }
 
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
-    console.log('Face landmarks detected:', landmarks);
     
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected');
@@ -216,11 +215,34 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Face mesh data not available');
     }
 
-    console.log('Processing face mesh with scaling factor:', scalingFactor);
+    const faceHeightPixels = calculateDistance(
+      [faceMesh[10].x, faceMesh[10].y],
+      [faceMesh[152].x, faceMesh[152].y]
+    );
+
+    const faceHeightMm = faceHeightPixels * scalingFactor;
+
+    console.log('Face Height Measurements:', {
+      pixels: faceHeightPixels.toFixed(2),
+      millimeters: faceHeightMm.toFixed(2),
+      scalingFactor: scalingFactor.toFixed(4)
+    });
 
     const box = face.box;
     const faceWidth = pixelsToMillimeters(Math.round(box.width));
     const faceLength = pixelsToMillimeters(Math.round(box.height));
+
+    console.log('Face Dimensions:', {
+      width: {
+        pixels: box.width.toFixed(2),
+        millimeters: faceWidth.toFixed(2)
+      },
+      length: {
+        pixels: box.height.toFixed(2),
+        millimeters: faceLength.toFixed(2)
+      },
+      aspectRatio: (box.height / box.width).toFixed(3)
+    });
 
     const interpupillaryDistance = pixelsToMillimeters(
       Math.round(
@@ -230,12 +252,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         )
       )
     );
-
-    console.log('Key measurements:', {
-      faceWidth,
-      faceLength,
-      interpupillaryDistance
-    });
 
     const noseBridgeWidth = pixelsToMillimeters(
       Math.round(
@@ -341,7 +357,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
 
-    return {
+    const characteristics = {
       symmetry,
       jawlineStrength,
       foreheadHeight,
@@ -357,6 +373,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       foreheadToEyebrowDistance,
       skinTone
     };
+
+    console.log('Final Face Characteristics:', characteristics);
+
+    return characteristics;
   };
 
   const analyzeFaceShape = useCallback(async () => {
