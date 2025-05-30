@@ -16,6 +16,7 @@
     "@tensorflow/tfjs-backend-webgl": "^4.17.0",
     "@tensorflow/tfjs-core": "^4.17.0",
     "@types/three": "^0.162.0",
+    "face-api.js": "^0.22.2",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.358.0",
     "react": "^18.2.0",
