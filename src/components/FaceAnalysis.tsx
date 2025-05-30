@@ -20,6 +20,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         setIsModelLoading(true);
         setError(null);
 
+        console.log('Loading face-api.js models...');
+        
         // Load models from the public directory
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri('/models/face-api'),
@@ -28,6 +30,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           faceapi.nets.faceExpressionNet.loadFromUri('/models/face-api')
         ]);
 
+        console.log('Models loaded successfully');
+        
         // Start video after models are loaded
         await startVideo();
         setIsModelLoading(false);
