@@ -7,7 +7,9 @@
     "node": "18.x"
   },
   "scripts": {
-    "dev": "npx vite"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@tensorflow-models/face-detection": "^1.0.3",
