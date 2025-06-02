@@ -254,11 +254,15 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       <motion.div
         className="absolute border-4 rounded-full"
         style={{
-          width: '80%',
-          height: '90%',
-          maxWidth: '600px',
-          maxHeight: '700px',
-          borderColor: ovalColor
+          width: '65%',
+          height: '85%',
+          aspectRatio: '3/4',
+          maxWidth: '480px',
+          maxHeight: '640px',
+          borderColor: ovalColor,
+          transform: `translate(-50%, -50%) scale(${ovalScale})`,
+          left: '50%',
+          top: '50%'
         }}
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ 
