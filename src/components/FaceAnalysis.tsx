@@ -54,6 +54,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         canvasRef.current = document.createElement('canvas');
         canvasRef.current.willReadFrequently = true;
         
+        console.log('Detectors initialized:', {
+          faceDetector: detectorRef.current,
+          landmarksDetector: landmarksDetectorRef.current
+        });
+        
         setIsModelLoading(false);
         setError(null);
       } catch (err) {
@@ -111,6 +116,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   }, [isVideoReady, isModelLoading, isCalibrating]);
 
   const handleFaceCalibrationComplete = (newScalingFactor: number) => {
+    console.log('Calibration complete with scaling factor:', newScalingFactor);
     setScalingFactor(newScalingFactor);
     setCalibrationStep('complete');
     setIsCalibrating(false);
@@ -367,6 +373,14 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   };
 
   const analyzeFaceShape = useCallback(async () => {
+    console.log('Analyze button clicked. State:', {
+      faceDetected,
+      isModelLoading,
+      isVideoReady,
+      calibrationStep,
+      scalingFactor
+    });
+
     if (!faceDetected) {
       setError('Please ensure a face is detected before analysis.');
       return;
@@ -440,13 +454,22 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
   const isButtonDisabled = isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || calibrationStep !== 'complete';
 
+  console.log('Button state:', {
+    isAnalyzing,
+    isModelLoading,
+    isVideoReady,
+    faceDetected,
+    calibrationStep,
+    isButtonDisabled
+  });
+
   return (
     <div className="relative space-y-4">
-      <div className="aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden relative max-w-2xl mx-auto">
+      <div className="aspect-[4/3] bg-gray-100 rounded-lg overflow-hidden relative">
         <Webcam
           ref={webcamRef}
           mirrored={false}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           videoConstraints={{
             width: 1280,
             height: 720,
