@@ -132,14 +132,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       validateFaceHeight(h, frameBufferRef.current?.height || 720)
     );
 
-    console.log('Face Height Calibration Data:', {
-      totalMeasurements: heights.length,
-      validMeasurements: validHeights.length,
-      heightsInPixels: validHeights.map(h => h.toFixed(2)),
-      averageHeight: (validHeights.reduce((a, b) => a + b, 0) / validHeights.length).toFixed(2),
-      targetHeightMm: AVERAGE_FACE_HEIGHT_MM
-    });
-
     if (validHeights.length < MIN_VALID_FRAMES) {
       throw new Error(`Insufficient measurements: ${validHeights.length}/${MIN_VALID_FRAMES}`);
     }
@@ -147,12 +139,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     validHeights.sort((a, b) => a - b);
     const medianHeight = validHeights[Math.floor(validHeights.length / 2)];
     const scalingFactor = AVERAGE_FACE_HEIGHT_MM / medianHeight;
-
-    console.log('Scaling Factor Calculation:', {
-      medianHeightPixels: medianHeight.toFixed(2),
-      scalingFactor: scalingFactor.toFixed(4),
-      estimatedFaceHeightMm: (medianHeight * scalingFactor).toFixed(2)
-    });
 
     if (!isFinite(scalingFactor) || scalingFactor <= 0) {
       throw new Error(`Invalid scaling factor: ${scalingFactor}`);
@@ -248,17 +234,17 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const steps = [
     {
       title: "Positionnez votre visage",
-      instruction: "Ajustez votre position pour que votre visage remplisse l'ovale",
+      instruction: "Rapprochez-vous de la caméra jusqu'à ce que votre visage remplisse l'ovale",
       duration: 3000
     },
     {
       title: "Gardez la tête droite",
-      instruction: "Regardez droit devant vous, visage bien centré",
+      instruction: "Maintenez votre visage centré et regardez droit devant vous",
       duration: 3000
     },
     {
       title: "Restez immobile",
-      instruction: "Maintenez votre position pendant quelques secondes",
+      instruction: "Ne bougez pas pendant quelques secondes",
       duration: 3000
     }
   ];
@@ -268,10 +254,10 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       <motion.div
         className="absolute border-4 rounded-full"
         style={{
-          width: '60%',
-          height: '80%',
-          maxWidth: '400px',
-          maxHeight: '500px',
+          width: '80%',
+          height: '90%',
+          maxWidth: '600px',
+          maxHeight: '700px',
           borderColor: ovalColor
         }}
         initial={{ scale: 0.9, opacity: 0 }}
