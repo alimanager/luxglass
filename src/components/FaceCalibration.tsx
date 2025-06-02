@@ -234,12 +234,12 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const steps = [
     {
       title: "Positionnez votre visage",
-      instruction: "Rapprochez-vous de la caméra jusqu'à ce que votre visage remplisse l'ovale",
+      instruction: "Rapprochez-vous de la caméra jusqu'à ce que votre visage s'aligne avec le guide",
       duration: 3000
     },
     {
       title: "Gardez la tête droite",
-      instruction: "Maintenez votre visage centré et regardez droit devant vous",
+      instruction: "Alignez votre visage avec le guide et regardez droit devant vous",
       duration: 3000
     },
     {
@@ -249,24 +249,53 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     }
   ];
 
+  // Face shape path data for a more natural face outline
+  const facePath = `
+    M 50 15 
+    C 45 15, 35 20, 30 25 
+    C 25 30, 20 40, 15 50 
+    C 10 60, 8 75, 8 85 
+    C 8 95, 12 105, 15 115 
+    C 18 125, 25 135, 35 142 
+    C 45 149, 65 152, 75 152 
+    C 85 152, 105 149, 115 142 
+    C 125 135, 132 125, 135 115 
+    C 138 105, 142 95, 142 85 
+    C 142 75, 140 60, 135 50 
+    C 130 40, 125 30, 120 25 
+    C 115 20, 105 15, 100 15 
+    C 95 15, 85 15, 75 15 
+    C 65 15, 55 15, 50 15
+  `;
+
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <motion.div
-        className="absolute border-4 rounded-full"
+      <motion.svg
+        className="absolute"
         style={{
           width: '80%',
           height: '90%',
           maxWidth: '600px',
           maxHeight: '700px',
-          borderColor: ovalColor
         }}
+        viewBox="0 0 150 160"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ 
           scale: ovalScale,
           opacity: 1
         }}
         transition={{ duration: 0.3 }}
-      />
+      >
+        <motion.path
+          d={facePath}
+          fill="none"
+          strokeWidth="2"
+          stroke={ovalColor}
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 1, ease: "easeInOut" }}
+        />
+      </motion.svg>
 
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
         <div className="text-center">
