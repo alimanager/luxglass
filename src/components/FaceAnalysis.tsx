@@ -126,10 +126,11 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setCurrentLandmarks(landmarks);
   };
 
-  const calculateDistance = (point1: number[], point2: number[]) => {
+  const calculateDistance = (point1: number[], point2: number[]): number => {
     return Math.sqrt(
       Math.pow(point2[0] - point1[0], 2) + 
-      Math.pow(point2[1] - point1[1], 2)
+      Math.pow(point2[1] - point1[1], 2) +
+      (point2[2] && point1[2] ? Math.pow(point2[2] - point1[2], 2) : 0)
     );
   };
 
@@ -145,10 +146,12 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context not available');
 
+    // Sample points for skin tone analysis (forehead, cheeks, chin)
     const samplePoints = [
-      [faceMesh[10].x, faceMesh[10].y],
-      [faceMesh[123].x, faceMesh[123].y],
-      [faceMesh[352].x, faceMesh[352].y],
+      [faceMesh[151].x, faceMesh[151].y], // Forehead center
+      [faceMesh[116].x, faceMesh[116].y], // Left cheek
+      [faceMesh[345].x, faceMesh[345].y], // Right cheek
+      [faceMesh[152].x, faceMesh[152].y]  // Chin
     ];
 
     let totalR = 0, totalG = 0, totalB = 0;
@@ -219,38 +222,42 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     // Log landmark coordinates for verification
     console.log('\nLandmark Coordinates:');
-    console.log('Left Eye (468):', faceMesh[468]);
-    console.log('Right Eye (473):', faceMesh[473]);
+    console.log('Left Eye Inner (133):', faceMesh[133]);
+    console.log('Right Eye Inner (362):', faceMesh[362]);
+    console.log('Left Eye Outer (33):', faceMesh[33]);
+    console.log('Right Eye Outer (263):', faceMesh[263]);
     console.log('Forehead (10):', faceMesh[10]);
     console.log('Chin (152):', faceMesh[152]);
     console.log('Left Temple (234):', faceMesh[234]);
     console.log('Right Temple (454):', faceMesh[454]);
+    console.log('Nose Bridge Left (168):', faceMesh[168]);
+    console.log('Nose Bridge Right (388):', faceMesh[388]);
 
     // Calculate face height using forehead to chin landmarks
     const faceHeightPixels = calculateDistance(
-      [faceMesh[10].x, faceMesh[10].y], // Forehead point
-      [faceMesh[152].x, faceMesh[152].y] // Chin point
+      [faceMesh[10].x, faceMesh[10].y, faceMesh[10].z], // Forehead point
+      [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z] // Chin point
     );
     const faceHeightMm = faceHeightPixels * scalingFactor;
 
     // Calculate face width using temple landmarks
     const faceWidthPixels = calculateDistance(
-      [faceMesh[234].x, faceMesh[234].y], // Left temple
-      [faceMesh[454].x, faceMesh[454].y] // Right temple
+      [faceMesh[234].x, faceMesh[234].y, faceMesh[234].z], // Left temple
+      [faceMesh[454].x, faceMesh[454].y, faceMesh[454].z] // Right temple
     );
     const faceWidthMm = faceWidthPixels * scalingFactor;
 
-    // Calculate IPD (interpupillary distance) using iris centers
+    // Calculate IPD using inner eye corners for more accuracy
     const ipdPixels = calculateDistance(
-      [faceMesh[468].x, faceMesh[468].y], // Left iris center
-      [faceMesh[473].x, faceMesh[473].y] // Right iris center
+      [faceMesh[133].x, faceMesh[133].y, faceMesh[133].z], // Left eye inner corner
+      [faceMesh[362].x, faceMesh[362].y, faceMesh[362].z] // Right eye inner corner
     );
     const ipdMm = ipdPixels * scalingFactor;
 
-    // Calculate nose bridge width
+    // Calculate nose bridge width using specific nose bridge landmarks
     const noseBridgeWidthPixels = calculateDistance(
-      [faceMesh[168].x - 15, faceMesh[168].y], // Left nose bridge point
-      [faceMesh[168].x + 15, faceMesh[168].y] // Right nose bridge point
+      [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z], // Left nose bridge point
+      [faceMesh[388].x, faceMesh[388].y, faceMesh[388].z] // Right nose bridge point
     );
     const noseBridgeWidthMm = noseBridgeWidthPixels * scalingFactor;
 
@@ -279,41 +286,41 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     // Calculate additional facial characteristics
     const leftSide = calculateDistance(
-      [faceMesh[123].x, faceMesh[123].y],
-      [faceMesh[1].x, faceMesh[1].y]
+      [faceMesh[123].x, faceMesh[123].y, faceMesh[123].z],
+      [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
     );
     const rightSide = calculateDistance(
-      [faceMesh[352].x, faceMesh[352].y],
-      [faceMesh[1].x, faceMesh[1].y]
+      [faceMesh[352].x, faceMesh[352].y, faceMesh[352].z],
+      [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
     );
     const symmetry = Math.round(100 - (Math.abs(leftSide - rightSide) / ((leftSide + rightSide) / 2)) * 100);
 
     const jawlineLength = (
       calculateDistance(
-        [faceMesh[172].x, faceMesh[172].y],
-        [faceMesh[152].x, faceMesh[152].y]
+        [faceMesh[172].x, faceMesh[172].y, faceMesh[172].z],
+        [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z]
       ) +
       calculateDistance(
-        [faceMesh[397].x, faceMesh[397].y],
-        [faceMesh[152].x, faceMesh[152].y]
+        [faceMesh[397].x, faceMesh[397].y, faceMesh[397].z],
+        [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z]
       )
     ) / 2;
     const jawlineStrength = Math.round((jawlineLength / face.box.width) * 100);
 
     const cheekboneWidth = calculateDistance(
-      [faceMesh[123].x, faceMesh[123].y],
-      [faceMesh[352].x, faceMesh[352].y]
+      [faceMesh[123].x, faceMesh[123].y, faceMesh[123].z],
+      [faceMesh[352].x, faceMesh[352].y, faceMesh[352].z]
     );
     const cheekboneProminence = Math.round((cheekboneWidth / face.box.width) * 100);
 
     // Determine chin shape
     const chinWidth = calculateDistance(
-      [faceMesh[172].x, faceMesh[172].y],
-      [faceMesh[397].x, faceMesh[397].y]
+      [faceMesh[172].x, faceMesh[172].y, faceMesh[172].z],
+      [faceMesh[397].x, faceMesh[397].y, faceMesh[397].z]
     );
     const chinHeight = calculateDistance(
-      [faceMesh[152].x, faceMesh[152].y],
-      [faceMesh[1].x, faceMesh[1].y]
+      [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z],
+      [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
     );
     
     const chinRatio = chinHeight / chinWidth;
@@ -331,8 +338,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const noseLength = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[168].x, faceMesh[168].y],
-          [faceMesh[1].x, faceMesh[1].y]
+          [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z],
+          [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
         )
       )
     );
@@ -340,8 +347,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const templeLength = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[234].x, faceMesh[234].y],
-          [faceMesh[454].x, faceMesh[454].y]
+          [faceMesh[234].x, faceMesh[234].y, faceMesh[234].z],
+          [faceMesh[454].x, faceMesh[454].y, faceMesh[454].z]
         ) / 2
       )
     );
@@ -349,8 +356,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const foreheadToEyebrowDistance = pixelsToMillimeters(
       Math.round(
         calculateDistance(
-          [faceMesh[10].x, faceMesh[10].y],
-          [faceMesh[168].x, faceMesh[168].y]
+          [faceMesh[10].x, faceMesh[10].y, faceMesh[10].z],
+          [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z]
         )
       )
     );
