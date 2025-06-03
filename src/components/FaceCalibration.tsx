@@ -39,6 +39,8 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const faceHeightDataRef = useRef<number[]>([]);
   const frameBufferRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number>();
+  const lastFrameTimeRef = useRef<number>(0);
+  const frameRateRef = useRef<number>(0);
 
   useEffect(() => {
     if (webcam) {
@@ -151,6 +153,34 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     return scalingFactor;
   };
 
+  const updateEllipsePosition = (faceMesh: any[]) => {
+    if (!faceMesh || faceMesh.length < 468) return;
+
+    const leftCheek = faceMesh[234];
+    const rightCheek = faceMesh[454];
+    const forehead = faceMesh[10];
+    const chin = faceMesh[152];
+
+    if (!leftCheek || !rightCheek || !forehead || !chin) return;
+
+    // Calculate normalized coordinates (0-1 range)
+    const centerX = (leftCheek.x + rightCheek.x) / 2;
+    const centerY = (forehead.y + chin.y) / 2;
+    const width = calculateDistance(leftCheek, rightCheek);
+    const height = calculateDistance(forehead, chin);
+    const rotation = Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x);
+
+    // Apply smoothing to prevent jitter
+    const smoothingFactor = 0.3;
+    setEllipseParams(prev => ({
+      centerX: prev.centerX * (1 - smoothingFactor) + centerX * smoothingFactor,
+      centerY: prev.centerY * (1 - smoothingFactor) + centerY * smoothingFactor,
+      width: prev.width * (1 - smoothingFactor) + (width * 1.1) * smoothingFactor,
+      height: prev.height * (1 - smoothingFactor) + (height * 1.2) * smoothingFactor,
+      rotation: prev.rotation * (1 - smoothingFactor) + rotation * smoothingFactor
+    }));
+  };
+
   useEffect(() => {
     if (!isCalibrating || !webcam || !landmarksDetector) return;
 
@@ -158,7 +188,14 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     const duration = steps[step].duration;
     faceHeightDataRef.current = [];
 
-    const updateCalibration = async () => {
+    const updateCalibration = async (timestamp: number) => {
+      // Calculate frame rate
+      if (lastFrameTimeRef.current) {
+        const deltaTime = timestamp - lastFrameTimeRef.current;
+        frameRateRef.current = 1000 / deltaTime;
+      }
+      lastFrameTimeRef.current = timestamp;
+
       try {
         const frameCanvas = captureVideoFrame(webcam);
         if (!frameCanvas) {
@@ -191,26 +228,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
               '#F59E0B'
             );
 
-            // Update ellipse parameters based on face landmarks
-            const leftCheek = faceMesh[234];
-            const rightCheek = faceMesh[454];
-            const forehead = faceMesh[10];
-            const chin = faceMesh[152];
-
-            // Calculate normalized coordinates (0-1 range)
-            const centerX = (leftCheek.x + rightCheek.x) / 2;
-            const centerY = (forehead.y + chin.y) / 2;
-            const width = calculateDistance(leftCheek, rightCheek);
-            const height = calculateDistance(forehead, chin);
-            const rotation = Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x);
-
-            setEllipseParams({
-              centerX,
-              centerY,
-              width: width * 1.1, // Slightly wider than face
-              height: height * 1.2, // Slightly taller than face
-              rotation
-            });
+            updateEllipsePosition(faceMesh);
           }
         }
 
@@ -277,36 +295,32 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <div className="absolute inset-0 pointer-events-none">
-        <motion.svg
-          className="w-full h-full"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            zIndex: 10,
-          }}
+      <div 
+        className="absolute inset-0 pointer-events-none"
+        style={{ zIndex: 20 }}
+      >
+        <svg
+          className="w-full h-full absolute inset-0"
+          preserveAspectRatio="xMidYMid meet"
+          viewBox={`0 0 100 100`}
         >
           <motion.ellipse
-            cx={`${ellipseParams.centerX * 100}%`}
-            cy={`${ellipseParams.centerY * 100}%`}
-            rx={`${(ellipseParams.width * 100) / 2}%`}
-            ry={`${(ellipseParams.height * 100) / 2}%`}
+            cx={`${ellipseParams.centerX * 100}`}
+            cy={`${ellipseParams.centerY * 100}`}
+            rx={`${(ellipseParams.width * 100) / 2}`}
+            ry={`${(ellipseParams.height * 100) / 2}`}
             fill="none"
-            strokeWidth="3"
+            strokeWidth="0.5"
             stroke={ovalColor}
-            transform={`rotate(${ellipseParams.rotation * (180 / Math.PI)} ${ellipseParams.centerX * 100} ${ellipseParams.centerY * 100})`}
-            style={{
-              transformOrigin: 'center',
-              transform: `scale(${ovalScale})`,
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: 1,
+              scale: ovalScale
             }}
+            transition={{ duration: 0.3 }}
+            transform={`rotate(${ellipseParams.rotation * (180 / Math.PI)} ${ellipseParams.centerX * 100} ${ellipseParams.centerY * 100})`}
           />
-        </motion.svg>
+        </svg>
       </div>
 
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
@@ -339,7 +353,8 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
       {/* Debug Overlay */}
       {process.env.NODE_ENV === 'development' && (
-        <div className="absolute top-4 left-4 bg-black/70 text-white p-4 rounded text-xs font-mono">
+        <div className="absolute top-4 left-4 bg-black/70 text-white p-4 rounded text-xs font-mono z-30">
+          <div>FPS: {frameRateRef.current.toFixed(1)}</div>
           <div>Scale: {ovalScale.toFixed(2)}</div>
           <div>Stability: {(stabilityScore * 100).toFixed(1)}%</div>
           <div>Center: ({(ellipseParams.centerX * 100).toFixed(1)}%, {(ellipseParams.centerY * 100).toFixed(1)}%)</div>
