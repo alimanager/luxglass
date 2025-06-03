@@ -25,18 +25,19 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const [step, setStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [retryCount, setRetryCount] = useState(0);
+  const [ovalScale, setOvalScale] = useState(1);
   const [ovalColor, setOvalColor] = useState('#3B82F6');
   const [stabilityScore, setStabilityScore] = useState(0);
-  const [ovalScale, setOvalScale] = useState(1);
-  const [ellipseParams, setEllipseParams] = useState({ 
-    centerX: 75, 
-    centerY: 80, 
-    width: 100, 
+  const [ellipseParams, setEllipseParams] = useState({
+    centerX: 75,
+    centerY: 80,
+    width: 100,
     height: 120,
-    rotation: { x: 0, y: 0, z: 0 }
+    rotation: 0
   });
   const faceHeightDataRef = useRef<number[]>([]);
   const frameBufferRef = useRef<HTMLCanvasElement | null>(null);
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
     if (!frameBufferRef.current) {
@@ -98,66 +99,26 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     );
   };
 
-  const calculateFacePose = (landmarks: any[]) => {
-    // Calculate face normal vector using three points:
-    // nose bridge and two temple points
-    const noseBridge = landmarks[168];
-    const leftTemple = landmarks[234];
-    const rightTemple = landmarks[454];
+  const calculateFaceHeight = (landmarks: any[]): number => {
+    if (!landmarks || landmarks.length < 468) return NaN;
 
-    // Calculate vectors
-    const v1 = {
-      x: rightTemple.x - leftTemple.x,
-      y: rightTemple.y - leftTemple.y,
-      z: rightTemple.z - leftTemple.z
-    };
-
-    const v2 = {
-      x: noseBridge.x - leftTemple.x,
-      y: noseBridge.y - leftTemple.y,
-      z: noseBridge.z - leftTemple.z
-    };
-
-    // Calculate normal vector using cross product
-    const normal = {
-      x: v1.y * v2.z - v1.z * v2.y,
-      y: v1.z * v2.x - v1.x * v2.z,
-      z: v1.x * v2.y - v1.y * v2.x
-    };
-
-    // Normalize the vector
-    const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
-    normal.x /= length;
-    normal.y /= length;
-    normal.z /= length;
-
-    // Calculate rotation angles
-    const pitch = Math.asin(-normal.y);
-    const yaw = Math.atan2(-normal.x, normal.z);
-    const roll = Math.atan2(v1.y, v1.x);
-
-    return {
-      pitch: (pitch * 180) / Math.PI,
-      yaw: (yaw * 180) / Math.PI,
-      roll: (roll * 180) / Math.PI
-    };
-  };
-
-  const calculateEllipseParams = (landmarks: any[]) => {
     const forehead = landmarks[10];
     const chin = landmarks[152];
-    const leftCheek = landmarks[234];
-    const rightCheek = landmarks[454];
+    
+    if (!forehead || !chin) return NaN;
 
-    const centerX = (leftCheek.x + rightCheek.x) / 2;
-    const centerY = (forehead.y + chin.y) / 2;
-    const width = calculateDistance(leftCheek, rightCheek);
-    const height = calculateDistance(forehead, chin);
+    return calculateDistance(forehead, chin);
+  };
 
-    // Calculate face pose
-    const rotation = calculateFacePose(landmarks);
-
-    return { centerX, centerY, width, height, rotation };
+  const calculateStability = (heights: number[]): number => {
+    if (heights.length < 2) return 0;
+    
+    const variations = heights.slice(1).map((height, i) => 
+      Math.abs(height - heights[i]) / heights[i]
+    );
+    
+    const avgVariation = variations.reduce((a, b) => a + b, 0) / variations.length;
+    return Math.max(0, 1 - avgVariation * 10);
   };
 
   const validateFaceHeight = (height: number, frameHeight: number): boolean => {
@@ -202,7 +163,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   useEffect(() => {
     if (!isCalibrating || !webcam || !landmarksDetector) return;
 
-    let animationFrame: number;
     const startTime = Date.now();
     const duration = steps[step].duration;
     faceHeightDataRef.current = [];
@@ -211,7 +171,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       try {
         const frameCanvas = captureVideoFrame(webcam);
         if (!frameCanvas) {
-          animationFrame = requestAnimationFrame(updateCalibration);
+          animationFrameRef.current = requestAnimationFrame(updateCalibration);
           return;
         }
 
@@ -221,10 +181,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
 
-          const params = calculateEllipseParams(faceMesh);
-          setEllipseParams(params);
-
-          const faceHeight = params.height;
+          const faceHeight = calculateFaceHeight(faceMesh);
           if (validateFaceHeight(faceHeight, frameCanvas.height)) {
             faceHeightDataRef.current.push(faceHeight);
             
@@ -234,14 +191,28 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
             
             setOvalScale(newScale);
             
-            // Update color based on face angle
-            const angleThreshold = 15; // degrees
-            const isAligned = 
-              Math.abs(params.rotation.pitch) < angleThreshold &&
-              Math.abs(params.rotation.yaw) < angleThreshold &&
-              Math.abs(params.rotation.roll) < angleThreshold;
+            const stability = calculateStability(faceHeightDataRef.current);
+            setStabilityScore(stability);
+            
+            setOvalColor(
+              stability > 0.9 ? '#10B981' :
+              stability > 0.7 ? '#3B82F6' :
+              '#F59E0B'
+            );
 
-            setOvalColor(isAligned ? '#10B981' : '#F59E0B');
+            // Update ellipse parameters based on face landmarks
+            const leftCheek = faceMesh[234];
+            const rightCheek = faceMesh[454];
+            const forehead = faceMesh[10];
+            const chin = faceMesh[152];
+
+            setEllipseParams({
+              centerX: (leftCheek.x + rightCheek.x) / 2 * 150,
+              centerY: (forehead.y + chin.y) / 2 * 160,
+              width: calculateDistance(leftCheek, rightCheek) * 150,
+              height: calculateDistance(forehead, chin) * 160,
+              rotation: Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x) * (180 / Math.PI)
+            });
           }
         }
 
@@ -250,7 +221,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
         setProgress(newProgress);
 
         if (newProgress < 100) {
-          animationFrame = requestAnimationFrame(updateCalibration);
+          animationFrameRef.current = requestAnimationFrame(updateCalibration);
         } else {
           if (step < steps.length - 1) {
             setStep(step + 1);
@@ -275,31 +246,33 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
         }
       } catch (error) {
         console.error('Calibration error:', error);
-        animationFrame = requestAnimationFrame(updateCalibration);
+        animationFrameRef.current = requestAnimationFrame(updateCalibration);
       }
     };
 
-    animationFrame = requestAnimationFrame(updateCalibration);
+    animationFrameRef.current = requestAnimationFrame(updateCalibration);
 
     return () => {
-      if (animationFrame) cancelAnimationFrame(animationFrame);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, [step, isCalibrating, webcam, landmarksDetector, onCalibrationComplete, onLandmarksUpdate, retryCount]);
 
   const steps = [
     {
       title: "Positionnez votre visage",
-      instruction: "Rapprochez-vous de la caméra jusqu'à ce que votre visage s'aligne avec le guide",
+      instruction: "Ajustez votre position pour que votre visage remplisse l'ovale",
       duration: 3000
     },
     {
       title: "Gardez la tête droite",
-      instruction: "Alignez votre visage avec le guide et regardez droit devant vous",
+      instruction: "Regardez droit devant vous, visage bien centré",
       duration: 3000
     },
     {
       title: "Restez immobile",
-      instruction: "Ne bougez pas pendant quelques secondes",
+      instruction: "Maintenez votre position pendant quelques secondes",
       duration: 3000
     }
   ];
@@ -330,14 +303,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           fill="none"
           strokeWidth="2"
           stroke={ovalColor}
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 1, ease: "easeInOut" }}
-          transform={`
-            rotate(${ellipseParams.rotation.roll} ${ellipseParams.centerX} ${ellipseParams.centerY})
-            skewX(${ellipseParams.rotation.yaw * 0.5})
-            skewY(${ellipseParams.rotation.pitch * 0.5})
-          `}
+          transform={`rotate(${ellipseParams.rotation} ${ellipseParams.centerX} ${ellipseParams.centerY})`}
         />
       </motion.svg>
 
