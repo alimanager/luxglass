@@ -28,6 +28,12 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const [ovalScale, setOvalScale] = useState(1);
   const [ovalColor, setOvalColor] = useState('#3B82F6');
   const [stabilityScore, setStabilityScore] = useState(0);
+  const [ellipseParams, setEllipseParams] = useState({ 
+    centerX: 75, 
+    centerY: 80, 
+    width: 100, 
+    height: 120 
+  });
   const faceHeightDataRef = useRef<number[]>([]);
   const frameBufferRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -83,29 +89,26 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     }
   };
 
-  const calculateFaceHeight = (landmarks: any[]): number => {
-    if (!landmarks || landmarks.length < 468) return NaN;
-
-    const forehead = landmarks[10];
-    const chin = landmarks[152];
-    
-    if (!forehead || !chin) return NaN;
-
+  const calculateDistance = (point1: any, point2: any): number => {
     return Math.sqrt(
-      Math.pow(chin.x - forehead.x, 2) + 
-      Math.pow(chin.y - forehead.y, 2)
+      Math.pow(point2.x - point1.x, 2) + 
+      Math.pow(point2.y - point1.y, 2) +
+      Math.pow(point2.z - point1.z, 2)
     );
   };
 
-  const calculateStability = (heights: number[]): number => {
-    if (heights.length < 2) return 0;
-    
-    const variations = heights.slice(1).map((height, i) => 
-      Math.abs(height - heights[i]) / heights[i]
-    );
-    
-    const avgVariation = variations.reduce((a, b) => a + b, 0) / variations.length;
-    return Math.max(0, 1 - avgVariation * 10);
+  const calculateEllipseParams = (landmarks: any[]) => {
+    const forehead = landmarks[10];
+    const chin = landmarks[152];
+    const leftCheek = landmarks[234];
+    const rightCheek = landmarks[454];
+
+    const centerX = (leftCheek.x + rightCheek.x) / 2;
+    const centerY = (forehead.y + chin.y) / 2;
+    const width = calculateDistance(leftCheek, rightCheek);
+    const height = calculateDistance(forehead, chin);
+
+    return { centerX, centerY, width, height };
   };
 
   const validateFaceHeight = (height: number, frameHeight: number): boolean => {
@@ -169,7 +172,10 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           const faceMesh = landmarks[0].keypoints;
           onLandmarksUpdate(faceMesh);
 
-          const faceHeight = calculateFaceHeight(faceMesh);
+          const params = calculateEllipseParams(faceMesh);
+          setEllipseParams(params);
+
+          const faceHeight = params.height;
           if (validateFaceHeight(faceHeight, frameCanvas.height)) {
             faceHeightDataRef.current.push(faceHeight);
             
@@ -249,25 +255,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     }
   ];
 
-  // Face shape path data for a more natural face outline
-  const facePath = `
-    M 50 15 
-    C 45 15, 35 20, 30 25 
-    C 25 30, 20 40, 15 50 
-    C 10 60, 8 75, 8 85 
-    C 8 95, 12 105, 15 115 
-    C 18 125, 25 135, 35 142 
-    C 45 149, 65 152, 75 152 
-    C 85 152, 105 149, 115 142 
-    C 125 135, 132 125, 135 115 
-    C 138 105, 142 95, 142 85 
-    C 142 75, 140 60, 135 50 
-    C 130 40, 125 30, 120 25 
-    C 115 20, 105 15, 100 15 
-    C 95 15, 85 15, 75 15 
-    C 65 15, 55 15, 50 15
-  `;
-
   return (
     <div className="absolute inset-0 flex items-center justify-center">
       <motion.svg
@@ -286,8 +273,11 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
         }}
         transition={{ duration: 0.3 }}
       >
-        <motion.path
-          d={facePath}
+        <motion.ellipse
+          cx={ellipseParams.centerX}
+          cy={ellipseParams.centerY}
+          rx={ellipseParams.width / 2}
+          ry={ellipseParams.height / 2}
           fill="none"
           strokeWidth="2"
           stroke={ovalColor}
