@@ -6,6 +6,9 @@ import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import FaceCalibration from './FaceCalibration';
 
+// Average human iris diameter in millimeters
+const IRIS_DIAMETER_MM = 11.7;
+
 interface FaceAnalysisProps {
   onAnalysisComplete: (shape: string, characteristics: FaceCharacteristics) => void;
 }
@@ -126,6 +129,40 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setCurrentLandmarks(landmarks);
   };
 
+  // Function to calculate iris diameter from landmarks
+  const getIrisDiameter = (irisLandmarks: any[]): number => {
+    // Log iris landmarks for verification
+    console.log('Iris Landmarks:', irisLandmarks);
+
+    // Find the leftmost and rightmost points of the iris
+    const leftPoint = irisLandmarks.reduce((min, point) => point.x < min.x ? point : min);
+    const rightPoint = irisLandmarks.reduce((max, point) => point.x > max.x ? point : max);
+
+    // Find the topmost and bottommost points of the iris
+    const topPoint = irisLandmarks.reduce((min, point) => point.y < min.y ? point : min);
+    const bottomPoint = irisLandmarks.reduce((max, point) => point.y > max.y ? point : max);
+
+    // Calculate horizontal and vertical diameters
+    const horizontalDiameter = Math.sqrt(
+      Math.pow(rightPoint.x - leftPoint.x, 2) +
+      Math.pow(rightPoint.y - leftPoint.y, 2) +
+      Math.pow(rightPoint.z - leftPoint.z, 2)
+    );
+
+    const verticalDiameter = Math.sqrt(
+      Math.pow(bottomPoint.x - topPoint.x, 2) +
+      Math.pow(bottomPoint.y - topPoint.y, 2) +
+      Math.pow(bottomPoint.z - topPoint.z, 2)
+    );
+
+    // Log diameters for verification
+    console.log('Horizontal Diameter:', horizontalDiameter);
+    console.log('Vertical Diameter:', verticalDiameter);
+
+    // Return average of horizontal and vertical diameters
+    return (horizontalDiameter + verticalDiameter) / 2;
+  };
+
   const calculateDistance = (point1: number[], point2: number[]): number => {
     return Math.sqrt(
       Math.pow(point2[0] - point1[0], 2) + 
@@ -214,7 +251,27 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       throw new Error('Face mesh data not available');
     }
 
-    // Manual measurements for comparison (typical values)
+    // Get iris landmarks
+    const leftIris = faceMesh.filter((point: any) => point.name?.includes('leftIris'));
+    const rightIris = faceMesh.filter((point: any) => point.name?.includes('rightIris'));
+
+    console.log('Left Iris Points:', leftIris);
+    console.log('Right Iris Points:', rightIris);
+
+    // Calculate iris diameters
+    const leftIrisDiameter = getIrisDiameter(leftIris);
+    const rightIrisDiameter = getIrisDiameter(rightIris);
+
+    console.log('Left Iris Diameter (pixels):', leftIrisDiameter);
+    console.log('Right Iris Diameter (pixels):', rightIrisDiameter);
+
+    // Calculate new scaling factor based on iris diameter
+    const avgIrisDiameter = (leftIrisDiameter + rightIrisDiameter) / 2;
+    const irisScalingFactor = IRIS_DIAMETER_MM / avgIrisDiameter;
+
+    console.log('Iris-based Scaling Factor:', irisScalingFactor);
+
+    // Manual measurements for comparison
     const manualFaceHeight = 180; // mm
     const manualFaceWidth = 140; // mm
     const manualIPD = 63; // mm
@@ -233,33 +290,30 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     console.log('Nose Bridge Left (168):', faceMesh[168]);
     console.log('Nose Bridge Right (388):', faceMesh[388]);
 
-    // Calculate face height using forehead to chin landmarks
+    // Calculate face measurements using iris-based scaling factor
     const faceHeightPixels = calculateDistance(
-      [faceMesh[10].x, faceMesh[10].y, faceMesh[10].z], // Forehead point
-      [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z] // Chin point
+      [faceMesh[10].x, faceMesh[10].y, faceMesh[10].z],
+      [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z]
     );
-    const faceHeightMm = faceHeightPixels * scalingFactor;
+    const faceHeightMm = faceHeightPixels * irisScalingFactor;
 
-    // Calculate face width using temple landmarks
     const faceWidthPixels = calculateDistance(
-      [faceMesh[234].x, faceMesh[234].y, faceMesh[234].z], // Left temple
-      [faceMesh[454].x, faceMesh[454].y, faceMesh[454].z] // Right temple
+      [faceMesh[234].x, faceMesh[234].y, faceMesh[234].z],
+      [faceMesh[454].x, faceMesh[454].y, faceMesh[454].z]
     );
-    const faceWidthMm = faceWidthPixels * scalingFactor;
+    const faceWidthMm = faceWidthPixels * irisScalingFactor;
 
-    // Calculate IPD using inner eye corners for more accuracy
     const ipdPixels = calculateDistance(
-      [faceMesh[133].x, faceMesh[133].y, faceMesh[133].z], // Left eye inner corner
-      [faceMesh[362].x, faceMesh[362].y, faceMesh[362].z] // Right eye inner corner
+      [faceMesh[133].x, faceMesh[133].y, faceMesh[133].z],
+      [faceMesh[362].x, faceMesh[362].y, faceMesh[362].z]
     );
-    const ipdMm = ipdPixels * scalingFactor;
+    const ipdMm = ipdPixels * irisScalingFactor;
 
-    // Calculate nose bridge width using specific nose bridge landmarks
     const noseBridgeWidthPixels = calculateDistance(
-      [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z], // Left nose bridge point
-      [faceMesh[388].x, faceMesh[388].y, faceMesh[388].z] // Right nose bridge point
+      [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z],
+      [faceMesh[388].x, faceMesh[388].y, faceMesh[388].z]
     );
-    const noseBridgeWidthMm = noseBridgeWidthPixels * scalingFactor;
+    const noseBridgeWidthMm = noseBridgeWidthPixels * irisScalingFactor;
 
     // Log measurements with manual comparisons
     console.log('\nFace Measurements Comparison:');
@@ -313,7 +367,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     );
     const cheekboneProminence = Math.round((cheekboneWidth / face.box.width) * 100);
 
-    // Determine chin shape
     const chinWidth = calculateDistance(
       [faceMesh[172].x, faceMesh[172].y, faceMesh[172].z],
       [faceMesh[397].x, faceMesh[397].y, faceMesh[397].z]
@@ -334,7 +387,6 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
-    // Calculate other measurements
     const noseLength = pixelsToMillimeters(
       Math.round(
         calculateDistance(
