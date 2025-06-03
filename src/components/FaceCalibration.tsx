@@ -28,16 +28,31 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const [ovalScale, setOvalScale] = useState(1);
   const [ovalColor, setOvalColor] = useState('#3B82F6');
   const [stabilityScore, setStabilityScore] = useState(0);
+  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const [ellipseParams, setEllipseParams] = useState({
-    centerX: 75,
-    centerY: 80,
-    width: 100,
-    height: 120,
+    centerX: 0.5,
+    centerY: 0.5,
+    width: 0.4,
+    height: 0.6,
     rotation: 0
   });
   const faceHeightDataRef = useRef<number[]>([]);
   const frameBufferRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number>();
+
+  useEffect(() => {
+    if (webcam) {
+      const updateVideoSize = () => {
+        setVideoSize({
+          width: webcam.videoWidth,
+          height: webcam.videoHeight
+        });
+      };
+      updateVideoSize();
+      webcam.addEventListener('loadedmetadata', updateVideoSize);
+      return () => webcam.removeEventListener('loadedmetadata', updateVideoSize);
+    }
+  }, [webcam]);
 
   useEffect(() => {
     if (!frameBufferRef.current) {
@@ -50,7 +65,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const validateVideoFrame = (video: HTMLVideoElement): boolean => {
     if (!video) return false;
 
-    const isValid = (
+    return (
       video.readyState === 4 &&
       video.videoWidth > 0 &&
       video.videoHeight > 0 &&
@@ -58,19 +73,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
       !video.ended &&
       video.currentTime > 0
     );
-
-    if (!isValid) {
-      console.log('Video validation failed:', {
-        readyState: video.readyState,
-        width: video.videoWidth,
-        height: video.videoHeight,
-        paused: video.paused,
-        ended: video.ended,
-        currentTime: video.currentTime
-      });
-    }
-
-    return isValid;
   };
 
   const captureVideoFrame = (video: HTMLVideoElement): HTMLCanvasElement | null => {
@@ -126,18 +128,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
     const minHeight = frameHeight * 0.3;
     const maxHeight = frameHeight * 0.8;
-    const isValid = height > minHeight && height < maxHeight;
-
-    if (!isValid) {
-      console.log('Height validation failed:', {
-        height,
-        minHeight,
-        maxHeight,
-        frameHeight
-      });
-    }
-
-    return isValid;
+    return height > minHeight && height < maxHeight;
   };
 
   const calculateScalingFactor = (heights: number[]): number => {
@@ -206,12 +197,19 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
             const forehead = faceMesh[10];
             const chin = faceMesh[152];
 
+            // Calculate normalized coordinates (0-1 range)
+            const centerX = (leftCheek.x + rightCheek.x) / 2;
+            const centerY = (forehead.y + chin.y) / 2;
+            const width = calculateDistance(leftCheek, rightCheek);
+            const height = calculateDistance(forehead, chin);
+            const rotation = Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x);
+
             setEllipseParams({
-              centerX: (leftCheek.x + rightCheek.x) / 2 * 150,
-              centerY: (forehead.y + chin.y) / 2 * 160,
-              width: calculateDistance(leftCheek, rightCheek) * 150,
-              height: calculateDistance(forehead, chin) * 160,
-              rotation: Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x) * (180 / Math.PI)
+              centerX,
+              centerY,
+              width: width * 1.1, // Slightly wider than face
+              height: height * 1.2, // Slightly taller than face
+              rotation
             });
           }
         }
@@ -279,33 +277,37 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <motion.svg
-        className="absolute z-10"
-        style={{
-          width: '80%',
-          height: '90%',
-          maxWidth: '600px',
-          maxHeight: '700px',
-        }}
-        viewBox="0 0 150 160"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ 
-          scale: ovalScale,
-          opacity: 1
-        }}
-        transition={{ duration: 0.3 }}
-      >
-        <motion.ellipse
-          cx={ellipseParams.centerX}
-          cy={ellipseParams.centerY}
-          rx={ellipseParams.width / 2}
-          ry={ellipseParams.height / 2}
-          fill="none"
-          strokeWidth="2"
-          stroke={ovalColor}
-          transform={`rotate(${ellipseParams.rotation} ${ellipseParams.centerX} ${ellipseParams.centerY})`}
-        />
-      </motion.svg>
+      <div className="absolute inset-0 pointer-events-none">
+        <motion.svg
+          className="w-full h-full"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 10,
+          }}
+        >
+          <motion.ellipse
+            cx={`${ellipseParams.centerX * 100}%`}
+            cy={`${ellipseParams.centerY * 100}%`}
+            rx={`${(ellipseParams.width * 100) / 2}%`}
+            ry={`${(ellipseParams.height * 100) / 2}%`}
+            fill="none"
+            strokeWidth="3"
+            stroke={ovalColor}
+            transform={`rotate(${ellipseParams.rotation * (180 / Math.PI)} ${ellipseParams.centerX * 100} ${ellipseParams.centerY * 100})`}
+            style={{
+              transformOrigin: 'center',
+              transform: `scale(${ovalScale})`,
+            }}
+          />
+        </motion.svg>
+      </div>
 
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
         <div className="text-center">
@@ -334,6 +336,17 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Debug Overlay */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute top-4 left-4 bg-black/70 text-white p-4 rounded text-xs font-mono">
+          <div>Scale: {ovalScale.toFixed(2)}</div>
+          <div>Stability: {(stabilityScore * 100).toFixed(1)}%</div>
+          <div>Center: ({(ellipseParams.centerX * 100).toFixed(1)}%, {(ellipseParams.centerY * 100).toFixed(1)}%)</div>
+          <div>Size: {(ellipseParams.width * 100).toFixed(1)}% × {(ellipseParams.height * 100).toFixed(1)}%</div>
+          <div>Rotation: {(ellipseParams.rotation * (180 / Math.PI)).toFixed(1)}°</div>
+        </div>
+      )}
     </div>
   );
 };
