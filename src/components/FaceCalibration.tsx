@@ -28,33 +28,22 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const [ovalScale, setOvalScale] = useState(1);
   const [ovalColor, setOvalColor] = useState('#3B82F6');
   const [stabilityScore, setStabilityScore] = useState(0);
-  const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const [ellipseParams, setEllipseParams] = useState({
-    centerX: 0.5,
-    centerY: 0.5,
-    width: 0.4,
-    height: 0.6,
+    centerX: 50,
+    centerY: 50,
+    width: 30,
+    height: 40,
     rotation: 0
   });
+  
   const faceHeightDataRef = useRef<number[]>([]);
   const frameBufferRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number>();
-  const lastFrameTimeRef = useRef<number>(0);
-  const frameRateRef = useRef<number>(0);
-
-  useEffect(() => {
-    if (webcam) {
-      const updateVideoSize = () => {
-        setVideoSize({
-          width: webcam.videoWidth,
-          height: webcam.videoHeight
-        });
-      };
-      updateVideoSize();
-      webcam.addEventListener('loadedmetadata', updateVideoSize);
-      return () => webcam.removeEventListener('loadedmetadata', updateVideoSize);
-    }
-  }, [webcam]);
+  const previousParamsRef = useRef(ellipseParams);
+  const smoothingFactorRef = useRef(0.3);
+  const lastUpdateTimeRef = useRef(0);
+  const frameCountRef = useRef(0);
+  const fpsRef = useRef(0);
 
   useEffect(() => {
     if (!frameBufferRef.current) {
@@ -65,8 +54,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   }, []);
 
   const validateVideoFrame = (video: HTMLVideoElement): boolean => {
-    if (!video) return false;
-
     return (
       video.readyState === 4 &&
       video.videoWidth > 0 &&
@@ -103,82 +90,78 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     );
   };
 
-  const calculateFaceHeight = (landmarks: any[]): number => {
-    if (!landmarks || landmarks.length < 468) return NaN;
-
-    const forehead = landmarks[10];
-    const chin = landmarks[152];
-    
-    if (!forehead || !chin) return NaN;
-
-    return calculateDistance(forehead, chin);
-  };
-
-  const calculateStability = (heights: number[]): number => {
-    if (heights.length < 2) return 0;
-    
-    const variations = heights.slice(1).map((height, i) => 
-      Math.abs(height - heights[i]) / heights[i]
-    );
-    
-    const avgVariation = variations.reduce((a, b) => a + b, 0) / variations.length;
-    return Math.max(0, 1 - avgVariation * 10);
-  };
-
-  const validateFaceHeight = (height: number, frameHeight: number): boolean => {
-    if (isNaN(height) || height <= 0) return false;
-
-    const minHeight = frameHeight * 0.3;
-    const maxHeight = frameHeight * 0.8;
-    return height > minHeight && height < maxHeight;
-  };
-
-  const calculateScalingFactor = (heights: number[]): number => {
-    const validHeights = heights.filter(h => 
-      validateFaceHeight(h, frameBufferRef.current?.height || 720)
-    );
-
-    if (validHeights.length < MIN_VALID_FRAMES) {
-      throw new Error(`Insufficient measurements: ${validHeights.length}/${MIN_VALID_FRAMES}`);
-    }
-
-    validHeights.sort((a, b) => a - b);
-    const medianHeight = validHeights[Math.floor(validHeights.length / 2)];
-    const scalingFactor = AVERAGE_FACE_HEIGHT_MM / medianHeight;
-
-    if (!isFinite(scalingFactor) || scalingFactor <= 0) {
-      throw new Error(`Invalid scaling factor: ${scalingFactor}`);
-    }
-
-    return scalingFactor;
+  const smoothValue = (current: number, target: number, factor: number): number => {
+    return current + (target - current) * factor;
   };
 
   const updateEllipsePosition = (faceMesh: any[]) => {
     if (!faceMesh || faceMesh.length < 468) return;
 
-    const leftCheek = faceMesh[234];
-    const rightCheek = faceMesh[454];
-    const forehead = faceMesh[10];
-    const chin = faceMesh[152];
+    const now = performance.now();
+    frameCountRef.current++;
+    
+    if (now - lastUpdateTimeRef.current >= 1000) {
+      fpsRef.current = frameCountRef.current;
+      frameCountRef.current = 0;
+      lastUpdateTimeRef.current = now;
+    }
 
-    if (!leftCheek || !rightCheek || !forehead || !chin) return;
+    // Key facial landmarks
+    const leftEye = faceMesh[33];    // Left eye outer corner
+    const rightEye = faceMesh[263];  // Right eye outer corner
+    const forehead = faceMesh[10];   // Forehead center
+    const chin = faceMesh[152];      // Chin center
+    const leftCheek = faceMesh[234]; // Left cheek
+    const rightCheek = faceMesh[454];// Right cheek
 
-    // Calculate normalized coordinates (0-1 range)
-    const centerX = (leftCheek.x + rightCheek.x) / 2;
-    const centerY = (forehead.y + chin.y) / 2;
-    const width = calculateDistance(leftCheek, rightCheek);
-    const height = calculateDistance(forehead, chin);
-    const rotation = Math.atan2(rightCheek.y - leftCheek.y, rightCheek.x - leftCheek.x);
+    if (!leftEye || !rightEye || !forehead || !chin || !leftCheek || !rightCheek) return;
 
-    // Apply smoothing to prevent jitter
-    const smoothingFactor = 0.3;
-    setEllipseParams(prev => ({
-      centerX: prev.centerX * (1 - smoothingFactor) + centerX * smoothingFactor,
-      centerY: prev.centerY * (1 - smoothingFactor) + centerY * smoothingFactor,
-      width: prev.width * (1 - smoothingFactor) + (width * 1.1) * smoothingFactor,
-      height: prev.height * (1 - smoothingFactor) + (height * 1.2) * smoothingFactor,
-      rotation: prev.rotation * (1 - smoothingFactor) + rotation * smoothingFactor
-    }));
+    // Calculate face dimensions
+    const faceWidth = calculateDistance(leftCheek, rightCheek);
+    const faceHeight = calculateDistance(forehead, chin);
+    const eyeDistance = calculateDistance(leftEye, rightEye);
+
+    // Calculate center point
+    const centerX = ((leftCheek.x + rightCheek.x) / 2) * 100;
+    const centerY = ((forehead.y + chin.y) / 2) * 100;
+
+    // Calculate rotation based on eye line
+    const rotation = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
+
+    // Adjust smoothing factor based on stability
+    const movement = Math.abs(centerX - previousParamsRef.current.centerX) +
+                    Math.abs(centerY - previousParamsRef.current.centerY);
+    
+    const stability = Math.max(0, 1 - movement / 10);
+    smoothingFactorRef.current = 0.2 + (stability * 0.3); // 0.2 to 0.5
+
+    // Update ellipse parameters with dynamic smoothing
+    const newParams = {
+      centerX: smoothValue(previousParamsRef.current.centerX, centerX, smoothingFactorRef.current),
+      centerY: smoothValue(previousParamsRef.current.centerY, centerY, smoothingFactorRef.current),
+      width: smoothValue(previousParamsRef.current.width, faceWidth * 120, smoothingFactorRef.current),
+      height: smoothValue(previousParamsRef.current.height, faceHeight * 120, smoothingFactorRef.current),
+      rotation: smoothValue(previousParamsRef.current.rotation, rotation, smoothingFactorRef.current)
+    };
+
+    setEllipseParams(newParams);
+    previousParamsRef.current = newParams;
+
+    // Update stability score
+    setStabilityScore(stability);
+    
+    // Update oval color based on stability
+    setOvalColor(
+      stability > 0.8 ? '#10B981' :  // Green
+      stability > 0.6 ? '#3B82F6' :  // Blue
+      '#F59E0B'                      // Yellow
+    );
+
+    // Update oval scale based on face size
+    const idealWidth = 30;  // Ideal face width percentage
+    const currentWidth = faceWidth * 100;
+    const scale = currentWidth / idealWidth;
+    setOvalScale(Math.min(Math.max(scale, 0.8), 1.2));
   };
 
   useEffect(() => {
@@ -189,13 +172,6 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
     faceHeightDataRef.current = [];
 
     const updateCalibration = async (timestamp: number) => {
-      // Calculate frame rate
-      if (lastFrameTimeRef.current) {
-        const deltaTime = timestamp - lastFrameTimeRef.current;
-        frameRateRef.current = 1000 / deltaTime;
-      }
-      lastFrameTimeRef.current = timestamp;
-
       try {
         const frameCanvas = captureVideoFrame(webcam);
         if (!frameCanvas) {
@@ -203,33 +179,12 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
           return;
         }
 
-        const landmarks = await landmarksDetector.estimateFaces(frameCanvas);
+        const faces = await landmarksDetector.estimateFaces(frameCanvas);
         
-        if (landmarks?.[0]?.keypoints) {
-          const faceMesh = landmarks[0].keypoints;
+        if (faces?.[0]?.keypoints) {
+          const faceMesh = faces[0].keypoints;
           onLandmarksUpdate(faceMesh);
-
-          const faceHeight = calculateFaceHeight(faceMesh);
-          if (validateFaceHeight(faceHeight, frameCanvas.height)) {
-            faceHeightDataRef.current.push(faceHeight);
-            
-            const idealHeight = frameCanvas.height * IDEAL_FACE_HEIGHT_RATIO;
-            const scale = faceHeight / idealHeight;
-            const newScale = Math.min(Math.max(scale, 0.8), 1.2);
-            
-            setOvalScale(newScale);
-            
-            const stability = calculateStability(faceHeightDataRef.current);
-            setStabilityScore(stability);
-            
-            setOvalColor(
-              stability > 0.9 ? '#10B981' :
-              stability > 0.7 ? '#3B82F6' :
-              '#F59E0B'
-            );
-
-            updateEllipsePosition(faceMesh);
-          }
+          updateEllipsePosition(faceMesh);
         }
 
         const elapsed = Date.now() - startTime;
@@ -243,21 +198,8 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
             setStep(step + 1);
             setProgress(0);
           } else {
-            try {
-              const scalingFactor = calculateScalingFactor(faceHeightDataRef.current);
-              onCalibrationComplete(scalingFactor);
-            } catch (error) {
-              console.error('Calibration failed:', error);
-              
-              if (retryCount < MAX_RETRIES) {
-                setRetryCount(prev => prev + 1);
-                setStep(0);
-                setProgress(0);
-                faceHeightDataRef.current = [];
-              } else {
-                throw new Error('Maximum calibration retries exceeded');
-              }
-            }
+            const scalingFactor = 1; // We'll use iris-based scaling instead
+            onCalibrationComplete(scalingFactor);
           }
         }
       } catch (error) {
@@ -295,30 +237,26 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center">
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{ zIndex: 20 }}
-      >
+      <div className="absolute inset-0 pointer-events-none z-20">
         <svg
-          className="w-full h-full absolute inset-0"
+          width="100%"
+          height="100%"
+          viewBox="0 0 100 100"
           preserveAspectRatio="xMidYMid meet"
-          viewBox={`0 0 100 100`}
         >
           <motion.ellipse
-            cx={`${ellipseParams.centerX * 100}`}
-            cy={`${ellipseParams.centerY * 100}`}
-            rx={`${(ellipseParams.width * 100) / 2}`}
-            ry={`${(ellipseParams.height * 100) / 2}`}
+            cx={ellipseParams.centerX}
+            cy={ellipseParams.centerY}
+            rx={ellipseParams.width / 2}
+            ry={ellipseParams.height / 2}
+            transform={`rotate(${ellipseParams.rotation * (180 / Math.PI)} ${ellipseParams.centerX} ${ellipseParams.centerY})`}
             fill="none"
-            strokeWidth="0.5"
             stroke={ovalColor}
+            strokeWidth="0.5"
+            strokeDasharray="2 2"
             initial={{ opacity: 0 }}
-            animate={{ 
-              opacity: 1,
-              scale: ovalScale
-            }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
-            transform={`rotate(${ellipseParams.rotation * (180 / Math.PI)} ${ellipseParams.centerX * 100} ${ellipseParams.centerY * 100})`}
           />
         </svg>
       </div>
@@ -351,14 +289,14 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
         </div>
       </div>
 
-      {/* Debug Overlay */}
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute top-4 left-4 bg-black/70 text-white p-4 rounded text-xs font-mono z-30">
-          <div>FPS: {frameRateRef.current.toFixed(1)}</div>
-          <div>Scale: {ovalScale.toFixed(2)}</div>
+          <div>FPS: {fpsRef.current}</div>
           <div>Stability: {(stabilityScore * 100).toFixed(1)}%</div>
-          <div>Center: ({(ellipseParams.centerX * 100).toFixed(1)}%, {(ellipseParams.centerY * 100).toFixed(1)}%)</div>
-          <div>Size: {(ellipseParams.width * 100).toFixed(1)}% × {(ellipseParams.height * 100).toFixed(1)}%</div>
+          <div>Smoothing: {smoothingFactorRef.current.toFixed(2)}</div>
+          <div>Scale: {ovalScale.toFixed(2)}</div>
+          <div>Position: ({ellipseParams.centerX.toFixed(1)}, {ellipseParams.centerY.toFixed(1)})</div>
+          <div>Size: {ellipseParams.width.toFixed(1)} × {ellipseParams.height.toFixed(1)}</div>
           <div>Rotation: {(ellipseParams.rotation * (180 / Math.PI)).toFixed(1)}°</div>
         </div>
       )}
