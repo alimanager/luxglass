@@ -27,6 +27,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   const [retryCount, setRetryCount] = useState(0);
   const [ovalColor, setOvalColor] = useState('#3B82F6');
   const [stabilityScore, setStabilityScore] = useState(0);
+  const [ovalScale, setOvalScale] = useState(1);
   const [ellipseParams, setEllipseParams] = useState({ 
     centerX: 75, 
     centerY: 80, 
