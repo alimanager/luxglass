@@ -280,7 +280,7 @@ const FaceCalibration: React.FC<FaceCalibrationProps> = ({
   return (
     <div className="absolute inset-0 flex items-center justify-center">
       <motion.svg
-        className="absolute"
+        className="absolute z-10"
         style={{
           width: '80%',
           height: '90%',
