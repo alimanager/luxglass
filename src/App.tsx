@@ -7,6 +7,7 @@ import ProductDetail from './pages/ProductDetail';
 import TryOn from './pages/TryOn';
 import AnalysisResults from './pages/AnalysisResults';
 import Atelier from './pages/Atelier';
+import Manifeste from './pages/Manifeste';
 import VirtualTryOn from './components/VirtualTryOn';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
         <Route path="try-on" element={<TryOn />} />
         <Route path="analysis-results" element={<AnalysisResults />} />
         <Route path="atelier" element={<Atelier />} />
+        <Route path="manifeste" element={<Manifeste />} />
         <Route path="virtual-try-on" element={<VirtualTryOn />} />
       </Route>
     </Routes>

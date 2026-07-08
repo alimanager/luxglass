@@ -88,4 +88,19 @@
   .paper-panel {
     @apply bg-cream border-2 border-ink shadow-hard;
   }
+
+  /* Lettrine d'ouverture d'article */
+  .drop-cap::first-letter {
+    @apply font-serif font-black text-ink float-left;
+    font-size: 4.6em;
+    line-height: 0.8;
+    padding-right: 0.08em;
+    padding-top: 0.04em;
+  }
+
+  /* Corps d'article sur deux colonnes, filet central façon presse */
+  .article-columns {
+    @apply md:columns-2 md:gap-10;
+    column-rule: 1px solid #221a14;
+  }
 }

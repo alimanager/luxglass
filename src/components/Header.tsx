@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { to: '/catalog', label: 'Catalogue' },
   { to: '/try-on', label: 'Essayage Virtuel' },
   { to: '/atelier', label: 'Atelier Sur Mesure' },
+  { to: '/manifeste', label: 'Le Manifeste' },
 ];
 
 const Header: React.FC = () => {

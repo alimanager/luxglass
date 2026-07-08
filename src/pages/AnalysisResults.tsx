@@ -81,7 +81,10 @@ const AnalysisResults: React.FC = () => {
             <p className="text-gray-600">
               Votre visage présente les caractéristiques typiques d'une forme {faceShapeLabel}.
               Nous avons croisé vos mesures avec les dimensions réelles de chaque monture
-              du catalogue pour établir votre sélection personnalisée.
+              du catalogue pour établir votre sélection personnalisée.{' '}
+              <Link to="/manifeste" className="font-serif italic text-primary-700 underline underline-offset-4">
+                Comprendre notre méthode — La Géométrie Secrète du Visage, page 42 →
+              </Link>
             </p>
           </div>
 

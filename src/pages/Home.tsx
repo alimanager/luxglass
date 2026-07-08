@@ -113,6 +113,20 @@ const Home: React.FC = () => {
             <span className="kicker hidden sm:block">Dans ce numéro</span>
           </div>
 
+          {/* Annonce de l'article de fond */}
+          <Link
+            to="/manifeste"
+            className="card group flex flex-col md:flex-row items-baseline justify-between gap-2 px-6 py-5 mb-10 bg-accent-100"
+          >
+            <span className="kicker">À lire — pages 42 à 47</span>
+            <span className="font-serif italic text-xl md:text-2xl">
+              La Géométrie Secrète du Visage
+            </span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary-700 group-hover:underline underline-offset-4">
+              Lire l'article →
+            </span>
+          </Link>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {SOMMAIRE.map(({ numero, titre, texte, lien, action, icon: Icon }) => (
               <Link key={numero} to={lien} className="card group p-8 flex flex-col">
