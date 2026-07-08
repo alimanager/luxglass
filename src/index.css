@@ -8,11 +8,14 @@
   }
 
   body {
-    @apply font-sans text-secondary-950 bg-white;
+    @apply font-sans text-ink bg-paper;
+    /* Trame de points façon impression offset */
+    background-image: radial-gradient(rgba(34, 26, 20, 0.05) 1px, transparent 1px);
+    background-size: 6px 6px;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif font-medium leading-tight;
+    @apply font-serif font-bold leading-tight text-ink;
   }
 
   h1 {
@@ -30,30 +33,59 @@
   p {
     @apply leading-relaxed;
   }
+
+  ::selection {
+    @apply bg-accent-300 text-ink;
+  }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-lg transition-colors duration-200;
+    @apply inline-flex items-center justify-center px-5 py-2.5 text-xs font-bold uppercase tracking-[0.15em] border-2 border-ink shadow-hard transition-all duration-150;
+  }
+
+  .btn:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 0 #221a14;
   }
 
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    @apply bg-primary-600 text-cream hover:bg-primary-700;
   }
 
   .btn-secondary {
-    @apply bg-secondary-100 text-secondary-900 hover:bg-secondary-200 focus:ring-2 focus:ring-secondary-200 focus:ring-offset-2;
+    @apply bg-cream text-ink hover:bg-secondary-100;
   }
 
   .btn-accent {
-    @apply bg-accent-500 text-white hover:bg-accent-600 focus:ring-2 focus:ring-accent-400 focus:ring-offset-2;
+    @apply bg-accent-400 text-ink hover:bg-accent-300;
   }
 
   .card {
-    @apply bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300;
+    @apply bg-cream border-2 border-ink shadow-hard overflow-hidden transition-transform duration-200;
+  }
+
+  .card:hover {
+    transform: translate(-2px, -2px);
   }
 
   .magazine-tag {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border border-ink;
+  }
+
+  /* Surtitre éditorial : "N° 01 · ÉTÉ 1984" */
+  .kicker {
+    @apply font-display text-[11px] uppercase tracking-[0.35em] text-ink;
+  }
+
+  /* Titre en réserve, façon lettrage de couverture */
+  .text-outline {
+    -webkit-text-stroke: 2px #221a14;
+    color: transparent;
+  }
+
+  /* Panneau de papier encadré, base de toutes les sections blanches */
+  .paper-panel {
+    @apply bg-cream border-2 border-ink shadow-hard;
   }
 }

@@ -33,7 +33,7 @@ const ProductDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-28 flex items-center justify-center">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-600"></div>
       </div>
     );
@@ -41,7 +41,7 @@ const ProductDetail: React.FC = () => {
 
   if (!product) {
     return (
-      <div className="min-h-screen pt-20 container mx-auto px-4 py-16 text-center">
+      <div className="min-h-screen pt-28 container mx-auto px-4 py-16 text-center">
         <h1 className="text-3xl font-serif mb-6">Produit non trouvé</h1>
         <p className="text-secondary-600 mb-8">
           Le produit que vous recherchez n'existe pas ou a été retiré.
@@ -54,7 +54,7 @@ const ProductDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-28">
       <div className="container mx-auto px-4 py-8">
         <Link
           to="/catalog"

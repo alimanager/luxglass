@@ -46,7 +46,7 @@ const AnalysisResults: React.FC = () => {
 
   if (!state?.faceShape || !state?.characteristics || !profile) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-28 flex items-center justify-center">
         <div className="text-center p-8">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-medium mb-4">Analyse non disponible</h2>
@@ -68,13 +68,13 @@ const AnalysisResults: React.FC = () => {
   const faceShapeLabel = FACE_SHAPE_LABELS[faceShape] ?? faceShape;
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-28">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-serif mb-8">Résultats de l'Analyse</h1>
 
         <div className="max-w-5xl mx-auto space-y-8">
           {/* Face Shape Section */}
-          <div className="bg-white p-8 rounded-lg shadow-sm">
+          <div className="paper-panel p-8">
             <h2 className="text-2xl font-medium mb-6">
               Forme de Visage : <span className="text-primary-600 capitalize">{faceShapeLabel}</span>
             </h2>
@@ -86,7 +86,7 @@ const AnalysisResults: React.FC = () => {
           </div>
 
           {/* Characteristics Section */}
-          <div className="bg-white p-8 rounded-lg shadow-sm">
+          <div className="paper-panel p-8">
             <h2 className="text-2xl font-medium mb-6">Caractéristiques du Visage</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -211,7 +211,7 @@ const AnalysisResults: React.FC = () => {
           </div>
 
           {/* Recommendations Section */}
-          <div className="bg-white p-8 rounded-lg shadow-sm">
+          <div className="paper-panel p-8">
             <h2 className="text-2xl font-medium mb-2">Votre Sélection Personnalisée</h2>
             <p className="text-gray-600 mb-8">
               Chaque monture du catalogue a été notée selon trois critères : l'harmonie
@@ -255,7 +255,7 @@ const AnalysisResults: React.FC = () => {
                         </li>
                       ))}
                     </ul>
-                    <p className="text-xs text-secondary-500 mt-3">
+                    <p className="text-xs font-mono text-secondary-500 mt-3">
                       {g.dimensions.lensWidth} □ {g.dimensions.bridgeWidth} — {g.dimensions.templeLength}
                     </p>
                   </div>

@@ -83,7 +83,7 @@ const Atelier: React.FC = () => {
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf4f1ec);
+    scene.background = new THREE.Color(0xf4ecdc);
     sceneRef.current = scene;
 
     const camera = new THREE.PerspectiveCamera(
@@ -174,7 +174,7 @@ const Atelier: React.FC = () => {
   }, [spec]);
 
   return (
-    <div className="min-h-screen pt-20 bg-secondary-50">
+    <div className="min-h-screen pt-28">
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-2">
           <Sparkles className="h-7 w-7 text-primary-600" />
@@ -203,20 +203,20 @@ const Atelier: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             <div
               ref={containerRef}
-              className="aspect-[4/3] rounded-xl overflow-hidden shadow-md bg-[#f4f1ec]"
+              className="aspect-[4/3] overflow-hidden border-2 border-ink shadow-hard bg-paper"
             />
 
             {/* Fiche technique */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="paper-panel p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Ruler className="h-5 w-5 text-primary-600" />
                 <h3 className="text-lg font-medium">Fiche technique de votre monture</h3>
               </div>
               <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-3xl font-serif text-primary-700">
+                <span className="text-3xl font-mono font-bold text-primary-700">
                   {spec.lensWidth} □ {spec.bridgeWidth}
                 </span>
-                <span className="text-xl text-secondary-500">— {spec.templeLength}</span>
+                <span className="text-xl font-mono text-secondary-500">— {spec.templeLength}</span>
                 <span className="text-sm text-secondary-500 ml-2">(calibre □ pont — branches, en mm)</span>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -248,7 +248,7 @@ const Atelier: React.FC = () => {
 
           {/* Panneau de personnalisation */}
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="paper-panel p-6">
               <h3 className="text-sm font-medium text-secondary-500 uppercase tracking-wide mb-1">
                 Votre morphologie
               </h3>
@@ -260,7 +260,7 @@ const Atelier: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="paper-panel p-6">
               <h3 className="text-sm font-medium text-secondary-500 uppercase tracking-wide mb-4">Forme</h3>
               <div className="grid grid-cols-2 gap-2">
                 {SHAPES.map(shape => (
@@ -284,7 +284,7 @@ const Atelier: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="paper-panel p-6">
               <h3 className="text-sm font-medium text-secondary-500 uppercase tracking-wide mb-4">
                 Couleur & matière
               </h3>
@@ -314,7 +314,7 @@ const Atelier: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="paper-panel p-6">
               <h3 className="text-sm font-medium text-secondary-500 uppercase tracking-wide mb-4">Verres</h3>
               <div className="grid grid-cols-2 gap-2">
                 <button

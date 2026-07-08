@@ -83,7 +83,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
     <aside
       className={`${
         isOpen ? 'translate-x-0' : '-translate-x-full'
-      } fixed left-0 top-0 bottom-0 w-72 bg-white z-40 shadow-xl overflow-y-auto transition-transform duration-300 ease-in-out pt-20 lg:translate-x-0 lg:static lg:pt-0 lg:shadow-none lg:h-auto`}
+      } fixed left-0 top-0 bottom-0 w-72 bg-cream z-40 shadow-xl overflow-y-auto transition-transform duration-300 ease-in-out pt-20 lg:translate-x-0 lg:static lg:pt-0 lg:shadow-none lg:h-auto`}
     >
       <div className="p-4">
         <div className="flex items-center justify-between mb-6">
