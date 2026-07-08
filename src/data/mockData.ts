@@ -26,7 +26,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/4585186/pexels-photo-4585186.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/wayfarer"
+    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/wayfarer",
+    frameShape: "rectangular",
+    dimensions: { lensWidth: 50, lensHeight: 41, bridgeWidth: 22, templeLength: 150, totalWidth: 145 }
   },
   {
     id: 2,
@@ -47,7 +49,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/6954179/pexels-photo-6954179.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/aviator"
+    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/aviator",
+    frameShape: "aviator",
+    dimensions: { lensWidth: 58, lensHeight: 50, bridgeWidth: 14, templeLength: 135, totalWidth: 137 }
   },
   {
     id: 3,
@@ -74,7 +78,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/5709634/pexels-photo-5709634.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.cartier.com/fr-fr/panthere-de-cartier-lunettes"
+    productUrl: "https://www.cartier.com/fr-fr/panthere-de-cartier-lunettes",
+    frameShape: "cat-eye",
+    dimensions: { lensWidth: 52, lensHeight: 43, bridgeWidth: 21, templeLength: 140, totalWidth: 135 }
   },
   {
     id: 4,
@@ -95,7 +101,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/4585186/pexels-photo-4585186.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.prada.com/fr/fr/femme/lunettes/lunettes_de_soleil.html"
+    productUrl: "https://www.prada.com/fr/fr/femme/lunettes/lunettes_de_soleil.html",
+    frameShape: "oversize",
+    dimensions: { lensWidth: 55, lensHeight: 47, bridgeWidth: 18, templeLength: 140, totalWidth: 139 }
   },
   {
     id: 5,
@@ -116,7 +124,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/6954179/pexels-photo-6954179.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/clubmaster"
+    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/clubmaster",
+    frameShape: "browline",
+    dimensions: { lensWidth: 51, lensHeight: 42, bridgeWidth: 21, templeLength: 145, totalWidth: 135 }
   },
   {
     id: 6,
@@ -143,7 +153,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/6954179/pexels-photo-6954179.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/round-metal"
+    productUrl: "https://www.ray-ban.com/france/lunettes-de-soleil/round-metal",
+    frameShape: "round",
+    dimensions: { lensWidth: 50, lensHeight: 47, bridgeWidth: 21, templeLength: 145, totalWidth: 132 }
   },
   {
     id: 7,
@@ -164,7 +176,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/5186869/pexels-photo-5186869.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://mykita.com/fr/lunettes-de-soleil/mylon"
+    productUrl: "https://mykita.com/fr/lunettes-de-soleil/mylon",
+    frameShape: "geometric",
+    dimensions: { lensWidth: 48, lensHeight: 44, bridgeWidth: 22, templeLength: 140, totalWidth: 133 }
   },
   {
     id: 8,
@@ -185,7 +199,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/6954179/pexels-photo-6954179.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.ysl.com/fr-fr/saint-laurent-eyewear"
+    productUrl: "https://www.ysl.com/fr-fr/saint-laurent-eyewear",
+    frameShape: "square",
+    dimensions: { lensWidth: 54, lensHeight: 45, bridgeWidth: 18, templeLength: 145, totalWidth: 140 }
   },
   {
     id: 9,
@@ -212,7 +228,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/5709634/pexels-photo-5709634.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.chloe.com/fr/lunettes"
+    productUrl: "https://www.chloe.com/fr/lunettes",
+    frameShape: "butterfly",
+    dimensions: { lensWidth: 56, lensHeight: 49, bridgeWidth: 16, templeLength: 145, totalWidth: 141 }
   },
   {
     id: 10,
@@ -233,7 +251,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/6954179/pexels-photo-6954179.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.persol.com/france"
+    productUrl: "https://www.persol.com/france",
+    frameShape: "aviator",
+    dimensions: { lensWidth: 58, lensHeight: 48, bridgeWidth: 15, templeLength: 145, totalWidth: 142 }
   },
   {
     id: 11,
@@ -254,7 +274,9 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/5186869/pexels-photo-5186869.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.celine.com/fr-fr/celine-eyewear"
+    productUrl: "https://www.celine.com/fr-fr/celine-eyewear",
+    frameShape: "oversize",
+    dimensions: { lensWidth: 55, lensHeight: 48, bridgeWidth: 19, templeLength: 145, totalWidth: 142 }
   },
   {
     id: 12,
@@ -281,7 +303,32 @@ export const glasses: Glasses[] = [
         coverImage: "https://images.pexels.com/photos/5709634/pexels-photo-5709634.jpeg?auto=compress&cs=tinysrgb&w=800"
       }
     ],
-    productUrl: "https://www.dior.com/fr_fr/fashion/lunettes-femme"
+    productUrl: "https://www.dior.com/fr_fr/fashion/lunettes-femme",
+    frameShape: "aviator",
+    dimensions: { lensWidth: 57, lensHeight: 47, bridgeWidth: 15, templeLength: 145, totalWidth: 140 }
+  },
+  {
+    id: 13,
+    name: "Lemtosh",
+    brand: "Moscot",
+    price: 320,
+    description: "Les Moscot Lemtosh sont une icône new-yorkaise depuis les années 40. Leur forme ovale-arrondie douce et leur acétate épais en font une monture de caractère, portée par des générations d'artistes et d'intellectuels.",
+    color: "Écaille",
+    style: "Ovale",
+    material: "Acétate",
+    gender: "unisex",
+    imageUrl: "https://images.pexels.com/photos/947885/pexels-photo-947885.jpeg?auto=compress&cs=tinysrgb&w=800",
+    magazineFeatures: [
+      {
+        id: 3,
+        name: "GQ",
+        issueDate: "Août 2023",
+        coverImage: "https://images.pexels.com/photos/6954179/pexels-photo-6954179.jpeg?auto=compress&cs=tinysrgb&w=800"
+      }
+    ],
+    productUrl: "https://moscot.com/products/lemtosh",
+    frameShape: "oval",
+    dimensions: { lensWidth: 46, lensHeight: 42, bridgeWidth: 24, templeLength: 145, totalWidth: 132 }
   }
 ];
 

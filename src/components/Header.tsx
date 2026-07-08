@@ -58,6 +58,11 @@ const Header: React.FC = () => {
             } ${location.pathname === '/try-on' ? 'border-b-2 border-primary-500' : ''}`}>
               Essayage Virtuel
             </Link>
+            <Link to="/atelier" className={`font-medium hover:text-primary-600 transition-colors ${
+              scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'
+            } ${location.pathname === '/atelier' ? 'border-b-2 border-primary-500' : ''}`}>
+              Atelier Sur Mesure
+            </Link>
             <button className={`flex items-center hover:text-primary-600 transition-colors ${
               scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'
             }`}>
@@ -97,12 +102,19 @@ const Header: React.FC = () => {
               >
                 Catalogue
               </Link>
-              <Link 
-                to="/try-on" 
+              <Link
+                to="/try-on"
                 className="font-medium text-secondary-900 hover:text-primary-600 transition-colors py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Essayage Virtuel
+              </Link>
+              <Link
+                to="/atelier"
+                className="font-medium text-secondary-900 hover:text-primary-600 transition-colors py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Atelier Sur Mesure
               </Link>
               <div className="relative">
                 <input

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Filter, Tag, Eye } from 'lucide-react';
+import { ArrowRight, Filter, Sparkles, Eye, ScanFace } from 'lucide-react';
 
 const Home: React.FC = () => {
   return (
@@ -19,13 +19,22 @@ const Home: React.FC = () => {
           <p className="text-white/90 text-xl mb-8 max-w-xl animate-slide-up">
             Un catalogue complet et curé des plus belles montures présentées dans les magazines de mode français.
           </p>
-          <Link
-            to="/catalog"
-            className="btn btn-primary text-base animate-slide-up"
-          >
-            Explorer le Catalogue
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
+          <div className="flex flex-wrap gap-4 animate-slide-up">
+            <Link
+              to="/try-on"
+              className="btn btn-primary text-base"
+            >
+              Analyser mon visage
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+            <Link
+              to="/atelier"
+              className="btn btn-accent text-base"
+            >
+              <Sparkles className="mr-2 h-5 w-5" />
+              Créer ma monture sur mesure
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -52,21 +61,21 @@ const Home: React.FC = () => {
             
             <div className="bg-white p-8 rounded-xl shadow-sm">
               <div className="bg-primary-100 p-3 rounded-full w-fit mb-6">
-                <Tag className="h-6 w-6 text-primary-600" />
+                <ScanFace className="h-6 w-6 text-primary-600" />
               </div>
-              <h3 className="text-xl mb-3">Sources Magazine</h3>
+              <h3 className="text-xl mb-3">Analyse Morphologique</h3>
               <p className="text-secondary-600">
-                Découvrez dans quels magazines chaque paire de lunettes a été présentée et mise en valeur.
+                Notre technologie mesure votre visage au millimètre près et note chaque monture selon sa compatibilité avec votre morphologie.
               </p>
             </div>
-            
+
             <div className="bg-white p-8 rounded-xl shadow-sm">
               <div className="bg-primary-100 p-3 rounded-full w-fit mb-6">
-                <Eye className="h-6 w-6 text-primary-600" />
+                <Sparkles className="h-6 w-6 text-primary-600" />
               </div>
-              <h3 className="text-xl mb-3">Design Élégant</h3>
+              <h3 className="text-xl mb-3">Atelier Sur Mesure</h3>
               <p className="text-secondary-600">
-                Profitez d'une interface soignée et intuitive pour une expérience utilisateur agréable et efficace.
+                Une monture unique dessinée en 3D à partir de vos mesures : calibre, pont et forme calculés pour vous seul.
               </p>
             </div>
           </div>
