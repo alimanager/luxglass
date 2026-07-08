@@ -25,6 +25,28 @@ npm run dev     # serveur de développement
 npm run build   # build de production (tsc + vite)
 ```
 
+## Import de produits AliExpress
+
+Le catalogue fusionne automatiquement `src/data/importedGlasses.json` avec la
+sélection éditoriale. Ce fichier est généré par `scripts/import-aliexpress.mjs` :
+
+```bash
+# Via l'API affiliée officielle (clés sur https://openservice.aliexpress.com)
+ALIEXPRESS_APP_KEY=xxx ALIEXPRESS_APP_SECRET=yyy \
+  node scripts/import-aliexpress.mjs --keywords "glasses frame" --pages 3
+
+# Ou depuis un dump JSON (réponse API, export d'outil de scraping…)
+node scripts/import-aliexpress.mjs --from-json scripts/sample-aliexpress.json
+```
+
+Le normaliseur déduit la forme de monture depuis le titre (cat-eye, aviator,
+round…), extrait les cotes d'opticien quand elles figurent dans l'annonce
+(« 52-18-140 », « lens width: 52 »…), et mappe matière, genre et couleur — les
+produits importés sont donc directement notés par le moteur de recommandation.
+
+Note : les requêtes vers `*.aliexpress.com` doivent être autorisées par la
+politique réseau de l'environnement (ou lancez le script depuis votre machine).
+
 ## Architecture
 
 | Module | Rôle |

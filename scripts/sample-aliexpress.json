@@ -1,0 +1,47 @@
+{
+  "comment": "Dump d'exemple au format de l'API affiliée AliExpress (aliexpress.affiliate.product.query) pour tester le pipeline : node scripts/import-aliexpress.mjs --from-json scripts/sample-aliexpress.json --out /tmp/test-imported.json",
+  "products": [
+    {
+      "product_title": "Retro Cat Eye Sunglasses Women Vintage Brand Designer Acetate Frame UV400 52-18-140",
+      "target_sale_price": "12.49",
+      "shop_name": "VintageOptics Store",
+      "product_main_image_url": "https://ae01.alicdn.com/kf/example-cateye.jpg",
+      "product_detail_url": "https://fr.aliexpress.com/item/1005001.html"
+    },
+    {
+      "product_title": "Pure Titanium Rimless Round Glasses Men Ultralight Optical Eyeglasses Frame 48-21-145",
+      "target_sale_price": "23.90",
+      "shop_name": "TitanFrames",
+      "product_main_image_url": "https://ae01.alicdn.com/kf/example-round.jpg",
+      "product_detail_url": "https://fr.aliexpress.com/item/1005002.html"
+    },
+    {
+      "product_title": "TR90 Square Frame Blue Light Blocking Glasses Unisex Black lens width: 54 bridge: 17",
+      "target_sale_price": "6.75",
+      "shop_name": "BlueShield Official",
+      "product_main_image_url": "https://ae01.alicdn.com/kf/example-square.jpg",
+      "product_detail_url": "https://fr.aliexpress.com/item/1005003.html"
+    },
+    {
+      "product_title": "Classic Metal Aviator Sunglasses Men Polarized Pilot Gold Frame 58-14-135",
+      "target_sale_price": "9.99",
+      "shop_name": "SkyLine Eyewear",
+      "product_main_image_url": "https://ae01.alicdn.com/kf/example-aviator.jpg",
+      "product_detail_url": "https://fr.aliexpress.com/item/1005004.html"
+    },
+    {
+      "product_title": "Oversized Butterfly Sunglasses Women Gradient Brown Tortoise Big Frame",
+      "target_sale_price": "8.20",
+      "shop_name": "GlamShades",
+      "product_main_image_url": "https://ae01.alicdn.com/kf/example-butterfly.jpg",
+      "product_detail_url": "https://fr.aliexpress.com/item/1005005.html"
+    },
+    {
+      "product_title": "Vintage Hexagon Polygon Metal Eyeglasses Frame Unisex Silver 51□19-142",
+      "target_sale_price": "7.45",
+      "shop_name": "GeoOptic",
+      "product_main_image_url": "https://ae01.alicdn.com/kf/example-hexagon.jpg",
+      "product_detail_url": "https://fr.aliexpress.com/item/1005006.html"
+    }
+  ]
+}

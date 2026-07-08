@@ -1,6 +1,11 @@
 import { Glasses } from '../types/glasses';
+import importedGlassesRaw from './importedGlasses.json';
 
-export const glasses: Glasses[] = [
+// Montures importées via scripts/import-aliexpress.mjs (vide tant qu'aucun
+// import n'a été lancé) — fusionnées avec le catalogue éditorial plus bas.
+const importedGlasses = importedGlassesRaw as unknown as Glasses[];
+
+const curatedGlasses: Glasses[] = [
   {
     id: 1,
     name: "Wayfarer Classic",
@@ -331,6 +336,8 @@ export const glasses: Glasses[] = [
     dimensions: { lensWidth: 46, lensHeight: 42, bridgeWidth: 24, templeLength: 145, totalWidth: 132 }
   }
 ];
+
+export const glasses: Glasses[] = [...curatedGlasses, ...importedGlasses];
 
 // Extraire les valeurs uniques pour les filtres
 export const getUniqueValues = (key: keyof Glasses): string[] => {
