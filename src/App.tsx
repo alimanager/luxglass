@@ -8,6 +8,7 @@ import TryOn from './pages/TryOn';
 import AnalysisResults from './pages/AnalysisResults';
 import Atelier from './pages/Atelier';
 import Manifeste from './pages/Manifeste';
+import Miroir from './pages/Miroir';
 import VirtualTryOn from './components/VirtualTryOn';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
         <Route path="analysis-results" element={<AnalysisResults />} />
         <Route path="atelier" element={<Atelier />} />
         <Route path="manifeste" element={<Manifeste />} />
+        <Route path="miroir" element={<Miroir />} />
         <Route path="virtual-try-on" element={<VirtualTryOn />} />
       </Route>
     </Routes>

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment';
-import { Ruler, ScanFace, Sparkles, Sun, Eye } from 'lucide-react';
+import { Ruler, ScanFace, Sparkles, Sun, Eye, ArrowRight } from 'lucide-react';
 import { FaceProfile, SkinTone } from '../types/glasses';
 import { FACE_SHAPE_LABELS } from '../utils/recommendation';
 import {
@@ -341,6 +341,11 @@ const Atelier: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            <Link to="/miroir" className="btn btn-primary w-full text-sm">
+              Voir sur mon visage
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
           </div>
         </div>
       </div>

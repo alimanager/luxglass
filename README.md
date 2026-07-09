@@ -15,6 +15,13 @@ Trouvez la monture qui correspond vraiment à votre visage, ou faites-la dessine
 - **Atelier Sur Mesure** (`/atelier`) — une monture unique est générée procéduralement en
   3D (Three.js) à partir des mesures : calibre calculé sur l'écart pupillaire, pont ajusté
   au nez, forme conseillée selon la morphologie, couleurs et matières personnalisables.
+- **Le Miroir** (`/miroir`) — essayage en réalité augmentée : la monture sur mesure est
+  posée sur le visage en direct. Pose 3D de la tête estimée depuis le mesh facial
+  (base orthonormée tempes/front-menton), échelle absolue par le diamètre d'iris,
+  lissage adaptatif type One-Euro, occlusion des branches par un ellipsoïde de
+  profondeur, et cotes de la monture recalculées en continu sur les mesures stabilisées
+  (médiane glissante). La géométrie est couverte par un banc de test synthétique :
+  `npx tsx scripts/test-facepose.ts`.
 - **Catalogue** (`/catalog`) — filtres par marque, style, couleur, matière, prix.
 
 ## Démarrage

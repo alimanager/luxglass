@@ -5,8 +5,9 @@ import { Menu, X, Glasses } from 'lucide-react';
 const NAV_ITEMS = [
   { to: '/', label: 'Accueil' },
   { to: '/catalog', label: 'Catalogue' },
-  { to: '/try-on', label: 'Essayage Virtuel' },
-  { to: '/atelier', label: 'Atelier Sur Mesure' },
+  { to: '/try-on', label: 'L\'Analyse' },
+  { to: '/atelier', label: 'L\'Atelier' },
+  { to: '/miroir', label: 'Le Miroir' },
   { to: '/manifeste', label: 'Le Manifeste' },
 ];
 
