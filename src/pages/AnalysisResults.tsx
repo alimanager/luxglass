@@ -1,6 +1,9 @@
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ArrowRight, AlertCircle } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { ArrowRight, AlertCircle, Sparkles, Check } from 'lucide-react';
+import { glasses } from '../data/mockData';
+import { recommendGlasses, FACE_SHAPE_LABELS } from '../utils/recommendation';
+import { FaceProfile, SkinTone } from '../types/glasses';
 
 interface LocationState {
   faceShape: string;
@@ -12,7 +15,9 @@ interface LocationState {
     faceWidth: number;
     faceLength: number;
     eyeDistance: number;
-    skinTone: 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
+    interpupillaryDistance: number;
+    noseBridgeWidth: number;
+    skinTone: SkinTone;
   };
 }
 
@@ -21,9 +26,27 @@ const AnalysisResults: React.FC = () => {
   const location = useLocation();
   const state = location.state as LocationState;
 
-  if (!state?.faceShape || !state?.characteristics) {
+  const profile: FaceProfile | null = useMemo(() => {
+    if (!state?.faceShape || !state?.characteristics) return null;
+    const c = state.characteristics;
+    return {
+      faceShape: state.faceShape,
+      faceWidth: c.faceWidth,
+      faceLength: c.faceLength,
+      interpupillaryDistance: c.interpupillaryDistance ?? c.eyeDistance,
+      noseBridgeWidth: c.noseBridgeWidth ?? 18,
+      skinTone: c.skinTone
+    };
+  }, [state]);
+
+  const recommendations = useMemo(
+    () => (profile ? recommendGlasses(profile, glasses).slice(0, 6) : []),
+    [profile]
+  );
+
+  if (!state?.faceShape || !state?.characteristics || !profile) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-28 flex items-center justify-center">
         <div className="text-center p-8">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-medium mb-4">Analyse non disponible</h2>
@@ -42,28 +65,33 @@ const AnalysisResults: React.FC = () => {
   }
 
   const { faceShape, characteristics } = state;
+  const faceShapeLabel = FACE_SHAPE_LABELS[faceShape] ?? faceShape;
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-28">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-serif mb-8">Résultats de l'Analyse</h1>
 
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-5xl mx-auto space-y-8">
           {/* Face Shape Section */}
-          <div className="bg-white p-8 rounded-lg shadow-sm">
+          <div className="paper-panel p-8">
             <h2 className="text-2xl font-medium mb-6">
-              Forme de Visage : <span className="text-primary-600 capitalize">{faceShape}</span>
+              Forme de Visage : <span className="text-primary-600 capitalize">{faceShapeLabel}</span>
             </h2>
-            <p className="text-gray-600 mb-6">
-              Votre visage présente les caractéristiques typiques d'une forme {faceShape}.
-              Cette analyse nous permet de vous recommander les montures les plus adaptées à votre morphologie.
+            <p className="text-gray-600">
+              Votre visage présente les caractéristiques typiques d'une forme {faceShapeLabel}.
+              Nous avons croisé vos mesures avec les dimensions réelles de chaque monture
+              du catalogue pour établir votre sélection personnalisée.{' '}
+              <Link to="/manifeste" className="font-serif italic text-primary-700 underline underline-offset-4">
+                Comprendre notre méthode — La Géométrie Secrète du Visage, page 42 →
+              </Link>
             </p>
           </div>
 
           {/* Characteristics Section */}
-          <div className="bg-white p-8 rounded-lg shadow-sm">
+          <div className="paper-panel p-8">
             <h2 className="text-2xl font-medium mb-6">Caractéristiques du Visage</h2>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Left Column - Progress Bars */}
               <div className="space-y-6">
@@ -75,8 +103,8 @@ const AnalysisResults: React.FC = () => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" 
+                    <div
+                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-500"
                       style={{ width: `${characteristics.symmetry}%` }}
                     ></div>
                   </div>
@@ -90,8 +118,8 @@ const AnalysisResults: React.FC = () => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" 
+                    <div
+                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-500"
                       style={{ width: `${characteristics.jawlineStrength}%` }}
                     ></div>
                   </div>
@@ -105,8 +133,8 @@ const AnalysisResults: React.FC = () => {
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2.5">
-                    <div 
-                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-500" 
+                    <div
+                      className="bg-primary-600 h-2.5 rounded-full transition-all duration-500"
                       style={{ width: `${characteristics.cheekboneProminence}%` }}
                     ></div>
                   </div>
@@ -125,30 +153,36 @@ const AnalysisResults: React.FC = () => {
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Forme du Menton</h3>
                   <p className="text-lg font-medium text-primary-600 capitalize">
-                    {characteristics.chinShape === 'pointed' ? 'Pointu' : 
+                    {characteristics.chinShape === 'pointed' ? 'Pointu' :
                      characteristics.chinShape === 'rounded' ? 'Arrondi' : 'Carré'}
                   </p>
                 </div>
 
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Proportions du Visage</h3>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">Vos Mesures</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Largeur</span>
+                      <span className="text-sm text-gray-600">Largeur du visage</span>
                       <span className="text-sm font-medium">
-                        {characteristics.faceWidth.toFixed(0)}px
+                        {characteristics.faceWidth.toFixed(0)} mm
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Longueur</span>
+                      <span className="text-sm text-gray-600">Longueur du visage</span>
                       <span className="text-sm font-medium">
-                        {characteristics.faceLength.toFixed(0)}px
+                        {characteristics.faceLength.toFixed(0)} mm
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-sm text-gray-600">Distance entre les yeux</span>
+                      <span className="text-sm text-gray-600">Écart pupillaire</span>
                       <span className="text-sm font-medium">
-                        {characteristics.eyeDistance.toFixed(0)}px
+                        {profile.interpupillaryDistance.toFixed(0)} mm
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-600">Pont nasal</span>
+                      <span className="text-sm font-medium">
+                        {profile.noseBridgeWidth.toFixed(0)} mm
                       </span>
                     </div>
                   </div>
@@ -157,64 +191,87 @@ const AnalysisResults: React.FC = () => {
             </div>
           </div>
 
-          {/* Recommendations Section */}
-          <div className="bg-white p-8 rounded-lg shadow-sm">
-            <h2 className="text-2xl font-medium mb-6">Recommandations</h2>
-            <div className="space-y-4">
-              <p className="text-gray-600">
-                Basé sur votre forme de visage {faceShape} et votre teint {characteristics.skinTone.toLowerCase()}, voici nos recommandations pour le choix de vos lunettes :
+          {/* Sur Mesure CTA */}
+          <div className="bg-secondary-900 text-white p-8 rounded-lg shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="h-6 w-6 text-accent-400" />
+                <h2 className="text-2xl font-serif">Votre monture unique</h2>
+              </div>
+              <p className="text-secondary-300 max-w-xl">
+                Notre Atelier dessine en 3D une monture créée pour vous seul :
+                calibre calculé sur votre écart pupillaire ({profile.interpupillaryDistance.toFixed(0)} mm),
+                pont ajusté à votre nez, forme et couleurs choisies pour votre morphologie.
               </p>
-              <ul className="space-y-2 text-gray-600">
-                {faceShape === 'round' && (
-                  <>
-                    <li>• Optez pour des montures angulaires pour créer un contraste</li>
-                    <li>• Les lunettes rectangulaires allongent visuellement le visage</li>
-                    <li>• Évitez les montures rondes qui accentuent la rondeur</li>
-                  </>
-                )}
-                {faceShape === 'square' && (
-                  <>
-                    <li>• Choisissez des montures rondes ou ovales pour adoucir les traits</li>
-                    <li>• Les lunettes aviateur s'adaptent parfaitement à votre morphologie</li>
-                    <li>• Évitez les montures carrées qui renforcent l'aspect anguleux</li>
-                  </>
-                )}
-                {faceShape === 'oval' && (
-                  <>
-                    <li>• La plupart des styles de lunettes vous vont bien</li>
-                    <li>• Privilégiez des montures proportionnées à votre visage</li>
-                    <li>• Évitez les montures trop grandes qui déséquilibrent les proportions</li>
-                  </>
-                )}
-                {faceShape === 'heart' && (
-                  <>
-                    <li>• Privilégiez les montures qui s'élargissent vers le bas</li>
-                    <li>• Les lunettes papillon équilibrent les proportions</li>
-                    <li>• Évitez les montures trop larges au niveau des tempes</li>
-                  </>
-                )}
-                {faceShape === 'oblong' && (
-                  <>
-                    <li>• Choisissez des montures larges pour réduire visuellement la longueur</li>
-                    <li>• Les lunettes oversize créent un bel équilibre</li>
-                    <li>• Évitez les montures étroites qui allongent encore plus le visage</li>
-                  </>
-                )}
-              </ul>
             </div>
-          </div>
-
-          {/* Continue Button */}
-          <div className="flex justify-center pt-6">
             <button
-              onClick={() => navigate('/virtual-try-on', { 
-                state: { faceShape, characteristics } 
-              })}
-              className="btn btn-primary text-lg px-8 py-3"
+              onClick={() => navigate('/atelier', { state: { faceShape, characteristics } })}
+              className="btn btn-accent text-base whitespace-nowrap px-8 py-3"
             >
-              Continuer vers l'essayage virtuel
+              Créer ma monture
               <ArrowRight className="ml-2 h-5 w-5" />
             </button>
+          </div>
+
+          {/* Recommendations Section */}
+          <div className="paper-panel p-8">
+            <h2 className="text-2xl font-medium mb-2">Votre Sélection Personnalisée</h2>
+            <p className="text-gray-600 mb-8">
+              Chaque monture du catalogue a été notée selon trois critères : l'harmonie
+              avec la forme de votre visage, l'ajustement physique (largeur de face, pont,
+              centres optiques) et l'accord avec votre teint.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {recommendations.map(({ glasses: g, score, reasons }, index) => (
+                <Link
+                  key={g.id}
+                  to={`/product/${g.id}`}
+                  className="card group flex flex-col overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="relative h-48 overflow-hidden">
+                    <img
+                      src={g.imageUrl}
+                      alt={`${g.brand} ${g.name}`}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute top-3 left-3 bg-primary-600 text-white text-sm font-semibold px-3 py-1 rounded-full shadow">
+                      {score}% compatible
+                    </div>
+                    {index === 0 && (
+                      <div className="absolute top-3 right-3 bg-accent-500 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
+                        Meilleur choix
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-5 flex flex-col flex-grow">
+                    <div className="flex justify-between items-baseline mb-1">
+                      <span className="text-sm text-secondary-500">{g.brand}</span>
+                      <span className="font-medium">{g.price} €</span>
+                    </div>
+                    <h3 className="text-lg font-medium mb-3">{g.name}</h3>
+                    <ul className="space-y-1.5 mt-auto">
+                      {reasons.slice(0, 2).map((reason, i) => (
+                        <li key={i} className="flex items-start text-sm text-secondary-600">
+                          <Check className="h-4 w-4 text-primary-600 mr-2 mt-0.5 flex-shrink-0" />
+                          {reason}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="text-xs font-mono text-secondary-500 mt-3">
+                      {g.dimensions.lensWidth} □ {g.dimensions.bridgeWidth} — {g.dimensions.templeLength}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            <div className="flex justify-center mt-8">
+              <Link to="/catalog" className="btn btn-secondary">
+                Voir tout le catalogue
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </div>
           </div>
         </div>
       </div>

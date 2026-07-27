@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="fr">
+<!-- Banc d'essai visuel du Miroir. Générer les bundles puis ouvrir dans Chromium :
+     npx esbuild src/utils/parametricGlasses.ts src/utils/facePose.ts --bundle --format=esm --external:three --outdir=scripts/demo-bundles -->
+<head>
+<meta charset="utf-8">
+<title>Planche d'essai — Le Miroir</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "../node_modules/three/build/three.module.js",
+    "three/examples/jsm/environments/RoomEnvironment.js": "../node_modules/three/examples/jsm/environments/RoomEnvironment.js"
+  }
+}
+</script>
+<style>
+  body { margin: 0; background: #f4ecdc; font-family: Georgia, serif; color: #221a14;
+         background-image: radial-gradient(rgba(34,26,20,.05) 1px, transparent 1px); background-size: 6px 6px; }
+  .page { max-width: 1560px; margin: 0 auto; padding: 36px; }
+  h1 { font-size: 40px; text-transform: uppercase; margin: 0 0 4px; letter-spacing: 1px; }
+  .kicker { font-family: Arial, sans-serif; font-size: 11px; letter-spacing: 5px; text-transform: uppercase; margin-bottom: 18px; }
+  .row { display: flex; gap: 28px; margin-top: 24px; }
+  .panel { background: #faf5e9; border: 2px solid #221a14; box-shadow: 6px 6px 0 #221a14; }
+  .stage { position: relative; width: 480px; height: 560px; }
+  .stage canvas { position: absolute; inset: 0; }
+  .caption { border-top: 2px solid #221a14; padding: 10px 14px; font-size: 13px; }
+  .caption b { font-family: Arial, sans-serif; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; display:block; margin-bottom:2px; }
+  .mono { font-family: 'Courier New', monospace; font-weight: bold; color: #c23a1c; }
+  .foot { margin-top: 22px; font-size: 12px; font-style: italic; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="kicker">LuxOptic · Banc d'essai du Miroir · Fig. 2</div>
+  <h1>La monture posée sur le visage</h1>
+  <div style="font-style:italic; font-size:17px;">Le vrai pipeline — pose 3D, échelle par l'iris, distance au vertex, monture générée aux cotes — exécuté sur un portrait dont la géométrie est connue au millimètre.</div>
+  <div class="row" id="row"></div>
+  <div class="foot">Portrait d'étude dessiné paramétriquement : les traits du visage et les points anatomiques sont générés par la même fonction, l'alignement observé est donc une preuve géométrique, pas une coïncidence.</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { estimateFacePose } from './demo-bundles/facePose.js';
+import { buildGlassesModel, deriveFrameSpec, ATELIER_COLORS } from './demo-bundles/parametricGlasses.js';
+
+const W = 480, H = 560;
+
+// ---- Géométrie du visage : tout en mm autour du point inter-pupillaire ----
+// Repère écran : x droite, y bas. eyeY/cx = position du milieu des yeux.
+function faceGeometry(s, cx, eyeY, rollRad) {
+  const rot = (x, y) => {
+    const dx = x - cx, dy = y - eyeY;
+    return {
+      x: cx + dx * Math.cos(rollRad) - dy * Math.sin(rollRad),
+      y: eyeY + dx * Math.sin(rollRad) + dy * Math.cos(rollRad)
+    };
+  };
+  const mm = (x, y) => rot(cx + x * s, eyeY + y * s);
+
+  const g = {
+    s, cx, eyeY, rot, mm,
+    irisR: (11.7 / 2) * s,
+    eyeL: mm(-31.5, 0), eyeR: mm(31.5, 0),
+    templeL: mm(-72.5, 4), templeR: mm(72.5, 4),
+    forehead: mm(0, -70), chin: mm(0, 110),
+    bridgeL: mm(-9, 2), bridgeR: mm(9, 2),
+    noseTip: mm(0, 38), mouth: mm(0, 72),
+  };
+
+  // Landmarks bruts (z en "pixels", négatif = vers la caméra)
+  const kp = [];
+  const put = (i, p, z, name) => { kp[i] = { x: p.x, y: p.y, z, ...(name ? { name } : {}) }; };
+  put(10, g.forehead, 0); put(152, g.chin, 0);
+  put(234, g.templeL, 44 * s / 2.2); put(454, g.templeR, 44 * s / 2.2);
+  put(122, g.bridgeL, -14); put(351, g.bridgeR, -14);
+  let idx = 468;
+  for (const [name, c] of [['rightIris', g.eyeR], ['leftIris', g.eyeL]]) {
+    const d = g.irisR;
+    for (const [ox, oy] of [[0,0],[d,0],[-d,0],[0,d],[0,-d]]) {
+      // offsets tournés avec le visage
+      const p = g.rot(c.x + ox - 0, c.y + oy - 0);
+      // rot() tourne autour du centre : c est déjà tourné, donc tourner l'offset seul
+      const off = {
+        x: c.x + ox * Math.cos(rollRad) - oy * Math.sin(rollRad),
+        y: c.y + ox * Math.sin(rollRad) + oy * Math.cos(rollRad)
+      };
+      kp[idx++] = { x: off.x, y: off.y, z: -20, name };
+    }
+  }
+  for (let i = 0; i < idx; i++) if (!kp[i]) kp[i] = { x: 0, y: 0, z: 0 };
+  g.keypoints = kp;
+  return g;
+}
+
+// ---- Portrait d'étude, dessiné depuis la même géométrie ----
+function drawPortrait(ctx, g, rollRad) {
+  const { s, cx, eyeY } = g;
+  ctx.clearRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(cx, eyeY);
+  ctx.rotate(rollRad);
+  ctx.translate(-cx, -eyeY);
+
+  const faceW = 145 * s, faceH = 190 * s;
+  const cy = eyeY + 22 * s;
+
+  // Cou et épaules
+  ctx.fillStyle = '#c9995f';
+  ctx.fillRect(cx - 24 * s, cy + faceH * 0.36, 48 * s, 60 * s);
+  ctx.fillStyle = '#5e1a2f';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + faceH * 0.36 + 78 * s, 95 * s, 42 * s, 0, Math.PI, 0);
+  ctx.fill();
+
+  // Tête
+  const skin = ctx.createLinearGradient(cx - faceW / 2, 0, cx + faceW / 2, 0);
+  skin.addColorStop(0, '#e8b57e');
+  skin.addColorStop(0.5, '#f2c894');
+  skin.addColorStop(1, '#dfa96f');
+  ctx.fillStyle = skin;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, faceW / 2, faceH / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Oreilles
+  ctx.fillStyle = '#e0aa72';
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.ellipse(cx + side * (faceW / 2), eyeY + 8 * s, 7 * s, 13 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Cheveux
+  ctx.fillStyle = '#2e1f14';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - faceH * 0.30, faceW / 2 + 4 * s, faceH * 0.30, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - faceH * 0.34, faceW / 2 - 6 * s, faceH * 0.17, 0, 0, Math.PI);
+  ctx.fill();
+
+  // Sourcils
+  ctx.strokeStyle = '#3a2a1a';
+  ctx.lineWidth = 4.5 * s;
+  ctx.lineCap = 'round';
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(cx + side * 45 * s, eyeY - 16 * s);
+    ctx.quadraticCurveTo(cx + side * 31 * s, eyeY - 21 * s, cx + side * 16 * s, eyeY - 17 * s);
+    ctx.stroke();
+  }
+
+  // Yeux (l'iris fait exactement 11,7 mm — c'est l'étalon du pipeline)
+  for (const side of [-1, 1]) {
+    const ex = cx + side * 31.5 * s;
+    ctx.fillStyle = '#fdfdf8';
+    ctx.beginPath();
+    ctx.ellipse(ex, eyeY, 13 * s, 7.2 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#5b3b1e';
+    ctx.beginPath();
+    ctx.arc(ex, eyeY, g.irisR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#171310';
+    ctx.beginPath();
+    ctx.arc(ex, eyeY, g.irisR * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.beginPath();
+    ctx.arc(ex - g.irisR * 0.3, eyeY - g.irisR * 0.3, g.irisR * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+    // paupière
+    ctx.strokeStyle = '#b9854f';
+    ctx.lineWidth = 1.6 * s;
+    ctx.beginPath();
+    ctx.ellipse(ex, eyeY, 13 * s, 7.2 * s, 0, Math.PI, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // Nez
+  ctx.strokeStyle = '#c78d55';
+  ctx.lineWidth = 2.4 * s;
+  ctx.beginPath();
+  ctx.moveTo(cx - 2 * s, eyeY + 6 * s);
+  ctx.quadraticCurveTo(cx - 5 * s, eyeY + 30 * s, cx - 8 * s, eyeY + 38 * s);
+  ctx.quadraticCurveTo(cx, eyeY + 45 * s, cx + 8 * s, eyeY + 38 * s);
+  ctx.stroke();
+
+  // Bouche
+  ctx.strokeStyle = '#a34a3c';
+  ctx.lineWidth = 3.4 * s;
+  ctx.beginPath();
+  ctx.moveTo(cx - 20 * s, eyeY + 72 * s);
+  ctx.quadraticCurveTo(cx, eyeY + 80 * s, cx + 20 * s, eyeY + 72 * s);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ---- Un panneau = portrait + rendu WebGL du vrai pipeline ----
+async function renderPanel(host, opts) {
+  const { s, rollDeg, label, detail } = opts;
+  const rollRad = rollDeg * Math.PI / 180;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'panel';
+  wrap.innerHTML = `<div class="stage"></div><div class="caption"><b>${label}</b>${detail}<span class="mono" data-spec></span></div>`;
+  host.appendChild(wrap);
+  const stage = wrap.querySelector('.stage');
+
+  const c2d = document.createElement('canvas');
+  c2d.width = W; c2d.height = H;
+  stage.appendChild(c2d);
+
+  const g = faceGeometry(s, W / 2, 250, rollRad);
+  drawPortrait(c2d.getContext('2d'), g, rollRad);
+
+  // Le vrai code : estimation de pose sur les landmarks
+  const pose = estimateFacePose(g.keypoints, W, false);
+  if (!pose) throw new Error('pose null');
+
+  // Le vrai code : monture dérivée des mesures de CE visage
+  const profile = {
+    faceShape: 'oval',
+    faceWidth: pose.faceWidthMm,
+    faceLength: pose.faceLengthMm,
+    interpupillaryDistance: pose.ipdMm,
+    noseBridgeWidth: pose.noseBridgeMm,
+    skinTone: 'Medium'
+  };
+  const spec = { ...deriveFrameSpec(profile, opts.shape), color: ATELIER_COLORS.find(c => c.name === opts.color), sunLenses: false };
+  wrap.querySelector('[data-spec]').textContent = ` — ${spec.lensWidth} □ ${spec.bridgeWidth} (IPD ${pose.ipdMm.toFixed(0)} mm)`;
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setSize(W, H, false);
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d2c8, 0.9));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  keyLight.position.set(0.5, 1, 1.5);
+  scene.add(keyLight);
+
+  const camera = new THREE.OrthographicCamera(0, W, 0, -H, -5000, 5000);
+
+  const model = buildGlassesModel(spec);
+  const zAxis = new THREE.Vector3(0, 0, 1).applyQuaternion(pose.quaternion);
+  model.position.copy(pose.position).addScaledVector(zAxis, 12 * pose.pixelsPerMm);
+  model.quaternion.copy(pose.quaternion);
+  model.scale.setScalar(pose.pixelsPerMm);
+  scene.add(model);
+
+  renderer.render(scene, camera);
+}
+
+const row = document.getElementById('row');
+await renderPanel(row, { s: 2.2, rollDeg: 0, shape: 'aviator', color: 'Écaille',
+  label: 'Planche A — De face', detail: 'Aviateur écaille, pose frontale.' });
+await renderPanel(row, { s: 2.2, rollDeg: 12, shape: 'round', color: 'Or',
+  label: 'Planche B — Tête inclinée (12°)', detail: 'La monture suit le roll mesuré.' });
+await renderPanel(row, { s: 2.9, rollDeg: -6, shape: 'cat-eye', color: 'Bordeaux',
+  label: 'Planche C — Plus près (échelle ×1,3)', detail: 'Taille réelle conservée par l\'iris.' });
+
+document.title = 'planches-ok';
+</script>
+</body>
+</html>

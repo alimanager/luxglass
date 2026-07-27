@@ -12,7 +12,7 @@ const TryOn: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20">
+    <div className="min-h-screen pt-28">
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-serif mb-6">Essayage Virtuel</h1>
         

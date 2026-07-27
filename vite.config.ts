@@ -22,6 +22,17 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html')
+      },
+      output: {
+        manualChunks: {
+          three: ['three'],
+          tfjs: [
+            '@tensorflow/tfjs',
+            '@tensorflow/tfjs-backend-webgl',
+            '@tensorflow-models/face-detection',
+            '@tensorflow-models/face-landmarks-detection'
+          ]
+        }
       }
     }
   }

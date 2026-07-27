@@ -217,7 +217,7 @@ const VirtualTryOn: React.FC<VirtualTryOnProps> = ({ glasses, faceShape, charact
         )}
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-sm">
+      <div className="paper-panel p-6">
         <h3 className="text-xl font-medium mb-6">Caractéristiques du Visage</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

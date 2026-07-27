@@ -93,14 +93,15 @@ const Catalog: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen pt-16">
-      <div className="bg-secondary-900 text-white py-16">
+    <div className="min-h-screen pt-28">
+      <div className="bg-ink text-cream py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-4xl font-serif mb-4">
+          <p className="kicker !text-accent-400 mb-3">Les pages shopping du numéro</p>
+          <h1 className="text-3xl md:text-4xl font-serif !text-cream uppercase mb-4">
             Catalogue de Lunettes
           </h1>
           <p className="max-w-2xl mx-auto text-secondary-200">
-            Découvrez notre sélection de lunettes françaises issues des plus grands magazines de mode
+            Notre sélection de montures vues dans les plus grands magazines de mode
           </p>
         </div>
       </div>
@@ -117,7 +118,7 @@ const Catalog: React.FC = () => {
 
           {/* Main content */}
           <div className="flex-1">
-            <div className="sticky top-16 bg-white z-30 pt-4 pb-4">
+            <div className="sticky top-24 bg-paper z-30 pt-4 pb-4">
               <div className="flex flex-col md:flex-row gap-4 mb-6">
                 <div className="relative flex-grow">
                   <input

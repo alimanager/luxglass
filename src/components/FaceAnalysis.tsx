@@ -1,12 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import Webcam from 'react-webcam';
 import { AlertCircle, Camera, RefreshCw } from 'lucide-react';
-import * as tf from '@tensorflow/tfjs';
 import * as faceDetection from '@tensorflow-models/face-detection';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
 import FaceCalibration from './FaceCalibration';
+import { loadFaceModels } from '../utils/modelLoader';
+import { SkinTone } from '../types/glasses';
 
-// Average human iris diameter in millimeters
+// Le diamètre de l'iris humain est quasi constant (~11,7 mm) : il sert
+// d'étalon pour convertir les pixels en millimètres.
 const IRIS_DIAMETER_MM = 11.7;
 
 interface FaceAnalysisProps {
@@ -27,7 +29,13 @@ interface FaceCharacteristics {
   templeLength: number;
   interpupillaryDistance: number;
   foreheadToEyebrowDistance: number;
-  skinTone: 'Fair' | 'Light' | 'Medium Light' | 'Medium' | 'Medium Dark' | 'Dark' | 'Deep';
+  skinTone: SkinTone;
+}
+
+interface Point3D {
+  x: number;
+  y: number;
+  z?: number;
 }
 
 const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
@@ -39,39 +47,31 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
   const [error, setError] = useState<string | null>(null);
   const [isCalibrating, setIsCalibrating] = useState(true);
   const [calibrationStep, setCalibrationStep] = useState<'face' | 'complete'>('face');
-  const [scalingFactor, setScalingFactor] = useState<number | null>(null);
   const detectorRef = useRef<faceDetection.FaceDetector | null>(null);
   const landmarksDetectorRef = useRef<faceLandmarksDetection.FaceLandmarksDetector | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [currentLandmarks, setCurrentLandmarks] = useState<any>(null);
 
   useEffect(() => {
-    const initializeDetectors = async () => {
-      try {
-        if (!window.__models?.faceDetector || !window.__models?.landmarksDetector) {
-          throw new Error('Models not initialized in global context');
-        }
+    let cancelled = false;
 
-        detectorRef.current = window.__models.faceDetector;
-        landmarksDetectorRef.current = window.__models.landmarksDetector;
+    loadFaceModels()
+      .then(models => {
+        if (cancelled) return;
+        detectorRef.current = models.faceDetector;
+        landmarksDetectorRef.current = models.landmarksDetector;
         canvasRef.current = document.createElement('canvas');
-        canvasRef.current.willReadFrequently = true;
-        
-        console.log('Detectors initialized:', {
-          faceDetector: detectorRef.current,
-          landmarksDetector: landmarksDetectorRef.current
-        });
-        
         setIsModelLoading(false);
         setError(null);
-      } catch (err) {
-        console.error('Error initializing detectors:', err);
-        setError('Failed to initialize face detection. Please refresh the page.');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Impossible d'initialiser la détection de visage. Veuillez recharger la page.");
         setIsModelLoading(false);
-      }
-    };
+      });
 
-    initializeDetectors();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -88,7 +88,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
       try {
         const video = webcamRef.current.video;
-        
+
         if (video.readyState !== 4) {
           isDetecting = false;
           animationFrame = requestAnimationFrame(detectFace);
@@ -97,10 +97,10 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
         const faces = await detectorRef.current.estimateFaces(video);
         setFaceDetected(faces.length > 0);
-        setError(faces.length === 0 ? 'No face detected. Please ensure your face is clearly visible in the frame.' : null);
+        setError(faces.length === 0 ? 'Aucun visage détecté. Placez votre visage bien en face de la caméra.' : null);
       } catch (err) {
         console.error('Error detecting face:', err);
-        setError('An error occurred during face detection.');
+        setError('Une erreur est survenue pendant la détection du visage.');
       }
 
       isDetecting = false;
@@ -118,77 +118,41 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     };
   }, [isVideoReady, isModelLoading, isCalibrating]);
 
-  const handleFaceCalibrationComplete = (newScalingFactor: number) => {
-    console.log('Calibration complete with scaling factor:', newScalingFactor);
-    setScalingFactor(newScalingFactor);
+  const handleFaceCalibrationComplete = () => {
     setCalibrationStep('complete');
     setIsCalibrating(false);
   };
 
-  const handleLandmarksUpdate = (landmarks: any) => {
-    setCurrentLandmarks(landmarks);
-  };
-
-  // Function to calculate iris diameter from landmarks
-  const getIrisDiameter = (irisLandmarks: any[]): number => {
-    // Log iris landmarks for verification
-    console.log('Iris Landmarks:', irisLandmarks);
-
-    // Find the leftmost and rightmost points of the iris
-    const leftPoint = irisLandmarks.reduce((min, point) => point.x < min.x ? point : min);
-    const rightPoint = irisLandmarks.reduce((max, point) => point.x > max.x ? point : max);
-
-    // Find the topmost and bottommost points of the iris
-    const topPoint = irisLandmarks.reduce((min, point) => point.y < min.y ? point : min);
-    const bottomPoint = irisLandmarks.reduce((max, point) => point.y > max.y ? point : max);
-
-    // Calculate horizontal and vertical diameters
-    const horizontalDiameter = Math.sqrt(
-      Math.pow(rightPoint.x - leftPoint.x, 2) +
-      Math.pow(rightPoint.y - leftPoint.y, 2) +
-      Math.pow(rightPoint.z - leftPoint.z, 2)
+  const distance3D = (p1: Point3D, p2: Point3D): number =>
+    Math.sqrt(
+      Math.pow(p2.x - p1.x, 2) +
+      Math.pow(p2.y - p1.y, 2) +
+      (p1.z !== undefined && p2.z !== undefined ? Math.pow(p2.z - p1.z, 2) : 0)
     );
 
-    const verticalDiameter = Math.sqrt(
-      Math.pow(bottomPoint.x - topPoint.x, 2) +
-      Math.pow(bottomPoint.y - topPoint.y, 2) +
-      Math.pow(bottomPoint.z - topPoint.z, 2)
-    );
+  const centroid = (points: Point3D[]): Point3D => ({
+    x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
+    y: points.reduce((sum, p) => sum + p.y, 0) / points.length,
+    z: points.reduce((sum, p) => sum + (p.z ?? 0), 0) / points.length
+  });
 
-    // Log diameters for verification
-    console.log('Horizontal Diameter:', horizontalDiameter);
-    console.log('Vertical Diameter:', verticalDiameter);
-
-    // Return average of horizontal and vertical diameters
-    return (horizontalDiameter + verticalDiameter) / 2;
+  // Diamètre horizontal de l'iris (le vertical est faussé par les paupières)
+  const irisHorizontalDiameter = (irisPoints: Point3D[]): number => {
+    const left = irisPoints.reduce((min, p) => (p.x < min.x ? p : min));
+    const right = irisPoints.reduce((max, p) => (p.x > max.x ? p : max));
+    return distance3D(left, right);
   };
 
-  const calculateDistance = (point1: number[], point2: number[]): number => {
-    return Math.sqrt(
-      Math.pow(point2[0] - point1[0], 2) + 
-      Math.pow(point2[1] - point1[1], 2) +
-      (point2[2] && point1[2] ? Math.pow(point2[2] - point1[2], 2) : 0)
-    );
-  };
-
-  const pixelsToMillimeters = (pixels: number): number => {
-    if (!scalingFactor) {
-      console.error('No scaling factor available');
-      return pixels;
-    }
-    return pixels * scalingFactor;
-  };
-
-  const analyzeSkinTone = (canvas: HTMLCanvasElement, faceMesh: any): FaceCharacteristics['skinTone'] => {
+  const analyzeSkinTone = (canvas: HTMLCanvasElement, faceMesh: Point3D[]): SkinTone => {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas context not available');
 
-    // Sample points for skin tone analysis (forehead, cheeks, chin)
+    // Points d'échantillonnage : front, joues, menton
     const samplePoints = [
-      [faceMesh[151].x, faceMesh[151].y], // Forehead center
-      [faceMesh[116].x, faceMesh[116].y], // Left cheek
-      [faceMesh[345].x, faceMesh[345].y], // Right cheek
-      [faceMesh[152].x, faceMesh[152].y]  // Chin
+      [faceMesh[151].x, faceMesh[151].y],
+      [faceMesh[116].x, faceMesh[116].y],
+      [faceMesh[345].x, faceMesh[345].y],
+      [faceMesh[152].x, faceMesh[152].y]
     ];
 
     let totalR = 0, totalG = 0, totalB = 0;
@@ -209,7 +173,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     const min = Math.min(avgR, avgG, avgB);
     const v = max / 255;
     const s = max === 0 ? 0 : (max - min) / max;
-    
+
     if (v > 0.8 && s < 0.3) return 'Fair';
     if (v > 0.7 && s < 0.35) return 'Light';
     if (v > 0.6 && s < 0.4) return 'Medium Light';
@@ -224,161 +188,81 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
 
     const video = webcamRef.current.video;
     const canvas = canvasRef.current;
-    
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
-    
+
     ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
     return canvas;
   };
 
-  const analyzeFaceCharacteristics = async (face: faceDetection.Face, frameCanvas: HTMLCanvasElement): Promise<FaceCharacteristics> => {
-    if (!landmarksDetectorRef.current || !scalingFactor) {
-      throw new Error('Landmarks detector or calibration not ready');
+  const analyzeFaceCharacteristics = async (
+    face: faceDetection.Face,
+    frameCanvas: HTMLCanvasElement
+  ): Promise<FaceCharacteristics> => {
+    if (!landmarksDetectorRef.current) {
+      throw new Error('Landmarks detector not ready');
     }
 
     const landmarks = await landmarksDetectorRef.current.estimateFaces(frameCanvas);
-    
+
     if (!landmarks || landmarks.length === 0) {
       throw new Error('No face landmarks detected');
     }
 
-    const faceMesh = landmarks[0].keypoints;
+    const faceMesh = landmarks[0].keypoints as (Point3D & { name?: string })[];
     if (!faceMesh) {
       throw new Error('Face mesh data not available');
     }
 
-    // Get iris landmarks
-    const leftIris = faceMesh.filter((point: any) => point.name?.includes('leftIris'));
-    const rightIris = faceMesh.filter((point: any) => point.name?.includes('rightIris'));
+    // Étalonnage : l'iris sert de référence unique pour toutes les conversions px → mm
+    const leftIris = faceMesh.filter(p => p.name?.includes('leftIris'));
+    const rightIris = faceMesh.filter(p => p.name?.includes('rightIris'));
 
-    console.log('Left Iris Points:', leftIris);
-    console.log('Right Iris Points:', rightIris);
+    if (leftIris.length === 0 || rightIris.length === 0) {
+      throw new Error('Iris landmarks not available. Please retry with better lighting.');
+    }
 
-    // Calculate iris diameters
-    const leftIrisDiameter = getIrisDiameter(leftIris);
-    const rightIrisDiameter = getIrisDiameter(rightIris);
+    const avgIrisDiameter = (irisHorizontalDiameter(leftIris) + irisHorizontalDiameter(rightIris)) / 2;
+    const mmPerPixel = IRIS_DIAMETER_MM / avgIrisDiameter;
+    const toMm = (pixels: number) => pixels * mmPerPixel;
 
-    console.log('Left Iris Diameter (pixels):', leftIrisDiameter);
-    console.log('Right Iris Diameter (pixels):', rightIrisDiameter);
+    // Écart pupillaire : distance entre les centres des deux iris
+    const ipdMm = toMm(distance3D(centroid(leftIris), centroid(rightIris)));
 
-    // Calculate new scaling factor based on iris diameter
-    const avgIrisDiameter = (leftIrisDiameter + rightIrisDiameter) / 2;
-    const irisScalingFactor = IRIS_DIAMETER_MM / avgIrisDiameter;
+    // Mesures principales du visage
+    const faceLengthMm = toMm(distance3D(faceMesh[10], faceMesh[152]));   // front → menton
+    const faceWidthMm = toMm(distance3D(faceMesh[234], faceMesh[454]));   // tempe → tempe
+    const noseBridgeWidthMm = toMm(distance3D(faceMesh[122], faceMesh[351])); // flancs du pont nasal
+    const noseLengthMm = toMm(distance3D(faceMesh[168], faceMesh[1]));
+    const foreheadMm = toMm(distance3D(faceMesh[10], faceMesh[168]));
 
-    console.log('Iris-based Scaling Factor:', irisScalingFactor);
+    // Longueur de branche estimée depuis la largeur du visage (standard 135-150 mm)
+    const templeLengthMm = Math.min(150, Math.max(135, Math.round(135 + (faceWidthMm - 130) * 0.75)));
 
-    // Manual measurements for comparison
-    const manualFaceHeight = 180; // mm
-    const manualFaceWidth = 140; // mm
-    const manualIPD = 63; // mm
-    const manualNoseBridgeWidth = 20; // mm
-
-    // Log landmark coordinates for verification
-    console.log('\nLandmark Coordinates:');
-    console.log('Left Eye Inner (133):', faceMesh[133]);
-    console.log('Right Eye Inner (362):', faceMesh[362]);
-    console.log('Left Eye Outer (33):', faceMesh[33]);
-    console.log('Right Eye Outer (263):', faceMesh[263]);
-    console.log('Forehead (10):', faceMesh[10]);
-    console.log('Chin (152):', faceMesh[152]);
-    console.log('Left Temple (234):', faceMesh[234]);
-    console.log('Right Temple (454):', faceMesh[454]);
-    console.log('Nose Bridge Left (168):', faceMesh[168]);
-    console.log('Nose Bridge Right (388):', faceMesh[388]);
-
-    // Calculate face measurements using iris-based scaling factor
-    const faceHeightPixels = calculateDistance(
-      [faceMesh[10].x, faceMesh[10].y, faceMesh[10].z],
-      [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z]
-    );
-    const faceHeightMm = faceHeightPixels * irisScalingFactor;
-
-    const faceWidthPixels = calculateDistance(
-      [faceMesh[234].x, faceMesh[234].y, faceMesh[234].z],
-      [faceMesh[454].x, faceMesh[454].y, faceMesh[454].z]
-    );
-    const faceWidthMm = faceWidthPixels * irisScalingFactor;
-
-    const ipdPixels = calculateDistance(
-      [faceMesh[133].x, faceMesh[133].y, faceMesh[133].z],
-      [faceMesh[362].x, faceMesh[362].y, faceMesh[362].z]
-    );
-    const ipdMm = ipdPixels * irisScalingFactor;
-
-    const noseBridgeWidthPixels = calculateDistance(
-      [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z],
-      [faceMesh[388].x, faceMesh[388].y, faceMesh[388].z]
-    );
-    const noseBridgeWidthMm = noseBridgeWidthPixels * irisScalingFactor;
-
-    // Log measurements with manual comparisons
-    console.log('\nFace Measurements Comparison:');
-    console.log('----------------------------------------');
-    console.log('Face Height:');
-    console.log('  Calculated:', faceHeightMm.toFixed(1), 'mm');
-    console.log('  Manual:', manualFaceHeight, 'mm');
-    console.log('  Difference:', Math.abs(faceHeightMm - manualFaceHeight).toFixed(1), 'mm');
-    
-    console.log('\nFace Width:');
-    console.log('  Calculated:', faceWidthMm.toFixed(1), 'mm');
-    console.log('  Manual:', manualFaceWidth, 'mm');
-    console.log('  Difference:', Math.abs(faceWidthMm - manualFaceWidth).toFixed(1), 'mm');
-    
-    console.log('\nInterpupillary Distance (IPD):');
-    console.log('  Calculated:', ipdMm.toFixed(1), 'mm');
-    console.log('  Manual:', manualIPD, 'mm');
-    console.log('  Difference:', Math.abs(ipdMm - manualIPD).toFixed(1), 'mm');
-    
-    console.log('\nNose Bridge Width:');
-    console.log('  Calculated:', noseBridgeWidthMm.toFixed(1), 'mm');
-    console.log('  Manual:', manualNoseBridgeWidth, 'mm');
-    console.log('  Difference:', Math.abs(noseBridgeWidthMm - manualNoseBridgeWidth).toFixed(1), 'mm');
-
-    // Calculate additional facial characteristics
-    const leftSide = calculateDistance(
-      [faceMesh[123].x, faceMesh[123].y, faceMesh[123].z],
-      [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
-    );
-    const rightSide = calculateDistance(
-      [faceMesh[352].x, faceMesh[352].y, faceMesh[352].z],
-      [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
-    );
+    // Caractéristiques proportionnelles (sans unité)
+    const noseTip = faceMesh[1];
+    const leftSide = distance3D(faceMesh[123], noseTip);
+    const rightSide = distance3D(faceMesh[352], noseTip);
     const symmetry = Math.round(100 - (Math.abs(leftSide - rightSide) / ((leftSide + rightSide) / 2)) * 100);
 
     const jawlineLength = (
-      calculateDistance(
-        [faceMesh[172].x, faceMesh[172].y, faceMesh[172].z],
-        [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z]
-      ) +
-      calculateDistance(
-        [faceMesh[397].x, faceMesh[397].y, faceMesh[397].z],
-        [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z]
-      )
+      distance3D(faceMesh[172], faceMesh[152]) +
+      distance3D(faceMesh[397], faceMesh[152])
     ) / 2;
     const jawlineStrength = Math.round((jawlineLength / face.box.width) * 100);
 
-    const cheekboneWidth = calculateDistance(
-      [faceMesh[123].x, faceMesh[123].y, faceMesh[123].z],
-      [faceMesh[352].x, faceMesh[352].y, faceMesh[352].z]
-    );
+    const cheekboneWidth = distance3D(faceMesh[123], faceMesh[352]);
     const cheekboneProminence = Math.round((cheekboneWidth / face.box.width) * 100);
 
-    const chinWidth = calculateDistance(
-      [faceMesh[172].x, faceMesh[172].y, faceMesh[172].z],
-      [faceMesh[397].x, faceMesh[397].y, faceMesh[397].z]
-    );
-    const chinHeight = calculateDistance(
-      [faceMesh[152].x, faceMesh[152].y, faceMesh[152].z],
-      [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
-    );
-    
+    const chinWidth = distance3D(faceMesh[172], faceMesh[397]);
+    const chinHeight = distance3D(faceMesh[152], noseTip);
     const chinRatio = chinHeight / chinWidth;
+
     let chinShape: 'pointed' | 'rounded' | 'square';
-    
     if (chinRatio > 1.3) {
       chinShape = 'pointed';
     } else if (chinRatio < 1.1) {
@@ -387,85 +271,39 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
       chinShape = 'rounded';
     }
 
-    const noseLength = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z],
-          [faceMesh[1].x, faceMesh[1].y, faceMesh[1].z]
-        )
-      )
-    );
-
-    const templeLength = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[234].x, faceMesh[234].y, faceMesh[234].z],
-          [faceMesh[454].x, faceMesh[454].y, faceMesh[454].z]
-        ) / 2
-      )
-    );
-
-    const foreheadToEyebrowDistance = pixelsToMillimeters(
-      Math.round(
-        calculateDistance(
-          [faceMesh[10].x, faceMesh[10].y, faceMesh[10].z],
-          [faceMesh[168].x, faceMesh[168].y, faceMesh[168].z]
-        )
-      )
-    );
-
     const skinTone = analyzeSkinTone(frameCanvas, faceMesh);
 
     return {
       symmetry,
       jawlineStrength,
-      foreheadHeight: foreheadToEyebrowDistance,
+      foreheadHeight: foreheadMm,
       cheekboneProminence,
       chinShape,
-      faceLength: faceHeightMm,
+      faceLength: faceLengthMm,
       faceWidth: faceWidthMm,
       eyeDistance: ipdMm,
-      noseLength,
+      noseLength: noseLengthMm,
       noseBridgeWidth: noseBridgeWidthMm,
-      templeLength,
+      templeLength: templeLengthMm,
       interpupillaryDistance: ipdMm,
-      foreheadToEyebrowDistance,
+      foreheadToEyebrowDistance: foreheadMm,
       skinTone
     };
   };
 
   const analyzeFaceShape = useCallback(async () => {
-    console.log('Analyze button clicked. State:', {
-      faceDetected,
-      isModelLoading,
-      isVideoReady,
-      calibrationStep,
-      scalingFactor
-    });
-
     if (!faceDetected) {
-      setError('Please ensure a face is detected before analysis.');
+      setError('Veuillez attendre que votre visage soit détecté avant de lancer l’analyse.');
       return;
     }
 
     if (!detectorRef.current || !landmarksDetectorRef.current) {
-      console.error('Detectors not ready:', {
-        faceDetector: !!detectorRef.current,
-        landmarksDetector: !!landmarksDetectorRef.current
-      });
-      setError('Face detection models are not ready. Please refresh the page.');
-      return;
-    }
-
-    if (!scalingFactor) {
-      console.error('No scaling factor available');
-      setError('Calibration not complete. Please wait for calibration to finish.');
+      setError('Les modèles de détection ne sont pas prêts. Veuillez recharger la page.');
       return;
     }
 
     if (!webcamRef.current?.video) {
-      console.error('Video element not available');
-      setError('Camera not ready. Please ensure camera access is granted.');
+      setError("Caméra non disponible. Vérifiez que l'accès est autorisé.");
       return;
     }
 
@@ -473,23 +311,20 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
     setError(null);
 
     try {
-      console.log('Starting face analysis...');
       const frameCanvas = captureVideoFrame();
       if (!frameCanvas) {
         throw new Error('Failed to capture video frame');
       }
 
       const faces = await detectorRef.current.estimateFaces(frameCanvas);
-      console.log('Faces detected:', faces.length);
-      
+
       if (!faces || faces.length === 0) {
-        throw new Error('Unable to detect face. Please ensure your face is clearly visible.');
+        throw new Error('Visage non détecté. Placez-vous bien en face de la caméra.');
       }
 
       const face = faces[0];
       const faceCharacteristics = await analyzeFaceCharacteristics(face, frameCanvas);
-      console.log('Face characteristics calculated:', faceCharacteristics);
-      
+
       const ratio = faceCharacteristics.faceLength / faceCharacteristics.faceWidth;
       const cheekboneRatio = faceCharacteristics.cheekboneProminence / 100;
 
@@ -504,26 +339,16 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
         faceShape = 'oval';
       }
 
-      console.log('Analysis complete. Face shape:', faceShape);
       onAnalysisComplete(faceShape, faceCharacteristics);
     } catch (err) {
       console.error('Error analyzing face:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred during analysis');
+      setError(err instanceof Error ? err.message : "Une erreur est survenue pendant l'analyse");
     } finally {
       setIsAnalyzing(false);
     }
-  }, [faceDetected, scalingFactor, onAnalysisComplete]);
+  }, [faceDetected, onAnalysisComplete]);
 
   const isButtonDisabled = isAnalyzing || isModelLoading || !isVideoReady || !faceDetected || calibrationStep !== 'complete';
-
-  console.log('Button state:', {
-    isAnalyzing,
-    isModelLoading,
-    isVideoReady,
-    faceDetected,
-    calibrationStep,
-    isButtonDisabled
-  });
 
   return (
     <div className="relative space-y-4">
@@ -538,17 +363,17 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
             facingMode: "user"
           }}
           onUserMediaError={() => {
-            setError('Unable to access camera. Please check permissions.');
+            setError("Impossible d'accéder à la caméra. Vérifiez les permissions.");
           }}
           onLoadedData={() => setIsVideoReady(true)}
         />
-        
+
         {calibrationStep === 'face' ? (
           <FaceCalibration
             onCalibrationComplete={handleFaceCalibrationComplete}
             isCalibrating={isCalibrating}
-            onLandmarksUpdate={handleLandmarksUpdate}
-            webcam={webcamRef.current?.video}
+            onLandmarksUpdate={() => {}}
+            webcam={webcamRef.current?.video ?? null}
             landmarksDetector={landmarksDetectorRef.current}
           />
         ) : (
@@ -562,8 +387,8 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
             <div className={`absolute bottom-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-full transition-colors ${
               faceDetected ? 'bg-green-500' : 'bg-gray-500'
             } text-white text-sm flex items-center`}>
-              {!isVideoReady ? 'Initializing camera...' : (
-                faceDetected ? 'Face detected' : 'Waiting for face detection'
+              {!isVideoReady ? 'Initialisation de la caméra...' : (
+                faceDetected ? 'Visage détecté' : 'En attente de détection'
               )}
             </div>
           </>
@@ -573,7 +398,7 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <div className="bg-white rounded-lg p-4 flex items-center space-x-3">
               <RefreshCw className="h-5 w-5 animate-spin text-primary-600" />
-              <span>Analyzing face shape...</span>
+              <span>Analyse du visage en cours...</span>
             </div>
           </div>
         )}
@@ -592,27 +417,27 @@ const FaceAnalysis: React.FC<FaceAnalysisProps> = ({ onAnalysisComplete }) => {
           {isModelLoading ? (
             <>
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-              Loading model...
+              Chargement du modèle...
             </>
           ) : !isVideoReady ? (
             <>
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-              Initializing camera...
+              Initialisation de la caméra...
             </>
           ) : isAnalyzing ? (
             <>
               <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-              Analyzing...
+              Analyse en cours...
             </>
           ) : calibrationStep !== 'complete' ? (
             <>
               <RefreshCw className="h-5 w-5 mr-2" />
-              Complete calibration first
+              Terminez d'abord la calibration
             </>
           ) : (
             <>
               <Camera className="h-5 w-5 mr-2" />
-              {faceDetected ? 'Analyze face shape' : 'Waiting for face detection'}
+              {faceDetected ? 'Analyser la forme du visage' : 'En attente de détection'}
             </>
           )}
         </button>

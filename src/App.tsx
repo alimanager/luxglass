@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -6,6 +6,9 @@ import Catalog from './pages/Catalog';
 import ProductDetail from './pages/ProductDetail';
 import TryOn from './pages/TryOn';
 import AnalysisResults from './pages/AnalysisResults';
+import Atelier from './pages/Atelier';
+import Manifeste from './pages/Manifeste';
+import Miroir from './pages/Miroir';
 import VirtualTryOn from './components/VirtualTryOn';
 
 function App() {
@@ -17,6 +20,9 @@ function App() {
         <Route path="product/:id" element={<ProductDetail />} />
         <Route path="try-on" element={<TryOn />} />
         <Route path="analysis-results" element={<AnalysisResults />} />
+        <Route path="atelier" element={<Atelier />} />
+        <Route path="manifeste" element={<Manifeste />} />
+        <Route path="miroir" element={<Miroir />} />
         <Route path="virtual-try-on" element={<VirtualTryOn />} />
       </Route>
     </Routes>

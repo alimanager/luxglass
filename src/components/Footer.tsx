@@ -4,7 +4,7 @@ import { Glasses, Instagram, Facebook, Twitter } from 'lucide-react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="bg-secondary-950 text-white">
+    <footer className="bg-ink text-cream border-t-[6px] border-primary-600">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
@@ -102,8 +102,8 @@ const Footer: React.FC = () => {
         </div>
         
         <div className="mt-12 pt-6 border-t border-secondary-800 text-center">
-          <p className="text-secondary-400 text-sm">
-            &copy; {new Date().getFullYear()} LuxOptic. Tous droits réservés.
+          <p className="text-secondary-400 text-xs uppercase tracking-[0.25em]">
+            &copy; {new Date().getFullYear()} LuxOptic · Imprimé à Paris · Tous droits réservés
           </p>
         </div>
       </div>
