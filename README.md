@@ -54,6 +54,37 @@ produits importés sont donc directement notés par le moteur de recommandation.
 Note : les requêtes vers `*.aliexpress.com` doivent être autorisées par la
 politique réseau de l'environnement (ou lancez le script depuis votre machine).
 
+## Agents de collecte — magazines vintage
+
+Deux agents recherchent des publicités/photos de lunettes dans des magazines
+anciens numérisés, et produisent des fiches classifiées (marque devinée,
+année, magazine, image) au format `scripts/lib/vintage-classifier.mjs`.
+
+```bash
+# Agent 1 — Internet Archive (Vogue, LIFE, Esquire... magazines anglophones)
+node scripts/scrape-archive-org.mjs --query "sunglasses" --limit 20
+node scripts/scrape-archive-org.mjs --from-json scripts/sample-archive-org.json   # test hors-ligne
+
+# Agent 2 — Gallica / BnF (Vogue Paris, Femina, L'Illustration... magazines français)
+node scripts/scrape-gallica.mjs --query "lunettes de soleil" --limit 20
+node scripts/scrape-gallica.mjs --from-xml scripts/sample-gallica.xml            # test hors-ligne
+```
+
+**Ce que ça fait, et ce que ça ne fait pas.** Les deux agents recherchent en
+plein texte (OCR/métadonnées de bibliothèque) des mentions de lunettes ou de
+marques connues, et retrouvent la page de magazine correspondante. C'est une
+**détection textuelle**, pas une détection visuelle : rien ici n'analyse le
+contenu pixel des images pour vérifier qu'une paire de lunettes y figure
+réellement (ça demanderait un détecteur d'objets entraîné sur des montures,
+que nous n'avons pas). Chaque fiche porte `confidence` (`brand-match` si une
+marque connue a été repérée, `keyword-match` sinon) et `needsHumanReview:
+true` — une validation visuelle reste nécessaire avant d'intégrer une fiche
+au catalogue.
+
+Note : `archive.org` et `gallica.bnf.fr` doivent être autorisés par la
+politique réseau de l'environnement (souvent bloqués par défaut — lancez
+depuis votre machine si besoin, comme pour l'import AliExpress).
+
 ## Architecture
 
 | Module | Rôle |

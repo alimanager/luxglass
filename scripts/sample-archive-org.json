@@ -1,0 +1,41 @@
+{
+  "comment": "Dump d'exemple au format de résultats de recherche + correspondance plein-texte d'Internet Archive, pour tester le pipeline hors-ligne : node scripts/scrape-archive-org.mjs --from-json scripts/sample-archive-org.json --out /tmp/test-archive.json",
+  "items": [
+    {
+      "identifier": "vogue-magazine-1962-06",
+      "title": "Vogue",
+      "date": "1962-06-01",
+      "year": 1962,
+      "page": 84,
+      "matchedText": "Persol sunglasses in tortoise acetate, the pilot's choice since 1957, photographed on the Riviera",
+      "imageUrl": "https://ia601504.us.archive.org/BookReader/BookReaderImages.php?id=vogue-magazine-1962-06&itemPath=%2F&server=ia601504.us.archive.org&format=jpg&page=84"
+    },
+    {
+      "identifier": "life-magazine-1958-11",
+      "title": "LIFE",
+      "date": "1958-11-10",
+      "year": 1958,
+      "page": 112,
+      "matchedText": "American Optical presents the new lightweight eyeglasses frame for the modern man",
+      "imageUrl": "https://ia601504.us.archive.org/BookReader/BookReaderImages.php?id=life-magazine-1958-11&itemPath=%2F&server=ia601504.us.archive.org&format=jpg&page=112"
+    },
+    {
+      "identifier": "esquire-1971-08",
+      "title": "Esquire",
+      "date": "1971-08-01",
+      "year": 1971,
+      "page": 45,
+      "matchedText": "Ray-Ban Aviator sunglasses, gold frame, as worn by the pilots of the Blue Angels",
+      "imageUrl": "https://ia601504.us.archive.org/BookReader/BookReaderImages.php?id=esquire-1971-08&itemPath=%2F&server=ia601504.us.archive.org&format=jpg&page=45"
+    },
+    {
+      "identifier": "popular-mechanics-1965-03",
+      "title": "Popular Mechanics",
+      "date": "1965-03-01",
+      "year": 1965,
+      "page": 12,
+      "matchedText": "New outboard motor review for weekend fishermen",
+      "imageUrl": "https://ia601504.us.archive.org/BookReader/BookReaderImages.php?id=popular-mechanics-1965-03&itemPath=%2F&server=ia601504.us.archive.org&format=jpg&page=12"
+    }
+  ]
+}

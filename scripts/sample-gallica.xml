@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dump d'exemple au format de réponse SRU de Gallica, pour tester le pipeline
+     hors-ligne : node scripts/scrape-gallica.mjs --from-xml scripts/sample-gallica.xml --out /tmp/test-gallica.json -->
+<srw:searchRetrieveResponse xmlns:srw="http://www.loc.gov/zing/srw/">
+  <srw:records>
+    <srw:record>
+      <recordIdentifier>ark:/12148/bpt6k6543210x</recordIdentifier>
+      <dc:title>Vogue Paris</dc:title>
+      <dc:publisher>Vogue Paris</dc:publisher>
+      <dc:date>1958</dc:date>
+      <dc:description>Publicité pleine page pour des lunettes de soleil Cartier en écaille, photographiée sur la Côte d'Azur</dc:description>
+    </srw:record>
+    <srw:record>
+      <recordIdentifier>ark:/12148/bpt6k9988771z</recordIdentifier>
+      <dc:title>L'Illustration</dc:title>
+      <dc:publisher>L'Illustration</dc:publisher>
+      <dc:date>1937</dc:date>
+      <dc:description>Chronique mondaine sur les courses hippiques de Deauville, sans mention de mode</dc:description>
+    </srw:record>
+    <srw:record>
+      <recordIdentifier>ark:/12148/bpt6k4455667a</recordIdentifier>
+      <dc:title>Femina</dc:title>
+      <dc:publisher>Femina</dc:publisher>
+      <dc:date>1965</dc:date>
+      <dc:description>Les lunettes papillon de la maison Dior s'imposent cette saison, portées avec le foulard Hermès</dc:description>
+    </srw:record>
+  </srw:records>
+</srw:searchRetrieveResponse>
