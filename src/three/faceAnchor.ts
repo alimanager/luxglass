@@ -29,7 +29,7 @@ export interface FacePose {
  * Head pose from FaceMesh landmarks. Scale comes from the iris (11.7 mm), so the frame
  * is shown at its real size on the face.
  */
-export function facePose(lm: LM[]): FacePose {
+export function facePose(lm: LM[], matrix?: number[] | null): FacePose {
   const right = v(lm[454]).sub(v(lm[234]));
   const faceWidthPx = right.length();
   right.normalize();
@@ -37,7 +37,21 @@ export function facePose(lm: LM[]): FacePose {
   const forward = new THREE.Vector3().crossVectors(right, upRaw).normalize();
   const up = new THREE.Vector3().crossVectors(forward, right).normalize();
   const basis = new THREE.Matrix4().makeBasis(right, up, forward);
-  const quaternion = new THREE.Quaternion().setFromRotationMatrix(basis);
+  let quaternion = new THREE.Quaternion().setFromRotationMatrix(basis);
+
+  // Prefer the model's own head-pose matrix (fitted on the whole mesh): steadier,
+  // and correct in profile where landmark depth gets noisy. Ignore it if it
+  // disagrees wildly with the landmarks (bad frame).
+  if (matrix && matrix.length === 16) {
+    const m = new THREE.Matrix4().fromArray(matrix);
+    const q = new THREE.Quaternion();
+    m.decompose(new THREE.Vector3(), q, new THREE.Vector3());
+    if (q.angleTo(quaternion) < 0.6) quaternion = q;
+  }
+  const qBasis = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
+  right.setFromMatrixColumn(qBasis, 0);
+  up.setFromMatrixColumn(qBasis, 1);
+  forward.setFromMatrixColumn(qBasis, 2);
 
   const irisPx = (ring: number[]) => {
     const p = ring.map((i) => v(lm[i]));
@@ -52,8 +66,9 @@ export function facePose(lm: LM[]): FacePose {
 
   // Head volume: hides the far temple when the head turns.
   const half = faceWidthPx / 2;
-  const headRadii = new THREE.Vector3(half * 0.97, half * 1.35, half * 1.3);
-  const headCenter = v(lm[234]).add(v(lm[454])).multiplyScalar(0.5).addScaledVector(forward, -headRadii.z * 0.72);
+  // The skull above the ears is wider than the cheek landmarks: temples run inside it.
+  const headRadii = new THREE.Vector3(half * 1.12, half * 1.4, half * 1.25);
+  const headCenter = v(lm[234]).add(v(lm[454])).multiplyScalar(0.5).addScaledVector(forward, -headRadii.z * 0.75);
 
   return { position, quaternion, pxPerMm, headCenter, headRadii };
 }
@@ -88,7 +103,8 @@ export class OneEuro {
 }
 
 export class PoseSmoother {
-  private f = Array.from({ length: 8 }, () => new OneEuro(1.0, 0.004));
+  // position/scale react fast (beta high); rotation is smoothed harder, jitter shows most there
+  private f = [...Array.from({ length: 4 }, () => new OneEuro(1.5, 0.05)), ...Array.from({ length: 4 }, () => new OneEuro(1.0, 0.3))];
   private last = new THREE.Quaternion();
   smooth(p: FacePose, time: number): FacePose {
     const [px, py, pz, s] = [p.position.x, p.position.y, p.position.z, p.pxPerMm].map((x, i) => this.f[i].filter(x, time));

@@ -295,14 +295,11 @@ export function buildFrame(spec: FrameSpec): BuiltFrame {
     // temple
     const tx = side * (hingeX - 0.8);
     const z0 = hw.z - 9;
-    const path = [
-      new THREE.Vector3(tx, hingeY, z0),
-      new THREE.Vector3(tx + side * 2, hingeY, z0 - 35),
-      new THREE.Vector3(tx + side * 3.5, hingeY - 1, z0 - 80),
-      new THREE.Vector3(tx + side * 4, hingeY - 3, z0 - spec.temple * 0.78),
-      new THREE.Vector3(tx + side * 3.5, hingeY - 16, z0 - spec.temple * 0.95),
-      new THREE.Vector3(tx + side * 3, hingeY - 26, z0 - spec.temple * 1.02),
-    ];
+    // temples drop slightly towards the ears (pantoscopic tilt ~8°), then bend down behind them
+    const tilt = Math.tan((8 * Math.PI) / 180);
+    const at = (dx: number, dz: number, dy = 0) => new THREE.Vector3(tx + side * dx, hingeY + dy - tilt * dz, z0 - dz);
+    const L = spec.temple;
+    const path = [at(0, 0), at(2, 35), at(3.5, 80, -0.5), at(4, L * 0.78, -1), at(3.5, L * 0.95, -12), at(3, L * 1.02, -22)];
     if (isAcetate && !spec.metalTemples) {
       // flat acetate temple: wide tube squashed sideways around its own axis
       const geo = tube(path.map((v) => new THREE.Vector3(0, v.y, v.z)), 2.3, false, 80);

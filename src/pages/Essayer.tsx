@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Camera, Download, ImageIcon, Loader2, VideoOff } from 'lucide-react';
 import { products, productById, type Product } from '../lib/catalog';
 import { loadAnalysis } from '../lib/analysisStore';
-import { detectLandmarks, loadFaceModel } from '../lib/faceModel';
+import { detectFace, loadFaceModel, trackVideo } from '../lib/faceModel';
 import { facePose, PoseSmoother } from '../three/faceAnchor';
 import { TryOnRenderer } from '../three/TryOnRenderer';
 import FrameImage from '../components/frames/FrameImage';
@@ -21,6 +21,7 @@ export default function Essayer() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  const frameRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const tryOnRef = useRef<TryOnRenderer | null>(null);
 
@@ -42,14 +43,31 @@ export default function Essayer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product, source]);
 
+  // Head pose of the analysis photo: refined by the model when it is available.
+  const photoMatrix = useRef<number[] | null>(null);
   const renderPhoto = useCallback(() => {
     const r = tryOnRef.current;
     if (!r || !analysis) return;
     r.setSize(analysis.photoWidth, analysis.photoHeight);
-    r.update(facePose(analysis.landmarks));
+    r.update(facePose(analysis.landmarks, photoMatrix.current));
     r.render();
     setStatus('tracking');
   }, [analysis]);
+
+  useEffect(() => {
+    if (source !== 'photo' || !analysis || photoMatrix.current) return;
+    const img = new Image();
+    img.src = analysis.photo;
+    img.decode()
+      .then(() => detectFace(img))
+      .then((t) => {
+        if (t?.matrix) {
+          photoMatrix.current = t.matrix;
+          renderPhoto();
+        }
+      })
+      .catch(() => undefined);
+  }, [source, analysis, renderPhoto]);
 
   // camera mode: stream + tracking loop
   useEffect(() => {
@@ -78,7 +96,7 @@ export default function Essayer() {
       video.srcObject = stream;
       await video.play().catch(() => undefined);
       try {
-        await loadFaceModel();
+        await loadFaceModel('VIDEO');
       } catch {
         if (!stopped) setStatus('error');
         return;
@@ -99,9 +117,18 @@ export default function Essayer() {
             r.setSize(video.videoWidth, video.videoHeight);
             sizedFor = key;
           }
-          const lm = await detectLandmarks(video);
-          if (lm) {
-            r.update(smoother.smooth(facePose(lm), performance.now()));
+          const track = await trackVideo(video);
+          // Show the exact frame that was analysed, so the frame never lags behind the face.
+          const fc = frameRef.current;
+          if (fc) {
+            if (fc.width !== video.videoWidth) {
+              fc.width = video.videoWidth;
+              fc.height = video.videoHeight;
+            }
+            fc.getContext('2d')!.drawImage(video, 0, 0);
+          }
+          if (track) {
+            r.update(smoother.smooth(facePose(track.landmarks, track.matrix), performance.now()));
             setStatus('tracking');
           } else {
             smoother.reset();
@@ -124,7 +151,7 @@ export default function Essayer() {
   }, [source]);
 
   const takeShot = () => {
-    const base = source === 'camera' ? videoRef.current : imgRef.current;
+    const base = source === 'camera' ? frameRef.current : imgRef.current;
     const overlay = canvasRef.current;
     if (!base || !overlay) return;
     const w = overlay.width;
@@ -160,7 +187,10 @@ export default function Essayer() {
         <div className="relative w-full aspect-[3/4] lg:aspect-[4/3] lg:rounded-stage overflow-hidden bg-[#0e1420]">
           <div className="absolute inset-0 -scale-x-100">
             {source === 'camera' ? (
-              <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full object-cover" />
+              <>
+                <video ref={videoRef} playsInline muted className="absolute inset-0 w-full h-full object-cover opacity-0" />
+                <canvas ref={frameRef} className="absolute inset-0 w-full h-full object-cover" />
+              </>
             ) : (
               analysis && (
                 <img ref={imgRef} src={analysis.photo} alt="" className="absolute inset-0 w-full h-full object-cover" />

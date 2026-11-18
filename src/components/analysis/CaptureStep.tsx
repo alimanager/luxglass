@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Webcam from 'react-webcam';
 import { Camera, ImagePlus, Loader2, ShieldCheck, VideoOff } from 'lucide-react';
 import { detectLandmarks, loadFaceModel, type Point } from '../../lib/faceModel';
 import { checkQuality, faceLuma, ISSUE_HINT, type FrameBox, type QualityIssue } from '../../lib/captureQuality';
@@ -28,7 +27,7 @@ const frameBox = (w: number, h: number): FrameBox => ({
 });
 
 const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
-  const webcamRef = useRef<Webcam>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement('canvas'));
   const fileRef = useRef<HTMLInputElement>(null);
   const [model, setModel] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -50,9 +49,31 @@ const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
     };
   }, []);
 
+  // Front camera stream.
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+    let stopped = false;
+    navigator.mediaDevices
+      ?.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false })
+      .then(async (s) => {
+        stream = s;
+        const video = videoRef.current;
+        if (stopped || !video) return s.getTracks().forEach((t) => t.stop());
+        video.srcObject = s;
+        await video.play().catch(() => undefined);
+        setCamera('ready');
+      })
+      .catch(() => !stopped && setCamera('denied'));
+    if (!navigator.mediaDevices) setCamera('denied');
+    return () => {
+      stopped = true;
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
   /** Draws the current video frame into the working canvas. */
   const grabFrame = useCallback((): HTMLCanvasElement | null => {
-    const video = webcamRef.current?.video;
+    const video = videoRef.current;
     if (!video || video.readyState < 2 || !video.videoWidth) return null;
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
@@ -183,15 +204,11 @@ const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
 
       <div className="relative w-full rounded-stage overflow-hidden bg-[#0e1420]" style={{ aspectRatio: `${VIEW_ASPECT}` }}>
         {camera !== 'denied' && (
-          <Webcam
-            ref={webcamRef}
-            audio={false}
-            mirrored
+          <video
+            ref={videoRef}
             playsInline
-            videoConstraints={{ facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }}
-            onUserMedia={() => setCamera('ready')}
-            onUserMediaError={() => setCamera('denied')}
-            className="absolute inset-0 w-full h-full object-cover"
+            muted
+            className="absolute inset-0 w-full h-full object-cover -scale-x-100"
           />
         )}
 

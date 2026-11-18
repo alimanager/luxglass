@@ -1,8 +1,5 @@
 /// <reference types="vite/client" />
 
-interface Window {
-  __models: {
-    faceDetector: import('@tensorflow-models/face-detection').FaceDetector;
-    landmarksDetector: import('@tensorflow-models/face-landmarks-detection').FaceLandmarksDetector;
-  };
+interface ImportMetaEnv {
+  readonly VITE_FACE_MODEL_URL?: string;
 }
