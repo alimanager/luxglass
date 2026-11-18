@@ -23,6 +23,11 @@ export interface FacePose {
   /** head occluder */
   headCenter: THREE.Vector3;
   headRadii: THREE.Vector3;
+  /** skin points where a frame rests: nasal bridge (168) and mid nose (197) */
+  noseUpper: THREE.Vector3;
+  noseMid: THREE.Vector3;
+  /** midpoint between the pupils */
+  pupils: THREE.Vector3;
 }
 
 /**
@@ -60,17 +65,18 @@ export function facePose(lm: LM[], matrix?: number[] | null): FacePose {
   const iris = (irisPx([469, 470, 471, 472]) + irisPx([474, 475, 476, 477])) / 2;
   const pxPerMm = iris / IRIS_MM;
 
-  // Lens centre: between the pupils, ~13 mm in front of the eyes, 2 mm up.
-  const position = v(lm[468]).add(v(lm[473])).multiplyScalar(0.5);
-  position.addScaledVector(forward, 13 * pxPerMm).addScaledVector(up, 2 * pxPerMm);
+  // Fallback lens centre: between the pupils, ~13 mm in front of the eyes, 2 mm up.
+  // (The renderer seats the frame on the nose instead, see TryOnRenderer.)
+  const pupils = v(lm[468]).add(v(lm[473])).multiplyScalar(0.5);
+  const position = pupils.clone().addScaledVector(forward, 13 * pxPerMm).addScaledVector(up, 2 * pxPerMm);
 
   // Head volume: hides the far temple when the head turns.
   const half = faceWidthPx / 2;
   // The skull above the ears is wider than the cheek landmarks: temples run inside it.
-  const headRadii = new THREE.Vector3(half * 1.12, half * 1.4, half * 1.25);
-  const headCenter = v(lm[234]).add(v(lm[454])).multiplyScalar(0.5).addScaledVector(forward, -headRadii.z * 0.75);
+  const headRadii = new THREE.Vector3(half * 1.18, half * 1.45, half * 1.5);
+  const headCenter = v(lm[234]).add(v(lm[454])).multiplyScalar(0.5).addScaledVector(forward, -headRadii.z * 0.8);
 
-  return { position, quaternion, pxPerMm, headCenter, headRadii };
+  return { position, quaternion, pxPerMm, headCenter, headRadii, noseUpper: v(lm[168]), noseMid: v(lm[197]), pupils };
 }
 
 /** One Euro filter: smooth when still, responsive when moving. */
@@ -105,6 +111,14 @@ export class OneEuro {
 export class PoseSmoother {
   // position/scale react fast (beta high); rotation is smoothed harder, jitter shows most there
   private f = [...Array.from({ length: 4 }, () => new OneEuro(1.5, 0.05)), ...Array.from({ length: 4 }, () => new OneEuro(1.0, 0.3))];
+  private points = Array.from({ length: 9 }, () => new OneEuro(1.5, 0.05));
+  private vec(v: THREE.Vector3, k: number, time: number) {
+    return new THREE.Vector3(
+      this.points[k].filter(v.x, time),
+      this.points[k + 1].filter(v.y, time),
+      this.points[k + 2].filter(v.z, time)
+    );
+  }
   private last = new THREE.Quaternion();
   smooth(p: FacePose, time: number): FacePose {
     const [px, py, pz, s] = [p.position.x, p.position.y, p.position.z, p.pxPerMm].map((x, i) => this.f[i].filter(x, time));
@@ -113,9 +127,18 @@ export class PoseSmoother {
     const qs = [q.x, q.y, q.z, q.w].map((x, i) => this.f[4 + i].filter(x, time));
     const quaternion = new THREE.Quaternion(qs[0], qs[1], qs[2], qs[3]).normalize();
     this.last.copy(quaternion);
-    return { ...p, position: new THREE.Vector3(px, py, pz), pxPerMm: s, quaternion };
+    return {
+      ...p,
+      position: new THREE.Vector3(px, py, pz),
+      pxPerMm: s,
+      quaternion,
+      noseUpper: this.vec(p.noseUpper, 0, time),
+      noseMid: this.vec(p.noseMid, 3, time),
+      pupils: this.vec(p.pupils, 6, time),
+    };
   }
   reset() {
     this.f.forEach((f) => f.reset());
+    this.points.forEach((f) => f.reset());
   }
 }

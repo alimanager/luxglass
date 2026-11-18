@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Camera, Download, ImageIcon, Loader2, VideoOff } from 'lucide-react';
+import { Camera, ChevronDown, ChevronUp, Download, ImageIcon, Loader2, VideoOff } from 'lucide-react';
 import { products, productById, type Product } from '../lib/catalog';
 import { loadAnalysis } from '../lib/analysisStore';
 import { detectFace, loadFaceModel, trackVideo } from '../lib/faceModel';
 import { facePose, PoseSmoother } from '../three/faceAnchor';
 import { TryOnRenderer } from '../three/TryOnRenderer';
 import FrameImage from '../components/frames/FrameImage';
+import { probeLight } from '../lib/lightProbe';
 
 type Source = 'camera' | 'photo';
 
@@ -18,6 +19,9 @@ export default function Essayer() {
   const [source, setSource] = useState<Source>(analysis && !id ? 'photo' : 'camera');
   const [status, setStatus] = useState<'loading' | 'searching' | 'tracking' | 'denied' | 'error'>('loading');
   const [shotUrl, setShotUrl] = useState<string | null>(null);
+  // height on the nose, per frame model, in mm (+ = higher)
+  const [nudge, setNudge] = useState(0);
+  const nudgeRef = useRef(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -49,7 +53,17 @@ export default function Essayer() {
     const r = tryOnRef.current;
     if (!r || !analysis) return;
     r.setSize(analysis.photoWidth, analysis.photoHeight);
-    r.update(facePose(analysis.landmarks, photoMatrix.current));
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth) {
+      const c = document.createElement('canvas');
+      c.width = analysis.photoWidth;
+      c.height = analysis.photoHeight;
+      const ctx = c.getContext('2d', { willReadFrequently: true })!;
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      r.setLight(probeLight(ctx, analysis.landmarks), 1);
+    }
+    r.setNudge(nudgeRef.current);
+    r.update(facePose(analysis.landmarks, photoMatrix.current), analysis.landmarks);
     r.render();
     setStatus('tracking');
   }, [analysis]);
@@ -68,6 +82,17 @@ export default function Essayer() {
       })
       .catch(() => undefined);
   }, [source, analysis, renderPhoto]);
+
+  const changeNudge = (delta: number) => {
+    const v = Math.max(-6, Math.min(6, nudgeRef.current + delta));
+    nudgeRef.current = v;
+    setNudge(v);
+    if (source === 'photo') renderPhoto();
+  };
+  useEffect(() => {
+    nudgeRef.current = 0;
+    setNudge(0);
+  }, [product.id]);
 
   // camera mode: stream + tracking loop
   useEffect(() => {
@@ -104,6 +129,8 @@ export default function Essayer() {
       if (stopped) return;
       setStatus('searching');
       let busy = false;
+      let frameCount = 0;
+      const grab = document.createElement('canvas');
       let sizedFor = '';
       const tick = async () => {
         if (stopped) return;
@@ -117,18 +144,28 @@ export default function Essayer() {
             r.setSize(video.videoWidth, video.videoHeight);
             sizedFor = key;
           }
-          const track = await trackVideo(video);
-          // Show the exact frame that was analysed, so the frame never lags behind the face.
+          // Grab the frame first, analyse that exact image, then show it with its overlay:
+          // the picture and the frame on it always come from the same instant.
+          if (grab.width !== video.videoWidth) {
+            grab.width = video.videoWidth;
+            grab.height = video.videoHeight;
+          }
+          const gctx = grab.getContext('2d', { willReadFrequently: true })!;
+          gctx.drawImage(video, 0, 0);
+          const track = await trackVideo(grab);
           const fc = frameRef.current;
           if (fc) {
-            if (fc.width !== video.videoWidth) {
-              fc.width = video.videoWidth;
-              fc.height = video.videoHeight;
+            if (fc.width !== grab.width) {
+              fc.width = grab.width;
+              fc.height = grab.height;
             }
-            fc.getContext('2d')!.drawImage(video, 0, 0);
+            fc.getContext('2d')!.drawImage(grab, 0, 0);
           }
+          frameCount++;
           if (track) {
-            r.update(smoother.smooth(facePose(track.landmarks, track.matrix), performance.now()));
+            if (frameCount % 6 === 0) r.setLight(probeLight(gctx, track.landmarks));
+            r.setNudge(nudgeRef.current);
+            r.update(smoother.smooth(facePose(track.landmarks, track.matrix), performance.now()), track.landmarks);
             setStatus('tracking');
           } else {
             smoother.reset();
@@ -193,7 +230,7 @@ export default function Essayer() {
               </>
             ) : (
               analysis && (
-                <img ref={imgRef} src={analysis.photo} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                <img ref={imgRef} src={analysis.photo} alt="" onLoad={renderPhoto} className="absolute inset-0 w-full h-full object-cover" />
               )
             )}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" />
@@ -238,6 +275,17 @@ export default function Essayer() {
                   {label}
                 </button>
               ))}
+            </div>
+          )}
+
+          {status === 'tracking' && (
+            <div className="absolute bottom-5 left-5 flex flex-col rounded-full bg-black/45 backdrop-blur text-paper" role="group" aria-label="Hauteur de la monture">
+              <button onClick={() => changeNudge(1)} disabled={nudge >= 6} aria-label="Remonter la monture" className="h-11 w-11 flex items-center justify-center disabled:opacity-30">
+                <ChevronUp className="h-5 w-5" />
+              </button>
+              <button onClick={() => changeNudge(-1)} disabled={nudge <= -6} aria-label="Descendre la monture" className="h-11 w-11 flex items-center justify-center disabled:opacity-30">
+                <ChevronDown className="h-5 w-5" />
+              </button>
             </div>
           )}
 

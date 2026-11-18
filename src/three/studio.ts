@@ -4,7 +4,7 @@ import { buildFrame } from './buildFrame';
 import type { FrameSpec } from './frameSpec';
 
 /** Soft studio lighting: room environment for reflections + a key and a rim light. */
-export function setupStudio(renderer: THREE.WebGLRenderer, scene: THREE.Scene) {
+export function setupStudio(renderer: THREE.WebGLRenderer, scene: THREE.Scene, withLights = true) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
@@ -12,6 +12,7 @@ export function setupStudio(renderer: THREE.WebGLRenderer, scene: THREE.Scene) {
   const env = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
   scene.environment = env;
   pmrem.dispose();
+  if (!withLights) return () => env.dispose();
 
   const key = new THREE.DirectionalLight('#ffffff', 1.6);
   key.position.set(120, 200, 260);

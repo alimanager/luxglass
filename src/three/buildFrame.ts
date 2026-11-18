@@ -203,6 +203,12 @@ export interface BuiltFrame {
   width: number;
   /** y of the hinges, z of the front face */
   hingeY: number;
+  /**
+   * Where the frame touches the nose, in frame mm: the bridge underside for acetate,
+   * the pads for metal. `on` says which nose landmark that point rests on.
+   */
+  seat: { y: number; z: number; on: 'upper' | 'mid' };
+  lensHeight: number;
   dispose: () => void;
 }
 
@@ -305,11 +311,11 @@ export function buildFrame(spec: FrameSpec): BuiltFrame {
       const geo = tube(path.map((v) => new THREE.Vector3(0, v.y, v.z)), 2.3, false, 80);
       geo.scale(0.45, 1, 1);
       geo.translate(tx, 0, 0);
-      add(geo, acetate, group);
+      add(geo, acetate, group).userData.part = 'temple';
     } else {
-      add(tube(path.slice(0, 4), spec.kind === 'metal' ? 0.75 : 0.9, false, 60), metal, group);
+      add(tube(path.slice(0, 4), spec.kind === 'metal' ? 0.75 : 0.9, false, 60), metal, group).userData.part = 'temple';
       const tip = tube(path.slice(3), 1.7, false, 40);
-      add(tip, isAcetate || spec.kind === 'browline' ? acetate : new THREE.MeshPhysicalMaterial({ color: '#1a1a1a', roughness: 0.4 }), group);
+      add(tip, isAcetate || spec.kind === 'browline' ? acetate : new THREE.MeshPhysicalMaterial({ color: '#1a1a1a', roughness: 0.4 }), group).userData.part = 'temple';
     }
   }
 
@@ -341,10 +347,19 @@ export function buildFrame(spec: FrameSpec): BuiltFrame {
     }
   }
 
+  const seat: BuiltFrame['seat'] =
+    spec.kind === 'acetate'
+      ? { y: spec.lens.h * 0.36 - spec.rim * 0.8, z: -spec.depth / 2, on: 'upper' }
+      : spec.kind === 'browline'
+      ? { y: spec.lens.h * 0.32 - 3, z: -1, on: 'upper' }
+      : { y: -spec.lens.h * 0.12, z: -2, on: 'mid' };
+
   return {
     group,
     width: hingeX * 2,
     hingeY,
+    seat,
+    lensHeight: spec.lens.h,
     dispose: () => toDispose.forEach((d) => d.dispose()),
   };
 }

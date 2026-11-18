@@ -85,12 +85,12 @@ export async function detectFace(source: HTMLCanvasElement | HTMLImageElement): 
 
 let lastTs = 0;
 /** Live video: uses temporal tracking between frames, much cheaper than per-image detection. */
-export async function trackVideo(video: HTMLVideoElement): Promise<FaceTrack | null> {
+export async function trackVideo(frame: HTMLVideoElement | HTMLCanvasElement): Promise<FaceTrack | null> {
   const fl = await landmarker('VIDEO');
   const ts = Math.max(performance.now(), lastTs + 1); // timestamps must increase
   lastTs = ts;
-  const { w, h } = size(video);
-  return toTrack(fl.detectForVideo(video, ts), w, h);
+  const { w, h } = size(frame);
+  return toTrack(fl.detectForVideo(frame, ts), w, h);
 }
 
 /** Landmarks only (analysis helpers). */
