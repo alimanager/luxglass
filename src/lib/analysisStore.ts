@@ -8,8 +8,8 @@ export interface AnalysisResult {
   photo: string;
   photoWidth: number;
   photoHeight: number;
-  /** Landmarks in photo pixel coordinates */
-  landmarks: [number, number][];
+  /** Landmarks in photo pixel coordinates: [x, y, z] (z on the same scale as x) */
+  landmarks: number[][];
   createdAt: string;
 }
 

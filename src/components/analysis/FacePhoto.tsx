@@ -4,7 +4,7 @@ interface FacePhotoProps {
   photo: string;
   width: number;
   height: number;
-  landmarks: [number, number][];
+  landmarks: number[][];
   /** 0–1: share of mesh points shown (scan effect, top to bottom) */
   reveal?: number;
   showMesh?: boolean;
@@ -46,10 +46,10 @@ const FacePhoto: React.FC<FacePhotoProps> = ({
         <svg viewBox={`0 0 ${width} ${height}`} className="absolute inset-0 w-full h-full">
           {showMesh &&
             order.slice(0, visible).map((i) => (
-              <circle key={i} cx={landmarks[i][0]} cy={landmarks[i][1]} r={i >= 468 ? r * 1.4 : r} fill={i >= 468 ? '#d6b25e' : 'rgba(255,255,255,0.75)'} />
+              <circle key={i} cx={landmarks[i][0]} cy={landmarks[i][1]} r={i >= 468 ? r * 1.4 : r} fill={i >= 468 ? '#e9c48f' : 'rgba(255,255,255,0.75)'} />
             ))}
           {scanY !== null && (
-            <line x1={0} x2={width} y1={scanY} y2={scanY} stroke="#d6b25e" strokeWidth={r * 1.5} opacity={0.8} />
+            <line x1={0} x2={width} y1={scanY} y2={scanY} stroke="#e9c48f" strokeWidth={r * 1.5} opacity={0.8} />
           )}
           {showGuides &&
             GUIDES.map(([a, b]) => (
@@ -59,7 +59,7 @@ const FacePhoto: React.FC<FacePhotoProps> = ({
                 y1={landmarks[a][1]}
                 x2={landmarks[b][0]}
                 y2={landmarks[b][1]}
-                stroke="#d6b25e"
+                stroke="#e9c48f"
                 strokeWidth={r * 1.2}
                 strokeDasharray={`${r * 4} ${r * 3}`}
                 className="animate-fade-in"

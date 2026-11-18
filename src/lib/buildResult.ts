@@ -37,7 +37,11 @@ export function buildResult(capture: Capture, profile: Profile): AnalysisResult 
     photo: out.toDataURL('image/jpeg', 0.85),
     photoWidth: out.width,
     photoHeight: out.height,
-    landmarks: p.map((q) => [Math.round((q.x - x0) * scale * 10) / 10, Math.round((q.y - y0) * scale * 10) / 10]),
+    landmarks: p.map((q) => [
+      Math.round((q.x - x0) * scale * 10) / 10,
+      Math.round((q.y - y0) * scale * 10) / 10,
+      Math.round((q.z ?? 0) * scale * 10) / 10,
+    ]),
     createdAt: new Date().toISOString(),
   };
 }

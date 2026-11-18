@@ -1,123 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Search, Glasses } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 
-const Header: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const location = useLocation();
-  
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 50) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
-    };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+const NAV = [
+  { to: '/montures', label: 'Montures' },
+  { to: '/analyse', label: 'Analyse du visage' },
+  { to: '/essayer', label: 'Essayer' },
+];
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+export default function Header() {
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setOpen(false), [pathname]);
+  const dark = pathname.startsWith('/essayer');
 
   return (
-    <header 
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled || location.pathname !== '/' 
-          ? 'bg-white shadow-md py-3' 
-          : 'bg-transparent py-5'
-      }`}
-    >
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between">
-          <Link to="/" className="flex items-center">
-            <Glasses className={`h-8 w-8 ${scrolled || location.pathname !== '/' ? 'text-primary-600' : 'text-white'}`} />
-            <span className={`ml-2 text-xl font-serif font-medium ${scrolled || location.pathname !== '/' ? 'text-secondary-950' : 'text-white'}`}>
-              LuxOptic
-            </span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/" className={`font-medium hover:text-primary-600 transition-colors ${
-              scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'
-            } ${location.pathname === '/' ? 'border-b-2 border-primary-500' : ''}`}>
-              Accueil
-            </Link>
-            <Link to="/catalog" className={`font-medium hover:text-primary-600 transition-colors ${
-              scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'
-            } ${location.pathname === '/catalog' ? 'border-b-2 border-primary-500' : ''}`}>
-              Catalogue
-            </Link>
-            <Link to="/try-on" className={`font-medium hover:text-primary-600 transition-colors ${
-              scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'
-            } ${location.pathname === '/try-on' ? 'border-b-2 border-primary-500' : ''}`}>
-              Analyse du visage
-            </Link>
-            <button className={`flex items-center hover:text-primary-600 transition-colors ${
-              scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'
-            }`}>
-              <Search className="h-5 w-5" />
-            </button>
-          </nav>
-
-          {/* Mobile Menu Button */}
-          <button 
-            className="md:hidden p-2"
-            onClick={toggleMenu}
-            aria-label="Toggle menu"
-          >
-            {isMenuOpen ? (
-              <X className={`h-6 w-6 ${scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'}`} />
-            ) : (
-              <Menu className={`h-6 w-6 ${scrolled || location.pathname !== '/' ? 'text-secondary-900' : 'text-white'}`} />
-            )}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 animate-slide-down">
-            <nav className="flex flex-col space-y-4">
-              <Link 
-                to="/" 
-                className="font-medium text-secondary-900 hover:text-primary-600 transition-colors py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Accueil
-              </Link>
-              <Link 
-                to="/catalog" 
-                className="font-medium text-secondary-900 hover:text-primary-600 transition-colors py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Catalogue
-              </Link>
-              <Link 
-                to="/try-on" 
-                className="font-medium text-secondary-900 hover:text-primary-600 transition-colors py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Analyse du visage
-              </Link>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Rechercher..."
-                  className="w-full py-2 pl-10 pr-4 bg-secondary-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
-                <Search className="absolute left-3 top-2.5 h-5 w-5 text-secondary-400" />
-              </div>
-            </nav>
-          </div>
-        )}
+    <header className={`sticky top-0 z-40 h-16 border-b ${dark ? 'bg-ink text-paper border-white/10' : 'bg-paper/95 backdrop-blur border-rule'}`}>
+      <div className="max-w-6xl mx-auto h-full px-5 flex items-center justify-between">
+        <Link to="/" className="wide font-extrabold text-[19px] tracking-tight">
+          LuxOptic
+        </Link>
+        <nav className="hidden md:flex items-center gap-8 text-[15px]">
+          {NAV.map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              className={({ isActive }) =>
+                `py-1 border-b-2 transition-colors ${isActive ? 'border-shell' : 'border-transparent opacity-75 hover:opacity-100'}`
+              }
+            >
+              {n.label}
+            </NavLink>
+          ))}
+        </nav>
+        <button className="md:hidden -mr-2 p-2" onClick={() => setOpen((o) => !o)} aria-label={open ? 'Fermer le menu' : 'Ouvrir le menu'} aria-expanded={open}>
+          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
       </div>
+      {open && (
+        <nav className="md:hidden absolute inset-x-0 top-16 bg-paper text-ink border-b border-rule shadow-sm animate-fade-in">
+          {NAV.map((n) => (
+            <Link key={n.to} to={n.to} className="block px-5 py-4 text-lg border-t border-rule first:border-t-0">
+              {n.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </header>
   );
-};
-
-export default Header;
+}

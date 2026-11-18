@@ -35,10 +35,10 @@ const AnalyzingStep: React.FC<{ result: AnalysisResult; onDone: () => void }> = 
 
   return (
     <div className="flex flex-col flex-1">
-      <h1 className="font-serif text-3xl text-ink-900 leading-tight">
+      <h1 className="wide font-extrabold text-3xl text-ink leading-tight">
         Analyse en cours{result.profile.firstName ? `, ${result.profile.firstName}` : ''}
       </h1>
-      <p className="text-ink-500 mt-2 mb-5 text-sm">Quelques secondes, tout se passe sur ton appareil.</p>
+      <p className="text-graphite mt-2 mb-5 text-sm">Quelques secondes, tout se passe sur ton appareil.</p>
 
       <FacePhoto
         photo={result.photo}
@@ -47,7 +47,7 @@ const AnalyzingStep: React.FC<{ result: AnalysisResult; onDone: () => void }> = 
         landmarks={result.landmarks}
         reveal={reveal}
         showGuides={t > 0.4}
-        className="w-full rounded-3xl bg-ink-950"
+        className="w-full rounded-stage bg-[#0e1420]"
       />
 
       <ul className="mt-6 space-y-3 pb-6">
@@ -58,7 +58,7 @@ const AnalyzingStep: React.FC<{ result: AnalysisResult; onDone: () => void }> = 
           >
             <span
               className={`h-6 w-6 rounded-full flex items-center justify-center ${
-                i < stage || t >= 1 ? 'bg-ink-900 text-white' : 'bg-sand-200 text-ink-600'
+                i < stage || t >= 1 ? 'bg-ink text-white' : 'bg-glass text-graphite'
               }`}
             >
               {i < stage || t >= 1 ? (
@@ -67,7 +67,7 @@ const AnalyzingStep: React.FC<{ result: AnalysisResult; onDone: () => void }> = 
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : null}
             </span>
-            <span className="text-ink-800">{label}</span>
+            <span className="text-ink">{label}</span>
           </li>
         ))}
       </ul>

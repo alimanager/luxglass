@@ -1,192 +1,143 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { glasses } from '../data/mockData';
-import { Glasses } from '../types/glasses';
+import { useMemo } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { ArrowLeft, Check, Minus } from 'lucide-react';
+import FrameViewer from '../components/frames/FrameViewer';
+import FrameImage from '../components/frames/FrameImage';
+import { productById, products } from '../lib/catalog';
+import { loadAnalysis } from '../lib/analysisStore';
+import { SHAPE_INFO } from '../lib/recommendations';
+import type { FaceShape } from '../lib/faceMetrics';
 
-const ProductDetail: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const [product, setProduct] = useState<Glasses | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function ProductDetail() {
+  const { id } = useParams();
+  const p = productById(id ?? '');
+  const analysis = useMemo(() => loadAnalysis(), []);
 
-  useEffect(() => {
-    // Simulate API call
-    const fetchProduct = async () => {
-      setLoading(true);
-      try {
-        // Find the product from our mock data
-        const foundProduct = glasses.find(g => g.id === Number(id));
-        
-        // Small delay to simulate network request
-        setTimeout(() => {
-          setProduct(foundProduct || null);
-          setLoading(false);
-        }, 500);
-      } catch (error) {
-        console.error('Error fetching product:', error);
-        setLoading(false);
-      }
+  if (!p) {
+    return (
+      <div className="max-w-6xl mx-auto px-5 py-24">
+        <h1 className="wide font-extrabold text-3xl">Cette monture n’existe pas</h1>
+        <Link to="/montures" className="btn-ink mt-6">Voir toutes les montures</Link>
+      </div>
+    );
+  }
+
+  const shapes = (Object.keys(SHAPE_INFO) as FaceShape[]).filter((s) => SHAPE_INFO[s].styles.includes(p.style));
+  const others = products.filter((q) => q.id !== p.id);
+  const similar = [
+    ...others.filter((q) => q.style === p.style || q.size === p.size),
+    ...others.filter((q) => q.style !== p.style && q.size !== p.size),
+  ].slice(0, 4);
+
+  let fit: { good: boolean; text: string } | null = null;
+  if (analysis) {
+    const m = analysis.metrics;
+    const shapeOk = shapes.includes(m.shape);
+    const diff = Math.round(p.width - m.faceWidthMm);
+    const sizeOk = Math.abs(diff) <= 6;
+    fit = {
+      good: shapeOk && sizeOk,
+      text: [
+        shapeOk
+          ? `Cette forme met en valeur un visage ${SHAPE_INFO[m.shape].label.toLowerCase()}.`
+          : `Pour un visage ${SHAPE_INFO[m.shape].label.toLowerCase()}, d’autres formes sont plus flatteuses.`,
+        sizeOk
+          ? `Sa largeur (${p.width} mm) correspond à la tienne (${Math.round(m.faceWidthMm)} mm).`
+          : diff > 0
+          ? `Elle est ${diff} mm plus large que ton visage : elle paraîtra grande.`
+          : `Elle est ${-diff} mm plus étroite que ton visage : elle paraîtra petite.`,
+      ].join(' '),
     };
-
-    fetchProduct();
-  }, [id]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary-600"></div>
-      </div>
-    );
   }
 
-  if (!product) {
-    return (
-      <div className="min-h-screen pt-20 container mx-auto px-4 py-16 text-center">
-        <h1 className="text-3xl font-serif mb-6">Produit non trouvé</h1>
-        <p className="text-secondary-600 mb-8">
-          Le produit que vous recherchez n'existe pas ou a été retiré.
-        </p>
-        <Link to="/catalog" className="btn btn-primary">
-          Retour au catalogue
-        </Link>
-      </div>
-    );
-  }
+  const specs: [string, string][] = [
+    ['Largeur de verre', `${p.spec.lens.w} mm`],
+    ['Pont', `${p.spec.bridge} mm`],
+    ['Branches', `${p.spec.temple} mm`],
+    ['Largeur totale', `${p.width} mm (taille ${p.size})`],
+    ['Hauteur de verre', `${p.spec.lens.h} mm`],
+    ['Matière', p.material],
+    ['Couleur', p.color],
+  ];
 
   return (
-    <div className="min-h-screen pt-20">
-      <div className="container mx-auto px-4 py-8">
-        <Link
-          to="/catalog"
-          className="inline-flex items-center text-primary-600 hover:text-primary-800 transition-colors mb-8"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Retour au catalogue
-        </Link>
+    <div className="max-w-6xl mx-auto px-5 pt-6 pb-24">
+      <Link to="/montures" className="inline-flex items-center gap-2 text-sm text-graphite hover:text-ink">
+        <ArrowLeft className="h-4 w-4" /> Montures
+      </Link>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="relative">
-            <img
-              src={product.imageUrl}
-              alt={`${product.brand} ${product.name}`}
-              className="w-full h-auto object-cover rounded-lg shadow-md"
-            />
-            <div className="absolute top-4 right-4 flex flex-col gap-2">
-              {product.magazineFeatures.map((magazine) => (
-                <span 
-                  key={magazine.id} 
-                  className="magazine-tag bg-accent-100 text-accent-800"
-                >
-                  {magazine.name}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <span className="text-primary-600 font-medium">{product.brand}</span>
-            <h1 className="text-3xl font-serif font-medium mb-3">{product.name}</h1>
-            <p className="text-2xl font-medium mb-6">{product.price} €</p>
-
-            <div className="mb-8">
-              <p className="text-secondary-700 mb-6">{product.description}</p>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium mb-2">Caractéristiques</h3>
-                  <ul className="space-y-2 text-secondary-700">
-                    <li><span className="text-secondary-500">Style:</span> {product.style}</li>
-                    <li><span className="text-secondary-500">Couleur:</span> {product.color}</li>
-                    <li><span className="text-secondary-500">Matériau:</span> {product.material}</li>
-                    <li>
-                      <span className="text-secondary-500">Genre:</span> 
-                      {product.gender === 'men' ? ' Homme' : product.gender === 'women' ? ' Femme' : ' Unisexe'}
-                    </li>
-                  </ul>
-                </div>
-                
-                <div>
-                  <h3 className="font-medium mb-2">Vu dans</h3>
-                  <ul className="space-y-2 text-secondary-700">
-                    {product.magazineFeatures.map((magazine) => (
-                      <li key={magazine.id}>
-                        {magazine.name} ({magazine.issueDate})
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            <a
-              href={product.productUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn btn-primary w-full justify-center mb-4"
-            >
-              Voir sur le site officiel
-              <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
-
-            <div className="mt-8 border-t border-secondary-200 pt-6">
-              <h3 className="font-medium mb-4">Dans les magazines</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                {product.magazineFeatures.map((magazine) => (
-                  <div key={magazine.id} className="group relative">
-                    {magazine.coverImage && (
-                      <div className="overflow-hidden rounded-lg shadow-sm">
-                        <img
-                          src={magazine.coverImage}
-                          alt={`${magazine.name} cover`}
-                          className="w-full h-32 object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    )}
-                    <div className="mt-2">
-                      <p className="font-medium text-sm">{magazine.name}</p>
-                      <p className="text-xs text-secondary-500">{magazine.issueDate}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+      <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-12">
+        <div className="relative rounded-stage bg-glass overflow-hidden lg:self-start lg:sticky lg:top-24">
+          <FrameViewer spec={p.spec} label={`${p.name} en 3D`} className="h-[300px] sm:h-[400px] lg:h-[520px]" />
+          <p className="absolute right-5 bottom-4 text-xs text-graphite pointer-events-none">Fais-la tourner</p>
         </div>
 
-        <div className="mt-16">
-          <h2 className="text-2xl font-serif font-medium mb-6">Lunettes similaires</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {glasses
-              .filter(g => g.id !== product.id && (g.brand === product.brand || g.style === product.style))
-              .slice(0, 4)
-              .map(glass => (
-                <Link to={`/product/${glass.id}`} key={glass.id} className="card group">
-                  <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={glass.imageUrl}
-                      alt={`${glass.brand} ${glass.name}`}
-                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                    />
-                    {glass.magazineFeatures.length > 0 && (
-                      <div className="absolute top-2 right-2">
-                        <span className="magazine-tag bg-accent-100 text-accent-800">
-                          {glass.magazineFeatures[0].name}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <span className="text-xs text-secondary-600">{glass.brand}</span>
-                    <h3 className="text-sm font-medium truncate">{glass.name}</h3>
-                    <p className="text-primary-600 font-medium">{glass.price} €</p>
-                  </div>
-                </Link>
-              ))}
+        <div className="mt-8 lg:mt-2">
+          <p className="text-graphite">{p.brand}</p>
+          <h1 className="wide font-extrabold text-3xl md:text-4xl leading-tight">{p.name}</h1>
+          <p className="tnum text-2xl font-semibold mt-3">{p.price} €</p>
+
+          {fit && (
+            <div className={`mt-6 rounded-tile p-4 flex gap-3 ${fit.good ? 'bg-glass-soft' : 'bg-shell-light'}`}>
+              {fit.good ? <Check className="h-5 w-5 shrink-0 mt-0.5" /> : <Minus className="h-5 w-5 shrink-0 mt-0.5 text-shell" />}
+              <p className="text-[15px]">{fit.text}</p>
+            </div>
+          )}
+
+          <div className="mt-6 grid gap-2">
+            <Link to={`/essayer/${p.id}`} className="btn-ink">Essayer sur mon visage</Link>
+            {!analysis && (
+              <Link to="/analyse" className="btn-line">Vérifier si elle me va</Link>
+            )}
           </div>
+
+          <section className="mt-10">
+            <h2 className="font-bold">Cotes</h2>
+            <p className="text-sm text-graphite mt-1">
+              Gravées à l’intérieur de la branche : <span className="marking !text-ink">{p.marking}</span>
+            </p>
+            <dl className="mt-4 border-t border-rule">
+              {specs.map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4 py-2.5 border-b border-rule text-[15px]">
+                  <dt className="text-graphite">{k}</dt>
+                  <dd className="tnum text-right">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          <section className="mt-10">
+            <h2 className="font-bold">Va bien aux visages</h2>
+            <p className="text-[15px] text-graphite mt-1">
+              {shapes.length ? shapes.map((s) => SHAPE_INFO[s].label.toLowerCase()).join(', ') : 'ovales'}.
+            </p>
+            <p className="text-[15px] text-graphite mt-4 max-w-[60ch]">{p.description}</p>
+            {p.productUrl && (
+              <a href={p.productUrl} target="_blank" rel="noreferrer" className="inline-block mt-4 text-[15px] font-semibold underline underline-offset-4 decoration-shell decoration-2">
+                Voir chez {p.brand}
+              </a>
+            )}
+          </section>
         </div>
       </div>
+
+      {similar.length > 0 && (
+        <section className="mt-20">
+          <h2 className="wide font-extrabold text-2xl md:text-3xl">Dans le même esprit</h2>
+          <div className="mt-6 grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {similar.map((q) => (
+              <Link key={q.id} to={`/montures/${q.id}`} className="group">
+                <div className="rounded-tile bg-glass-soft group-hover:bg-glass transition-colors px-3 py-6">
+                  <FrameImage spec={q.spec} alt={q.name} />
+                </div>
+                <p className="mt-3 text-sm text-graphite">{q.brand}</p>
+                <p className="font-semibold leading-snug">{q.name}</p>
+                <p className="tnum text-[15px]">{q.price} €</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
-};
-
-export default ProductDetail;
+}

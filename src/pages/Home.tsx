@@ -1,140 +1,93 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Filter, Tag, Eye } from 'lucide-react';
+import FrameViewer from '../components/frames/FrameViewer';
+import FrameImage from '../components/frames/FrameImage';
+import { products } from '../lib/catalog';
 
-const Home: React.FC = () => {
+// The hero is set like an optician's acuity chart: each line smaller than the last,
+// with its acuity in the margin. The smallest line carries the actual explanation.
+const CHART = [
+  { text: 'TROUVE', acuity: '1/10', size: 'text-[clamp(56px,15vw,168px)]' },
+  { text: 'LA MONTURE', acuity: '3/10', size: 'text-[clamp(34px,9.2vw,100px)]' },
+  { text: 'FAITE POUR', acuity: '5/10', size: 'text-[clamp(26px,6.6vw,64px)]' },
+  { text: 'TON VISAGE', acuity: '7/10', size: 'text-[clamp(19px,4.6vw,42px)]' },
+];
+
+const STEPS = [
+  { title: 'Trois questions', text: 'Ton style et ton budget, pour classer les montures qui te correspondent.' },
+  { title: 'Une photo de face', text: 'Prise automatiquement. On mesure la forme de ton visage, l’écart entre tes pupilles et ta largeur de tempes.' },
+  { title: 'L’essayage en direct', text: 'Les montures conseillées s’affichent sur ton visage, à leur taille réelle, et suivent tes mouvements.' },
+];
+
+export default function Home() {
+  const featured = products[0];
+  const picks = [products[1], products[4], products[2], products[8]];
+
   return (
-    <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative h-screen">
-        <div className="absolute inset-0 bg-gradient-to-r from-secondary-950/90 to-secondary-900/70 z-10"></div>
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('https://images.pexels.com/photos/701877/pexels-photo-701877.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2')" }}
-        ></div>
-        <div className="relative container mx-auto px-4 h-full flex flex-col justify-center items-start z-20 pt-16">
-          <h1 className="text-white mb-4 max-w-2xl animate-fade-in">
-            Découvrez les Meilleures Lunettes du Marché Français
-          </h1>
-          <p className="text-white/90 text-xl mb-8 max-w-xl animate-slide-up">
-            Un catalogue complet et curé des plus belles montures présentées dans les magazines de mode français.
-          </p>
-          <Link
-            to="/catalog"
-            className="btn btn-primary text-base animate-slide-up"
-          >
-            Explorer le Catalogue
-            <ArrowRight className="ml-2 h-5 w-5" />
+    <>
+      <section className="max-w-6xl mx-auto px-5 pt-12 md:pt-16 pb-10 text-center">
+        <h1 className="wide font-black leading-[0.92] tracking-[-0.01em]">
+          {CHART.map((l, i) => (
+            <span key={l.text} className="relative block animate-chart-in" style={{ animationDelay: `${i * 90}ms` }}>
+              <span className={l.size}>{l.text}</span>
+              <span aria-hidden className="absolute right-0 top-1/2 -translate-y-1/2 narrow tnum text-[11px] md:text-xs font-normal text-mist hidden sm:block">
+                {l.acuity}
+              </span>
+            </span>
+          ))}
+        </h1>
+        <p className="relative mt-4 mx-auto max-w-[34ch] text-[15px] text-graphite animate-chart-in" style={{ animationDelay: '400ms' }}>
+          Analyse gratuite de ton visage, puis essayage des montures en direct sur ta caméra.
+        </p>
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+          <Link to="/analyse" className="btn-ink">Analyser mon visage</Link>
+          <Link to="/essayer" className="btn-line">Essayer des montures</Link>
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-5">
+        <div className="relative rounded-stage bg-glass overflow-hidden">
+          <FrameViewer spec={featured.spec} label={`${featured.name} en 3D`} className="h-[300px] md:h-[440px]" />
+          <div className="absolute left-5 bottom-4 md:left-8 md:bottom-6 text-left pointer-events-none">
+            <p className="font-semibold">{featured.name}</p>
+            <p className="marking">{featured.marking}</p>
+          </div>
+          <p className="absolute right-5 bottom-4 md:right-8 md:bottom-6 text-xs text-graphite pointer-events-none">Fais-la tourner</p>
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-5 py-20 md:py-28">
+        <h2 className="wide font-extrabold text-3xl md:text-4xl max-w-[18ch]">Comment ça marche</h2>
+        <ol className="mt-10 grid gap-10 md:grid-cols-3 md:gap-8">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="border-t-2 border-ink pt-5">
+              <span className="narrow tnum text-sm text-graphite">Étape {i + 1}</span>
+              <h3 className="text-xl font-bold mt-1">{s.title}</h3>
+              <p className="text-graphite mt-2 max-w-[38ch]">{s.text}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-5 pb-24">
+        <div className="flex items-end justify-between gap-6">
+          <h2 className="wide font-extrabold text-3xl md:text-4xl">Quelques montures</h2>
+          <Link to="/montures" className="text-[15px] font-semibold underline underline-offset-4 decoration-shell decoration-2 shrink-0">
+            Voir les {products.length}
           </Link>
         </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="py-20 bg-secondary-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="mb-4">Pourquoi Choisir LuxOptic</h2>
-            <p className="text-secondary-600 max-w-2xl mx-auto">
-              Nous vous offrons une expérience unique pour découvrir et comparer les lunettes du marché français.
-            </p>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="bg-primary-100 p-3 rounded-full w-fit mb-6">
-                <Filter className="h-6 w-6 text-primary-600" />
+        <div className="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3">
+          {picks.map((p) => (
+            <Link key={p.id} to={`/montures/${p.id}`} className="group">
+              <div className="rounded-tile bg-glass-soft group-hover:bg-glass transition-colors px-3 py-6">
+                <FrameImage spec={p.spec} alt={p.name} />
               </div>
-              <h3 className="text-xl mb-3">Filtres Avancés</h3>
-              <p className="text-secondary-600">
-                Trouvez facilement les lunettes qui correspondent exactement à vos critères grâce à nos filtres détaillés.
-              </p>
-            </div>
-            
-            <div className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="bg-primary-100 p-3 rounded-full w-fit mb-6">
-                <Tag className="h-6 w-6 text-primary-600" />
-              </div>
-              <h3 className="text-xl mb-3">Sources Magazine</h3>
-              <p className="text-secondary-600">
-                Découvrez dans quels magazines chaque paire de lunettes a été présentée et mise en valeur.
-              </p>
-            </div>
-            
-            <div className="bg-white p-8 rounded-xl shadow-sm">
-              <div className="bg-primary-100 p-3 rounded-full w-fit mb-6">
-                <Eye className="h-6 w-6 text-primary-600" />
-              </div>
-              <h3 className="text-xl mb-3">Design Élégant</h3>
-              <p className="text-secondary-600">
-                Profitez d'une interface soignée et intuitive pour une expérience utilisateur agréable et efficace.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Products Preview */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row justify-between items-center mb-12">
-            <div>
-              <h2 className="mb-2">Lunettes Tendance</h2>
-              <p className="text-secondary-600">
-                Découvrez les montures les plus populaires du moment
-              </p>
-            </div>
-            <Link to="/catalog" className="btn btn-secondary mt-4 md:mt-0">
-              Voir tout le catalogue
-              <ArrowRight className="ml-2 h-5 w-5" />
+              <p className="mt-3 text-sm text-graphite">{p.brand}</p>
+              <p className="font-semibold leading-snug">{p.name}</p>
+              <p className="tnum text-[15px] mt-0.5">{p.price} €</p>
             </Link>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3].map((item) => (
-              <Link to={`/product/${item}`} key={item} className="card group">
-                <div className="relative h-64 overflow-hidden">
-                  <img
-                    src={`https://images.pexels.com/photos/70365${item}/pexels-photo-70365${item}.jpeg?auto=compress&cs=tinysrgb&w=800`}
-                    alt="Glasses preview"
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute top-4 right-4">
-                    <span className="magazine-tag bg-accent-100 text-accent-800">
-                      Vogue
-                    </span>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="text-lg font-medium">Ray-Ban Wayfarer</h3>
-                  <p className="text-secondary-600 mb-3">Classique Intemporel</p>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium text-lg">149 €</span>
-                    <span className="text-sm text-primary-600 group-hover:text-primary-800 transition-colors">
-                      Voir le détail
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          ))}
         </div>
       </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-secondary-900 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="mb-6">Prêt à Découvrir Votre Prochaine Paire ?</h2>
-          <p className="text-secondary-300 max-w-2xl mx-auto mb-8">
-            Explorez notre catalogue complet et trouvez la monture parfaite qui correspond à votre style et à vos besoins.
-          </p>
-          <Link to="/catalog" className="btn btn-accent text-base">
-            Explorer le Catalogue
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Link>
-        </div>
-      </section>
-    </div>
+    </>
   );
-};
-
-export default Home;
+}

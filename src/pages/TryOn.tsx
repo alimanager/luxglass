@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Camera, ScanFace, ShieldCheck, Sparkles } from 'lucide-react';
+import { Camera, ScanFace, ShieldCheck, Sparkles } from 'lucide-react';
 import StepShell, { OptionCard, PrimaryButton } from '../components/analysis/StepShell';
 import CaptureStep, { type Capture } from '../components/analysis/CaptureStep';
 import AnalyzingStep from '../components/analysis/AnalyzingStep';
@@ -43,23 +43,20 @@ const TryOn: React.FC = () => {
   );
 
   const onDone = useCallback(() => {
-    if (result) navigate('/analysis-results', { state: { result } });
+    if (result) navigate('/analyse/resultats', { state: { result } });
   }, [navigate, result]);
 
   return (
-    <div className="min-h-screen pt-20 bg-sand-50">
+    <div className="min-h-screen pt-20 bg-paper">
       <StepShell step={index + 1} total={ORDER.length} onBack={back}>
         {step === 'intro' && (
           <div className="flex flex-col flex-1">
-            <span className="inline-flex w-fit items-center gap-1.5 text-xs font-medium tracking-wider uppercase text-ink-500 bg-sand-100 rounded-full px-3 py-1">
-              <Sparkles className="h-3.5 w-3.5" /> Analyse gratuite · 2 minutes
-            </span>
-            <h1 className="font-serif text-4xl text-ink-900 leading-tight mt-5">
-              Les lunettes faites pour ton visage
+            <h1 className="wide font-extrabold text-[34px] text-ink leading-[1.05]">
+              Analyse de ton visage
             </h1>
-            <p className="text-ink-500 mt-3">
-              On mesure ton visage à partir d’une simple photo, puis on te recommande les formes, la taille et les
-              couleurs de monture qui te vont vraiment.
+            <p className="text-graphite mt-3">
+              Gratuite, en deux minutes. On mesure ton visage sur une photo de face, puis on te conseille les formes,
+              la taille et les couleurs de monture qui te vont.
             </p>
             <ol className="mt-8 space-y-4">
               {[
@@ -68,23 +65,23 @@ const TryOn: React.FC = () => {
                 { icon: ScanFace, title: 'Ton rapport', text: 'Forme du visage, mesures, montures conseillées' },
               ].map(({ icon: Icon, title, text }) => (
                 <li key={title} className="flex items-start gap-4">
-                  <span className="h-11 w-11 shrink-0 rounded-2xl bg-white border border-sand-200 flex items-center justify-center text-ink-800">
+                  <span className="h-11 w-11 shrink-0 rounded-[10px] bg-glass-soft flex items-center justify-center text-ink">
                     <Icon className="h-5 w-5" />
                   </span>
                   <span>
-                    <span className="block font-medium text-ink-900">{title}</span>
-                    <span className="block text-sm text-ink-500">{text}</span>
+                    <span className="block font-medium text-ink">{title}</span>
+                    <span className="block text-sm text-graphite">{text}</span>
                   </span>
                 </li>
               ))}
             </ol>
-            <div className="flex items-center gap-2 text-xs text-ink-400 mt-8">
+            <div className="flex items-center gap-2 text-xs text-mist mt-8">
               <ShieldCheck className="h-4 w-4 shrink-0" />
               Ta photo est analysée sur ton appareil. Rien n’est envoyé sur un serveur.
             </div>
             <div className="mt-auto pt-8 pb-5">
               <PrimaryButton onClick={next}>
-                Commencer <ArrowRight className="h-5 w-5" />
+                Commencer
               </PrimaryButton>
             </div>
           </div>
@@ -98,7 +95,7 @@ const TryOn: React.FC = () => {
               onChange={(e) => setProfile({ ...profile, firstName: e.target.value.slice(0, 30) })}
               onKeyDown={(e) => e.key === 'Enter' && next()}
               placeholder="Ton prénom"
-              className="w-full h-14 rounded-2xl border border-sand-200 bg-white px-5 text-lg text-ink-900 placeholder:text-ink-300 focus:outline-none focus:ring-2 focus:ring-ink-900"
+              className="w-full h-14 rounded-[10px] border border-rule bg-white px-5 text-lg text-ink placeholder:text-mist focus:outline-none focus:ring-2 focus:ring-ink"
             />
             <Footer onNext={next} label={profile.firstName.trim() ? 'Continuer' : 'Passer'} />
           </Question>
@@ -151,7 +148,7 @@ const TryOn: React.FC = () => {
 
         {step === 'capture' && (
           <>
-            {error && <p className="mb-4 text-sm text-red-700 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+            {error && <p className="mb-4 text-sm text-danger bg-shell-light rounded-xl px-4 py-3">{error}</p>}
             <CaptureStep onCaptured={onCaptured} />
           </>
         )}
@@ -164,8 +161,8 @@ const TryOn: React.FC = () => {
 
 const Question: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
   <div className="flex flex-col flex-1">
-    <h1 className="font-serif text-3xl text-ink-900 leading-tight">{title}</h1>
-    {subtitle && <p className="text-ink-500 mt-2">{subtitle}</p>}
+    <h1 className="wide font-extrabold text-3xl text-ink leading-tight">{title}</h1>
+    {subtitle && <p className="text-graphite mt-2">{subtitle}</p>}
     <div className="mt-8 space-y-3 flex-1 flex flex-col">{children}</div>
   </div>
 );
@@ -173,7 +170,7 @@ const Question: React.FC<{ title: string; subtitle?: string; children: React.Rea
 const Footer: React.FC<{ onNext: () => void; label: string }> = ({ onNext, label }) => (
   <div className="mt-auto pt-8 pb-5">
     <PrimaryButton onClick={onNext}>
-      {label} <ArrowRight className="h-5 w-5" />
+      {label}
     </PrimaryButton>
   </div>
 );

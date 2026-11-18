@@ -176,12 +176,12 @@ const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
 
   return (
     <div className="flex flex-col flex-1">
-      <h1 className="font-serif text-3xl text-ink-900 leading-tight">Ta photo de face</h1>
-      <p className="text-ink-500 mt-2 mb-5 text-sm">
+      <h1 className="wide font-extrabold text-3xl text-ink leading-tight">Ta photo de face</h1>
+      <p className="text-graphite mt-2 mb-5 text-sm">
         Lumière naturelle de face, cheveux dégagés, sans lunettes. La photo se prend toute seule.
       </p>
 
-      <div className="relative w-full rounded-3xl overflow-hidden bg-ink-950" style={{ aspectRatio: `${VIEW_ASPECT}` }}>
+      <div className="relative w-full rounded-stage overflow-hidden bg-[#0e1420]" style={{ aspectRatio: `${VIEW_ASPECT}` }}>
         {camera !== 'denied' && (
           <Webcam
             ref={webcamRef}
@@ -196,10 +196,10 @@ const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
         )}
 
         {camera === 'denied' ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 text-sand-100">
-            <VideoOff className="h-10 w-10 mb-4 text-sand-300" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-8 text-paper">
+            <VideoOff className="h-10 w-10 mb-4 text-mist" />
             <p className="font-medium">Caméra indisponible</p>
-            <p className="text-sm text-ink-300 mt-1">Autorise la caméra dans ton navigateur, ou importe une photo de face.</p>
+            <p className="text-sm text-mist mt-1">Autorise la caméra dans ton navigateur, ou importe une photo de face.</p>
           </div>
         ) : (
           <OvalGuide progress={hold} active={issue === 'ok' || busy} faceFound={faceFound && ready} />
@@ -215,7 +215,7 @@ const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
           <div className="absolute bottom-4 inset-x-0 flex justify-center px-4" aria-live="polite">
             <span
               className={`px-4 py-2 rounded-full text-sm font-medium backdrop-blur-md transition-colors ${
-                issue === 'ok' || busy ? 'bg-gold-400/90 text-ink-950' : 'bg-black/45 text-white'
+                issue === 'ok' || busy ? 'bg-paper text-ink' : 'bg-black/45 text-white'
               }`}
             >
               {hint}
@@ -224,14 +224,14 @@ const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
         )}
       </div>
 
-      {error && <p className="mt-4 text-sm text-red-700 bg-red-50 rounded-xl px-4 py-3">{error}</p>}
+      {error && <p className="mt-4 text-sm text-danger bg-shell-light rounded-xl px-4 py-3">{error}</p>}
       {model === 'error' && (
-        <p className="mt-4 text-sm text-red-700 bg-red-50 rounded-xl px-4 py-3">
+        <p className="mt-4 text-sm text-danger bg-shell-light rounded-xl px-4 py-3">
           Le moteur d’analyse n’a pas pu se charger. Vérifie ta connexion puis recharge la page.
         </p>
       )}
 
-      <div className="flex items-center justify-center gap-2 text-xs text-ink-400 mt-4">
+      <div className="flex items-center justify-center gap-2 text-xs text-mist mt-4">
         <ShieldCheck className="h-4 w-4" />
         Ta photo est analysée sur ton appareil et n’est envoyée nulle part.
       </div>
@@ -245,7 +245,7 @@ const CaptureStep: React.FC<CaptureStepProps> = ({ onCaptured }) => {
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={model !== 'ready' || busy}
-          className="w-full h-12 rounded-2xl text-ink-700 font-medium flex items-center justify-center gap-2 hover:bg-sand-100 transition disabled:opacity-40"
+          className="w-full h-12 rounded-[10px] text-ink font-medium flex items-center justify-center gap-2 hover:bg-glass-soft transition disabled:opacity-40"
         >
           <ImagePlus className="h-5 w-5" />
           Importer une photo
@@ -279,7 +279,7 @@ const OvalGuide: React.FC<{ progress: number; active: boolean; faceFound: boolea
     <path
       d="M150 72 A96 128 0 1 1 150 328 A96 128 0 1 1 150 72"
       fill="none"
-      stroke="#d6b25e"
+      stroke="#e9c48f"
       strokeWidth="4"
       strokeLinecap="round"
       pathLength={1}
