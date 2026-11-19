@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import FrameImage from '../components/frames/FrameImage';
-import { products, STYLES } from '../lib/catalog';
+import { products, STYLES, priceLabel } from '../lib/catalog';
 import { loadAnalysis } from '../lib/analysisStore';
 import { SHAPE_INFO } from '../lib/recommendations';
 
@@ -88,7 +88,7 @@ export default function Catalog() {
           {list.map((p) => (
             <Link key={p.id} to={`/montures/${p.id}`} className="group">
               <div className="rounded-tile bg-glass-soft group-hover:bg-glass transition-colors px-3 py-8">
-                <FrameImage spec={p.spec} alt={p.name} />
+                <FrameImage frame={p} alt={p.name} />
               </div>
               <div className="mt-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -96,7 +96,7 @@ export default function Catalog() {
                   <p className="font-semibold leading-snug truncate">{p.name}</p>
                   <p className="marking mt-1">{p.marking}</p>
                 </div>
-                <p className="tnum font-semibold shrink-0">{p.price} €</p>
+                <p className="tnum font-semibold shrink-0">{priceLabel(p)}</p>
               </div>
             </Link>
           ))}

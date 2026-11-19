@@ -9,6 +9,7 @@ import AnalysisResults from './pages/AnalysisResults';
 // Heavy routes (TensorFlow.js) are split out of the main bundle.
 const TryOn = lazy(() => import('./pages/TryOn'));
 const Essayer = lazy(() => import('./pages/Essayer'));
+const Labo = lazy(() => import('./pages/Labo'));
 
 const Loading = () => <div className="min-h-[60vh]" />;
 const OldProduct = () => <Navigate to={`/montures/${useParams().id}`} replace />;
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="analyse/resultats" element={<AnalysisResults />} />
           <Route path="essayer" element={<Essayer />} />
           <Route path="essayer/:id" element={<Essayer />} />
+          <Route path="labo" element={<Labo />} />
           {/* old URLs */}
           <Route path="catalog" element={<Navigate to="/montures" replace />} />
           <Route path="product/:id" element={<OldProduct />} />

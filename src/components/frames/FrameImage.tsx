@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import type { FrameSpec } from '../../three/frameSpec';
+import type { FrameSource } from '../../three/loadModel';
 import { renderThumbnail, type ThumbView } from '../../three/studio';
 
 /** A studio render of a frame, generated once in the browser and cached. */
 export default function FrameImage({
-  spec,
+  frame,
   alt,
   view = 'three-quarter',
   size = 640,
   className = '',
 }: {
-  spec: FrameSpec;
+  frame: FrameSource;
   alt: string;
   view?: ThumbView;
   size?: number;
@@ -19,11 +19,11 @@ export default function FrameImage({
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
-    renderThumbnail(spec, view, size).then((u) => alive && setSrc(u));
+    renderThumbnail(frame, view, size).then((u) => alive && setSrc(u));
     return () => {
       alive = false;
     };
-  }, [spec, view, size]);
+  }, [frame, view, size]);
   return (
     <div className={`relative aspect-[1/0.62] ${className}`}>
       {src ? (

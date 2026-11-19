@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildFrame } from '../../three/buildFrame';
-import type { FrameSpec } from '../../three/frameSpec';
+import { loadFrame, type FrameSource } from '../../three/loadModel';
+import type { BuiltFrame } from '../../three/buildFrame';
+import { frameWidth } from '../../three/frameSpec';
 import { contactShadow, setupStudio } from '../../three/studio';
 
 /** Interactive 3D frame: drag to turn it, slow turntable until touched. */
-export default function FrameViewer({ spec, className = '', label }: { spec: FrameSpec; className?: string; label: string }) {
+export default function FrameViewer({ frame, className = '', label }: { frame: FrameSource; className?: string; label: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -23,21 +24,27 @@ export default function FrameViewer({ spec, className = '', label }: { spec: Fra
     const disposeEnv = setupStudio(renderer, scene);
     const camera = new THREE.PerspectiveCamera(24, 1, 10, 3000);
 
-    const built = buildFrame(spec);
+    const lensH = frame.spec.lens.h;
+    let built: BuiltFrame | null = null;
+    let disposed = false;
     const pivot = new THREE.Group();
-    pivot.add(built.group);
-    built.group.position.z = 45; // turn around the middle of the frame, not the lenses
     scene.add(pivot);
-    const shadow = contactShadow(built.width);
-    shadow.position.set(0, -spec.lens.h / 2 - 22, -40);
+    const shadow = contactShadow(frame.model?.widthMm ?? frameWidth(frame.spec));
+    shadow.position.set(0, -lensH / 2 - 22, -40);
     scene.add(shadow);
+    loadFrame(frame).then((b) => {
+      if (disposed) return b.dispose();
+      built = b;
+      b.group.position.z = 45; // turn around the middle of the frame, not the lenses
+      pivot.add(b.group);
+    });
 
     const fit = () => {
       const w = host.clientWidth;
       const h = host.clientHeight;
       renderer.setSize(w, h);
       camera.aspect = w / h;
-      const span = Math.max(built.width * 1.55, (spec.lens.h + 70) * camera.aspect);
+      const span = Math.max((frame.model?.widthMm ?? frameWidth(frame.spec)) * 1.55, (lensH + 70) * camera.aspect);
       camera.position.set(0, 30, (span / 2 / Math.tan((24 * Math.PI) / 360)) / camera.aspect + 40);
       camera.lookAt(0, -4, 0);
       camera.updateProjectionMatrix();
@@ -79,12 +86,13 @@ export default function FrameViewer({ spec, className = '', label }: { spec: Fra
       ro.disconnect();
       io.disconnect();
       controls.dispose();
-      built.dispose();
+      disposed = true;
+      built?.dispose();
       disposeEnv();
       renderer.dispose();
       host.removeChild(renderer.domElement);
     };
-  }, [spec, label]);
+  }, [frame, label]);
 
   return <div ref={hostRef} className={`relative cursor-grab active:cursor-grabbing ${className}`} />;
 }

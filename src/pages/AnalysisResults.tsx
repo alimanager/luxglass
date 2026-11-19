@@ -4,7 +4,7 @@ import FacePhoto from '../components/analysis/FacePhoto';
 import FrameImage from '../components/frames/FrameImage';
 import { loadAnalysis, type AnalysisResult } from '../lib/analysisStore';
 import { FRAME_SIZE_INFO, SHAPE_INFO, frameColors, recommendGlasses } from '../lib/recommendations';
-import { productById } from '../lib/catalog';
+import { productById, priceLabel } from '../lib/catalog';
 
 export default function AnalysisResults() {
   const location = useLocation();
@@ -97,11 +97,11 @@ export default function AnalysisResults() {
               {picks.map((p) => (
                 <div key={p.id}>
                   <Link to={`/montures/${p.id}`} className="block rounded-tile bg-glass-soft hover:bg-glass transition-colors px-3 py-6">
-                    <FrameImage spec={p.spec} alt={p.name} />
+                    <FrameImage frame={p} alt={p.name} />
                   </Link>
                   <p className="mt-3 text-sm text-graphite">{p.brand}</p>
                   <p className="font-semibold leading-snug">{p.name}</p>
-                  <p className="text-sm tnum">{p.price} €</p>
+                  <p className="text-sm tnum">{priceLabel(p)}</p>
                   <Link to={`/essayer/${p.id}`} className="inline-block text-sm font-semibold mt-1 underline underline-offset-4 decoration-shell decoration-2">
                     Essayer
                   </Link>

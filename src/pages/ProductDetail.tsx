@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Minus } from 'lucide-react';
 import FrameViewer from '../components/frames/FrameViewer';
 import FrameImage from '../components/frames/FrameImage';
-import { productById, products } from '../lib/catalog';
+import { productById, products, priceLabel } from '../lib/catalog';
 import { loadAnalysis } from '../lib/analysisStore';
 import { SHAPE_INFO } from '../lib/recommendations';
 import type { FaceShape } from '../lib/faceMetrics';
@@ -68,14 +68,14 @@ export default function ProductDetail() {
 
       <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-12">
         <div className="relative rounded-stage bg-glass overflow-hidden lg:self-start lg:sticky lg:top-24">
-          <FrameViewer spec={p.spec} label={`${p.name} en 3D`} className="h-[300px] sm:h-[400px] lg:h-[520px]" />
+          <FrameViewer frame={p} label={`${p.name} en 3D`} className="h-[300px] sm:h-[400px] lg:h-[520px]" />
           <p className="absolute right-5 bottom-4 text-xs text-graphite pointer-events-none">Fais-la tourner</p>
         </div>
 
         <div className="mt-8 lg:mt-2">
           <p className="text-graphite">{p.brand}</p>
           <h1 className="wide font-extrabold text-3xl md:text-4xl leading-tight">{p.name}</h1>
-          <p className="tnum text-2xl font-semibold mt-3">{p.price} €</p>
+          <p className="tnum text-2xl font-semibold mt-3">{priceLabel(p)}</p>
 
           {fit && (
             <div className={`mt-6 rounded-tile p-4 flex gap-3 ${fit.good ? 'bg-glass-soft' : 'bg-shell-light'}`}>
@@ -112,7 +112,16 @@ export default function ProductDetail() {
               {shapes.length ? shapes.map((s) => SHAPE_INFO[s].label.toLowerCase()).join(', ') : 'ovales'}.
             </p>
             <p className="text-[15px] text-graphite mt-4 max-w-[60ch]">{p.description}</p>
-            {p.productUrl && (
+            {p.model?.credit && (
+              <p className="text-sm text-graphite mt-4">
+                Modèle 3D :{' '}
+                <a href={p.model.credit.source} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                  {p.model.credit.author}
+                </a>
+                , licence {p.model.credit.license}.
+              </p>
+            )}
+            {p.productUrl && !p.demo && (
               <a href={p.productUrl} target="_blank" rel="noreferrer" className="inline-block mt-4 text-[15px] font-semibold underline underline-offset-4 decoration-shell decoration-2">
                 Voir chez {p.brand}
               </a>
@@ -128,11 +137,11 @@ export default function ProductDetail() {
             {similar.map((q) => (
               <Link key={q.id} to={`/montures/${q.id}`} className="group">
                 <div className="rounded-tile bg-glass-soft group-hover:bg-glass transition-colors px-3 py-6">
-                  <FrameImage spec={q.spec} alt={q.name} />
+                  <FrameImage frame={q} alt={q.name} />
                 </div>
                 <p className="mt-3 text-sm text-graphite">{q.brand}</p>
                 <p className="font-semibold leading-snug">{q.name}</p>
-                <p className="tnum text-[15px]">{q.price} €</p>
+                <p className="tnum text-[15px]">{priceLabel(q)}</p>
               </Link>
             ))}
           </div>

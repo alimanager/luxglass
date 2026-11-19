@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { buildFrame } from './buildFrame';
-import type { FrameSpec } from './frameSpec';
+import { loadFrame, sourceKey, type FrameSource } from './loadModel';
 
 /** Soft studio lighting: room environment for reflections + a key and a rim light. */
 export function setupStudio(renderer: THREE.WebGLRenderer, scene: THREE.Scene, withLights = true) {
@@ -54,48 +53,45 @@ let queue: Promise<unknown> = Promise.resolve();
 export type ThumbView = 'front' | 'three-quarter';
 
 /** Renders a frame to a transparent PNG once, then serves it from cache. */
-export function renderThumbnail(spec: FrameSpec, view: ThumbView = 'three-quarter', size = 640): Promise<string> {
-  const key = JSON.stringify([spec, view, size]);
+export function renderThumbnail(source: FrameSource, view: ThumbView = 'three-quarter', size = 640): Promise<string> {
+  const key = JSON.stringify([sourceKey(source), view, size]);
   const cached = thumbCache.get(key);
   if (cached) return cached;
-  const job = queue.then(
-    () =>
-      new Promise<string>((resolve) => {
-        if (!thumbRenderer) {
-          thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-          thumbScene = new THREE.Scene();
-          setupStudio(thumbRenderer, thumbScene);
-        }
-        const renderer = thumbRenderer;
-        const scene = thumbScene!;
-        renderer.setPixelRatio(1);
-        renderer.setSize(size, Math.round(size * 0.62), false);
-        const camera = new THREE.PerspectiveCamera(22, 1 / 0.62, 10, 2000);
-        const built = buildFrame(spec);
-        const holder = new THREE.Group();
-        holder.add(built.group);
-        if (view === 'three-quarter') {
-          holder.rotation.y = -0.55;
-          holder.rotation.x = 0.12;
-        }
-        scene.add(holder);
-        holder.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(holder);
-        const center = box.getCenter(new THREE.Vector3());
-        holder.position.sub(center);
-        const w = box.max.x - box.min.x;
-        const dist = (w * (view === 'front' ? 0.37 : 0.29)) / Math.tan((22 * Math.PI) / 360);
-        const front = box.max.z - center.z;
-        camera.position.set(0, w * 0.04, front + dist);
-        camera.lookAt(0, 0, view === 'front' ? front : 0);
-        renderer.render(scene, camera);
-        const url = renderer.domElement.toDataURL('image/png');
-        scene.remove(holder);
-        built.dispose();
-        resolve(url);
-      })
-  );
-  queue = job;
+  const job = queue.then(async () => {
+    if (!thumbRenderer) {
+      thumbRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      thumbScene = new THREE.Scene();
+      setupStudio(thumbRenderer, thumbScene);
+    }
+    const renderer = thumbRenderer;
+    const scene = thumbScene!;
+    renderer.setPixelRatio(1);
+    renderer.setSize(size, Math.round(size * 0.62), false);
+    const camera = new THREE.PerspectiveCamera(22, 1 / 0.62, 10, 2000);
+    const built = await loadFrame(source);
+    const holder = new THREE.Group();
+    holder.add(built.group);
+    if (view === 'three-quarter') {
+      holder.rotation.y = -0.55;
+      holder.rotation.x = 0.12;
+    }
+    scene.add(holder);
+    holder.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(holder);
+    const center = box.getCenter(new THREE.Vector3());
+    holder.position.sub(center);
+    const w = box.max.x - box.min.x;
+    const dist = (w * (view === 'front' ? 0.37 : 0.29)) / Math.tan((22 * Math.PI) / 360);
+    const front = box.max.z - center.z;
+    camera.position.set(0, w * 0.04, front + dist);
+    camera.lookAt(0, 0, view === 'front' ? front : 0);
+    renderer.render(scene, camera);
+    const url = renderer.domElement.toDataURL('image/png');
+    scene.remove(holder);
+    built.dispose();
+    return url;
+  });
+  queue = job.catch(() => undefined);
   thumbCache.set(key, job);
   return job;
 }

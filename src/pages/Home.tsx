@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import FrameViewer from '../components/frames/FrameViewer';
 import FrameImage from '../components/frames/FrameImage';
-import { products } from '../lib/catalog';
+import { products, priceLabel } from '../lib/catalog';
 
 // The hero is set like an optician's acuity chart: each line smaller than the last,
 // with its acuity in the margin. The smallest line carries the actual explanation.
@@ -46,7 +46,7 @@ export default function Home() {
 
       <section className="max-w-6xl mx-auto px-5">
         <div className="relative rounded-stage bg-glass overflow-hidden">
-          <FrameViewer spec={featured.spec} label={`${featured.name} en 3D`} className="h-[300px] md:h-[440px]" />
+          <FrameViewer frame={featured} label={`${featured.name} en 3D`} className="h-[300px] md:h-[440px]" />
           <div className="absolute left-5 bottom-4 md:left-8 md:bottom-6 text-left pointer-events-none">
             <p className="font-semibold">{featured.name}</p>
             <p className="marking">{featured.marking}</p>
@@ -79,11 +79,11 @@ export default function Home() {
           {picks.map((p) => (
             <Link key={p.id} to={`/montures/${p.id}`} className="group">
               <div className="rounded-tile bg-glass-soft group-hover:bg-glass transition-colors px-3 py-6">
-                <FrameImage spec={p.spec} alt={p.name} />
+                <FrameImage frame={p} alt={p.name} />
               </div>
               <p className="mt-3 text-sm text-graphite">{p.brand}</p>
               <p className="font-semibold leading-snug">{p.name}</p>
-              <p className="tnum text-[15px] mt-0.5">{p.price} €</p>
+              <p className="tnum text-[15px] mt-0.5">{priceLabel(p)}</p>
             </Link>
           ))}
         </div>

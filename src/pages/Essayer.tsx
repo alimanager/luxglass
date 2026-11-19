@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Camera, ChevronDown, ChevronUp, Download, ImageIcon, Loader2, VideoOff } from 'lucide-react';
-import { products, productById, type Product } from '../lib/catalog';
+import { products, productById, type Product, priceLabel } from '../lib/catalog';
 import { loadAnalysis } from '../lib/analysisStore';
 import { detectFace, loadFaceModel, trackVideo } from '../lib/faceModel';
 import { facePose, PoseSmoother } from '../three/faceAnchor';
@@ -42,8 +42,9 @@ export default function Essayer() {
 
   // frame changes
   useEffect(() => {
-    tryOnRef.current?.setSpec(product.spec);
-    if (source === 'photo') renderPhoto();
+    tryOnRef.current?.setFrame(product).then(() => {
+      if (source === 'photo') renderPhoto();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product, source]);
 
@@ -306,9 +307,14 @@ export default function Essayer() {
               <p className="text-sm text-mist">{product.brand}</p>
               <h1 className="wide font-extrabold text-2xl leading-tight">{product.name}</h1>
             </div>
-            <p className="tnum text-xl font-semibold">{product.price} €</p>
+            <p className="tnum text-xl font-semibold">{priceLabel(product)}</p>
           </div>
           <p className="marking !text-mist mt-1">{product.marking}</p>
+          {product.model?.credit && (
+            <p className="text-xs text-mist mt-1">
+              Modèle 3D : {product.model.credit.author}, licence {product.model.credit.license}
+            </p>
+          )}
           <p className="text-sm text-paper/70 mt-3">
             Affichée à taille réelle : {product.width} mm de large, mesurés sur ton iris.
           </p>
@@ -327,7 +333,7 @@ export default function Essayer() {
                   p.id === product.id ? 'bg-paper text-ink' : 'bg-white/[0.06] hover:bg-white/[0.12]'
                 }`}
               >
-                <FrameImage spec={p.spec} alt={p.name} view="front" size={360} />
+                <FrameImage frame={p} alt={p.name} view="front" size={360} />
                 <span className="block text-xs mt-1 truncate">{p.name}</span>
               </button>
             ))}

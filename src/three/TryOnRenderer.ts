@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FaceLandmarker } from '@mediapipe/tasks-vision';
-import { buildFrame, type BuiltFrame } from './buildFrame';
-import type { FrameSpec } from './frameSpec';
+import type { BuiltFrame } from './buildFrame';
+import { loadFrame, type FrameSource } from './loadModel';
 import { setupStudio } from './studio';
 import type { FacePose, LM } from './faceAnchor';
 import type { SceneLight } from '../lib/lightProbe';
@@ -103,22 +103,28 @@ export class TryOnRenderer {
     this.camera.updateProjectionMatrix();
   }
 
-  setSpec(spec: FrameSpec) {
+  private frameToken = 0;
+  /** Loads the frame (real model or parametric). Resolves once it is on the face. */
+  async setFrame(source: FrameSource) {
+    const token = ++this.frameToken;
+    const next = await loadFrame(source);
+    if (token !== this.frameToken) return next.dispose(); // a newer frame was picked meanwhile
     if (this.frame) {
       this.holder.remove(this.frame.group);
       this.frame.dispose();
     }
-    this.frame = buildFrame(spec);
+    this.frame = next;
     this.frame.group.traverse((o) => {
       const mesh = o as THREE.Mesh;
+      if (!mesh.isMesh) return;
       // only the front casts a shadow on the face; the temples run along the sides of the head
       if (mesh.userData.part === 'temple') mesh.castShadow = false;
       const mat = mesh.material as THREE.MeshPhysicalMaterial | undefined;
       if (!mat || !('envMapIntensity' in mat)) return;
       // On a face: softer reflections, and lenses you can see the eyes through.
-      mat.envMapIntensity *= 0.55;
-      if (mat.transparent && mat.vertexColors) {
-        mat.opacity = 0.62;
+      mat.envMapIntensity = (mat.envMapIntensity ?? 1) * 0.55;
+      if (mesh.userData.part === 'lens' || (mat.transparent && mat.vertexColors)) {
+        if (mat.vertexColors) mat.opacity = 0.62;
         mesh.castShadow = false; // tinted glass casts no hard shadow
       }
     });
