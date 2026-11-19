@@ -1,10 +1,10 @@
 {
-  "name": "tfjs-minimal",
+  "name": "luxoptic",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "engines": {
-    "node": "18.x"
+    "node": "26.x"
   },
   "scripts": {
     "dev": "vite",
