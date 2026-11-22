@@ -1,5 +1,6 @@
 import type { Capture } from '../components/analysis/CaptureStep';
 import { averageLandmarks, analyzeSkin, computeMetrics } from './faceMetrics';
+import { browContrast, featureIntensity } from './faceFeatures';
 import type { AnalysisResult } from './analysisStore';
 import type { Profile } from './recommendations';
 
@@ -11,6 +12,15 @@ export function buildResult(capture: Capture, profile: Profile): AnalysisResult 
   const src = capture.canvas;
   const skin = analyzeSkin(src.getContext('2d', { willReadFrequently: true })!, p);
   const metrics = computeMetrics(p, skin);
+  if (metrics.features) {
+    // brow darkness needs the pixels; the landmark-only metrics are computed without them
+    try {
+      metrics.features.browContrast = browContrast(src.getContext('2d', { willReadFrequently: true })!, p);
+      metrics.features.intensity = featureIntensity(metrics.features, metrics.jawRatio);
+    } catch {
+      // out-of-canvas sample: keep the landmark-only value
+    }
+  }
 
   // Portrait crop (3:4) centred on the face.
   const faceH = p[152].y - p[10].y;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { detectFace } from '../lib/faceModel';
 import { analyzeSkin, computeMetrics, type FaceMetrics } from '../lib/faceMetrics';
+import { browContrast, featureIntensity } from '../lib/faceFeatures';
 import { checkQuality, faceLuma, type QualityIssue } from '../lib/captureQuality';
 import { probeLight } from '../lib/lightProbe';
 import { products, type Product } from '../lib/catalog';
@@ -80,6 +81,10 @@ export default function Labo() {
           const frame = { w: canvas.width, h: canvas.height, visibleW: canvas.width, visibleH: canvas.height };
           row.issues = checkQuality(lm, frame, faceLuma(ctx, lm), false);
           row.metrics = computeMetrics(lm, analyzeSkin(ctx, lm));
+          if (row.metrics.features) {
+            row.metrics.features.browContrast = browContrast(ctx, lm);
+            row.metrics.features.intensity = featureIntensity(row.metrics.features, row.metrics.jawRatio);
+          }
           r.setSize(canvas.width, canvas.height);
           r.setLight(probeLight(ctx, lm), 1);
           r.update(facePose(lm, track.matrix), lm);
@@ -97,7 +102,7 @@ export default function Labo() {
   };
 
   const csv = () => {
-    const head = 'fichier;attendu;forme;symetrie;proportions;ecart_pupillaire_mm;largeur_visage_mm;taille;longueur_largeur;machoire;front;menton;teint;sous_ton;alertes;ms;erreur';
+    const head = 'fichier;attendu;forme;symetrie;proportions;ecart_pupillaire_mm;largeur_visage_mm;taille;longueur_largeur;machoire;front;menton;teint;sous_ton;sourcils_epaisseur;sourcils_ratio;sourcils_arc;sourcils_arc_ratio;sourcils_hauteur;yeux_inclinaison_deg;yeux_ecart;contraste_sourcils;intensite;alertes;ms;erreur';
     const lines = rows.map((r) => {
       const m = r.metrics;
       return [
@@ -115,6 +120,15 @@ export default function Labo() {
         m?.chin ?? '',
         m?.skin.depth ?? '',
         m?.skin.undertone ?? '',
+        m?.features?.browThickness ?? '',
+        m?.features?.browThicknessRatio.toFixed(3) ?? '',
+        m?.features?.browArch ?? '',
+        m?.features?.browArchRatio.toFixed(3) ?? '',
+        m?.features?.browGap ?? '',
+        m?.features?.eyeTiltDeg.toFixed(1) ?? '',
+        m?.features?.eyeSet ?? '',
+        m?.features?.browContrast ?? '',
+        m?.features?.intensity ?? '',
         r.issues.join(','),
         r.ms,
         r.error ?? '',

@@ -1,4 +1,5 @@
-import { products as catalog } from './catalog';
+import { products as catalog, type Product } from './catalog';
+import { scoreFit, type Fit } from './fit';
 import type { Glasses } from '../types/glasses';
 import type { FaceMetrics, FaceShape, SkinTone } from './faceMetrics';
 
@@ -58,23 +59,34 @@ const BUDGET: Record<Profile['budget'], [number, number]> = {
   high: [350, Infinity],
 };
 
-export function recommendGlasses(m: FaceMetrics, profile: Profile, count = 4): Glasses[] {
+export interface Ranked {
+  product: Product;
+  fit: Fit;
+}
+
+/** Every sellable frame with its fit score for this face, best first. */
+export function rankGlasses(m: FaceMetrics, profile: Profile): Ranked[] {
   const styles = SHAPE_INFO[m.shape].styles;
   const pref = STYLE_PREFERENCE[profile.style];
   const [lo, hi] = BUDGET[profile.budget];
-  return catalog.filter((g) => !g.demo)
-    .map((g) => {
-      let score = 0;
-      const rank = styles.indexOf(g.style);
-      if (rank >= 0) score += 10 - rank;
-      if (pref.includes(g.style)) score += 4;
-      if (g.price >= lo && g.price <= hi) score += 5;
-      return { g, score };
+  return catalog
+    .filter((g) => !g.demo)
+    .map((product) => {
+      const fit = scoreFit(m, { spec: product.spec, color: product.color, price: product.price });
+      const reasons = [...fit.reasons];
+      const rank = styles.indexOf(product.style);
+      let bonus = rank >= 0 ? 6 - Math.min(rank, 6) : 0;
+      if (pref.includes(product.style)) bonus += 4;
+      bonus += product.price >= lo && product.price <= hi ? 5 : -4;
+      return { product, fit: { score: Math.max(0, Math.min(100, fit.score + bonus)), reasons } };
     })
-    .filter((x) => x.score >= 8)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.fit.score - a.fit.score);
+}
+
+export function recommendGlasses(m: FaceMetrics, profile: Profile, count = 4): Glasses[] {
+  return rankGlasses(m, profile)
     .slice(0, count)
-    .map((x) => x.g);
+    .map((r) => r.product);
 }
 
 export function frameColors(skin: SkinTone): { name: string; hex: string }[] {

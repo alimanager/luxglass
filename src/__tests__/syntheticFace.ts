@@ -5,7 +5,7 @@ import type { Point } from '../lib/faceModel';
  * millimetre measurements of an average adult (1 px = `pxPerMm` mm⁻¹).
  * Only the landmarks used by the app are placed; the rest sit on the nose.
  */
-export function syntheticFace(opts: { pxPerMm?: number; cx?: number; cy?: number; faceWidth?: number; faceLength?: number; jaw?: number } = {}): Point[] {
+export function syntheticFace(opts: { pxPerMm?: number; cx?: number; cy?: number; faceWidth?: number; faceLength?: number; jaw?: number; browThick?: number; browArch?: number; eyeTilt?: number } = {}): Point[] {
   const s = opts.pxPerMm ?? 4;
   const cx = opts.cx ?? 640;
   const cy = opts.cy ?? 480;
@@ -41,6 +41,30 @@ export function syntheticFace(opts: { pxPerMm?: number; cx?: number; cy?: number
   pair(129, 358, 15, 42, -12);
   pair(50, 280, 42, 28, 8);
   pair(148, 377, 18, 88, 2);
+  // eyebrows: thickness and arch in mm, eye tilt in degrees (outer corner higher when > 0)
+  const browThick = opts.browThick ?? 5.5;
+  const browArch = opts.browArch ?? 3;
+  const bump = [0.3, 0.8, 1, 0.7, 0.2];
+  const xs = [48, 40, 31, 22, 14];
+  const upperR = [70, 63, 105, 66, 107];
+  const lowerR = [46, 53, 52, 65, 55];
+  const upperL = [300, 293, 334, 296, 336];
+  const lowerL = [276, 283, 282, 295, 285];
+  xs.forEach((x, i) => {
+    const y = -16 - browArch * bump[i];
+    set(upperR[i], -x, y);
+    set(upperL[i], x, y);
+    set(lowerR[i], -x, y + browThick);
+    set(lowerL[i], x, y + browThick);
+  });
+  // eye corners carry the tilt; upper eyelid sits 11 mm below the brow's lower edge
+  const tilt = Math.tan(((opts.eyeTilt ?? 5) * Math.PI) / 180) * 30;
+  set(33, -46, -tilt / 2);
+  set(263, 46, -tilt / 2);
+  set(133, -16, tilt / 2);
+  set(362, 16, tilt / 2);
+  set(159, -31.5, -16 + browThick + 11);
+  set(386, 31.5, -16 + browThick + 11);
   // pupils (PD 63 mm) and iris rings (11.7 mm)
   const iris = (center: number, ring: number[], x: number) => {
     set(center, x, 0, 2);

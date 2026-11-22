@@ -3,15 +3,16 @@ import { Link, useLocation } from 'react-router-dom';
 import FacePhoto from '../components/analysis/FacePhoto';
 import FrameImage from '../components/frames/FrameImage';
 import { loadAnalysis, type AnalysisResult } from '../lib/analysisStore';
-import { FRAME_SIZE_INFO, SHAPE_INFO, frameColors, recommendGlasses } from '../lib/recommendations';
-import { productById, priceLabel } from '../lib/catalog';
+import { FRAME_SIZE_INFO, SHAPE_INFO, frameColors, rankGlasses } from '../lib/recommendations';
+import { FEATURE_LABELS } from '../lib/faceFeatures';
+import { priceLabel } from '../lib/catalog';
 
 export default function AnalysisResults() {
   const location = useLocation();
   const result: AnalysisResult | null = (location.state as { result?: AnalysisResult } | null)?.result ?? loadAnalysis();
   const [showMesh, setShowMesh] = useState(false);
   const picks = useMemo(
-    () => (result ? recommendGlasses(result.metrics, result.profile).map((g) => productById(g.id)!).filter(Boolean) : []),
+    () => (result ? rankGlasses(result.metrics, result.profile).slice(0, 4) : []),
     [result]
   );
 
@@ -94,7 +95,7 @@ export default function AnalysisResults() {
         {picks.length > 0 && (
           <Section title="Tes montures">
             <div className="grid grid-cols-2 gap-3">
-              {picks.map((p) => (
+              {picks.map(({ product: p, fit }) => (
                 <div key={p.id}>
                   <Link to={`/montures/${p.id}`} className="block rounded-tile bg-glass-soft hover:bg-glass transition-colors px-3 py-6">
                     <FrameImage frame={p} alt={p.name} />
@@ -102,6 +103,12 @@ export default function AnalysisResults() {
                   <p className="mt-3 text-sm text-graphite">{p.brand}</p>
                   <p className="font-semibold leading-snug">{p.name}</p>
                   <p className="text-sm tnum">{priceLabel(p)}</p>
+                  <p className="text-sm mt-1.5">
+                    <span className="tnum font-semibold">{fit.score} %</span> pour toi
+                    {fit.reasons[0] && fit.reasons[0].delta > 0 && (
+                      <span className="block text-graphite leading-snug mt-0.5">{fit.reasons[0].text}</span>
+                    )}
+                  </p>
                   <span className="flex gap-4 mt-1">
                     <Link to={`/apercu/${p.id}`} className="text-sm font-semibold underline underline-offset-4 decoration-shell decoration-2">
                       Me voir avec
@@ -115,7 +122,17 @@ export default function AnalysisResults() {
                 </div>
               ))}
             </div>
-            <Link to={`/apercu/${picks[0].id}`} className="btn-ink w-full mt-8">Me voir avec mes montures</Link>
+            <Link to={`/apercu/${picks[0].product.id}`} className="btn-ink w-full mt-8">Me voir avec mes montures</Link>
+          </Section>
+        )}
+
+        {m.features && (
+          <Section title="Tes traits">
+            <ul className="space-y-2">
+              <li>Sourcils {FEATURE_LABELS.browThickness[m.features.browThickness]}, {FEATURE_LABELS.browArch[m.features.browArch]}, {FEATURE_LABELS.browGap[m.features.browGap]}.</li>
+              <li>Yeux {FEATURE_LABELS.eyeSet[m.features.eyeSet]}, {FEATURE_LABELS.eyeSlant[m.features.eyeSlant]}.</li>
+              <li>Traits {m.features.intensity > 0.6 ? 'marqués' : m.features.intensity < 0.35 ? 'délicats' : 'équilibrés'} : les montures sont choisies avec la présence qui va avec.</li>
+            </ul>
           </Section>
         )}
 

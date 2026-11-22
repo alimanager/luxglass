@@ -1,4 +1,5 @@
 import type { Point } from './faceModel';
+import { computeFeatures, type FaceFeatures } from './faceFeatures';
 
 /**
  * Face metrics computed from MediaPipe FaceMesh landmarks (478 points with iris refinement).
@@ -29,6 +30,8 @@ export interface FaceMetrics {
   faceWidthMm: number;
   frameSize: 'S' | 'M' | 'L';
   skin: SkinTone;
+  /** eyebrows and eyes (absent in reports saved before this field existed) */
+  features?: FaceFeatures;
 }
 
 export interface SkinTone {
@@ -170,6 +173,7 @@ export function computeMetrics(p: Point[], skin: SkinTone): FaceMetrics {
     faceWidthMm,
     frameSize,
     skin,
+    features: computeFeatures(p, { eyeSpacingRatio, jawRatio }),
   };
 }
 
