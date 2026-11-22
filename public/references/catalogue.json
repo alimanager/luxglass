@@ -1,0 +1,50 @@
+{
+ "1": {
+  "name": "Ray-Ban Wayfarer Classic",
+  "look": "rectangular, slightly trapezoid, black acetate frame, tinted sun lenses"
+ },
+ "2": {
+  "name": "Ray-Ban Aviator Classic",
+  "look": "teardrop aviator, thin metal double bridge, gold metal frame, tinted sun lenses"
+ },
+ "3": {
+  "name": "Panthère de Cartier",
+  "look": "cat-eye, upswept outer corners, burgundy acetate and metal frame, tinted sun lenses"
+ },
+ "4": {
+  "name": "Prada PR 13WS",
+  "look": "oversized, large square-ish lenses, tortoiseshell acetate frame, tinted sun lenses"
+ },
+ "5": {
+  "name": "Ray-Ban Clubmaster",
+  "look": "browline, thick acetate brow bar over a thin metal lower rim, black and gold acetate and metal frame, tinted sun lenses"
+ },
+ "6": {
+  "name": "Ray-Ban Round Metal",
+  "look": "perfectly round, thin metal wire rims, gold metal frame, tinted sun lenses"
+ },
+ "7": {
+  "name": "Mykita Mylon Zenith",
+  "look": "geometric hexagonal, slim matte rims, matte black lightweight 3D-printed polyamide frame, tinted sun lenses"
+ },
+ "8": {
+  "name": "Saint Laurent SL 462",
+  "look": "square, thick bold rims, black acetate frame, tinted sun lenses"
+ },
+ "9": {
+  "name": "Chloé Franky",
+  "look": "butterfly, wide lenses dropping at the outer edges, havana tortoiseshell acetate frame, tinted sun lenses"
+ },
+ "10": {
+  "name": "Persol PO3294S",
+  "look": "pilot, rounded square with a keyhole bridge, navy blue acetate frame, tinted sun lenses"
+ },
+ "11": {
+  "name": "Celine CL40046U",
+  "look": "oversized, large square-ish lenses, brown acetate frame, tinted sun lenses"
+ },
+ "12": {
+  "name": "Dior DiorSignature S1U",
+  "look": "modern aviator, metal frame with acetate details, black metal and acetate frame, tinted sun lenses"
+ }
+}

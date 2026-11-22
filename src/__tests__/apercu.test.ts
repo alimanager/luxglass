@@ -71,7 +71,7 @@ describe('aller-retour avec Gemini (simulé)', () => {
       'fetch',
       vi.fn(async (url: string | URL, init?: RequestInit) => {
         calls.push(String(url));
-        if (String(url).endsWith('index.json')) return new Response('', { status: 404 });
+        if (String(url).endsWith('.json')) return new Response('', { status: 404 });
         if (String(url).includes('/references/')) return new Response(Buffer.from('ref'), { headers: { 'content-type': 'image/jpeg' } });
         const sent = JSON.parse(String(init?.body));
         expect(sent.contents[0].parts).toHaveLength(3);
@@ -85,8 +85,8 @@ describe('aller-retour avec Gemini (simulé)', () => {
     });
     expect(res.status).toBe(200);
     expect((await res.json()).image).toBe('data:image/png;base64,R0VO');
-    expect(calls[1]).toBe('https://luxoptic.test/references/2.jpg');
-    expect(calls[2]).toContain('/models/gemini-3.1-flash-image:generateContent');
+    expect(calls).toContain('https://luxoptic.test/references/2.jpg');
+    expect(calls[calls.length - 1]).toContain('/models/gemini-3.1-flash-image:generateContent');
   });
 });
 
@@ -98,7 +98,7 @@ describe('erreurs de Gemini', () => {
       vi.fn(async (url: string | URL) => {
         const u = String(url);
         urls.push(u);
-        if (u.endsWith('index.json')) return new Response('', { status: 404 });
+        if (u.endsWith('.json')) return new Response('', { status: 404 });
         if (u.includes('/references/')) return new Response(Buffer.from('ref'), { headers: { 'content-type': 'image/jpeg' } });
         if (u.includes('gemini-3.1-flash-image-preview') && u.includes('v1beta'))
           return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'T0s=' } }] } }] });
@@ -123,5 +123,44 @@ describe('erreurs de Gemini', () => {
 
   it('explique un refus par filtre de sécurité', () => {
     expect(noImageReason({ candidates: [{ finishReason: 'IMAGE_SAFETY' }] }).message).toMatch(/filtre de sécurité/);
+  });
+});
+
+describe('monture décrite par sa vraie référence', () => {
+  it('demande le produit par son nom, sans image de référence', async () => {
+    let sent: { contents: { parts: Record<string, unknown>[] }[] } | null = null;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string | URL, init?: RequestInit) => {
+        const u = String(url);
+        if (u.endsWith('index.json')) return new Response('', { status: 404 });
+        if (u.endsWith('catalogue.json')) return Response.json({ '1': { name: 'Ray-Ban Wayfarer Classic', look: 'rectangular, black acetate frame' } });
+        if (u.includes('/references/')) throw new Error('should not fetch the render');
+        sent = JSON.parse(String(init?.body));
+        return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'T0s=' } }] } }] });
+      })
+    );
+    const res = await handleApercu(post({ face: FACE, productId: 1 }, '10.0.2.1'), { GEMINI_API_KEY: 'k' });
+    expect(res.status).toBe(200);
+    expect(sent!.contents[0].parts).toHaveLength(2);
+    expect(String(sent!.contents[0].parts[0].text)).toContain('Ray-Ban Wayfarer Classic');
+  });
+
+  it('préfère la photo marchand quand la monture vient d’un flux', async () => {
+    let parts = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string | URL, init?: RequestInit) => {
+        const u = String(url);
+        if (u.endsWith('index.json')) return Response.json({ '1': 'https://cdn.marchand.test/p.jpg' });
+        if (u.endsWith('catalogue.json')) return Response.json({ '1': { name: 'X', look: 'y' } });
+        if (u.startsWith('https://cdn.marchand.test')) return new Response(Buffer.from('p'), { headers: { 'content-type': 'image/jpeg' } });
+        parts = JSON.parse(String(init?.body)).contents[0].parts.length;
+        return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'T0s=' } }] } }] });
+      })
+    );
+    const res = await handleApercu(post({ face: FACE, productId: 1 }, '10.0.2.2'), { GEMINI_API_KEY: 'k' });
+    expect(res.status).toBe(200);
+    expect(parts).toBe(3);
   });
 });

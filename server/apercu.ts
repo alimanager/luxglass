@@ -48,19 +48,32 @@ export function buildPrompt(r: Pick<ApercuRequest, 'frameWidthMm' | 'faceWidthMm
   ].join(' ');
 }
 
+/** Prompt when the frame is described by its real reference instead of an image. */
+export function buildNamedPrompt(frame: { name: string; look: string }, r: Pick<ApercuRequest, 'frameWidthMm' | 'faceWidthMm'>): string {
+  const size =
+    r.frameWidthMm && r.faceWidthMm
+      ? ` The frame is about ${Math.round(r.frameWidthMm)} mm wide and the face about ${Math.round(r.faceWidthMm)} mm: keep that ratio.`
+      : '';
+  return [
+    'Edit this portrait photo of a person.',
+    `Make this exact person wear a pair of ${frame.name} glasses (${frame.look}), exactly as the real product looks in its official product photos.`,
+    "Keep the person's identity, face, expression, skin, hair, pose, framing, background and lighting exactly the same.",
+    'Fit the glasses naturally: resting on the bridge of the nose, temples going back over the ears, lenses centred on the eyes,',
+    'realistic reflections on the lenses and soft shadows on the skin.' + size,
+    'Photorealistic result. Change nothing else.',
+  ].join(' ');
+}
+
 export function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | null {
   const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(dataUrl);
   return m ? { mimeType: m[1], data: m[2] } : null;
 }
 
-export function buildGeminiBody(face: { mimeType: string; data: string }, frame: { mimeType: string; data: string }, prompt: string) {
+export function buildGeminiBody(face: { mimeType: string; data: string }, frame: { mimeType: string; data: string } | null, prompt: string) {
+  const parts: Record<string, unknown>[] = [{ text: prompt }, { inlineData: face }];
+  if (frame) parts.push({ inlineData: frame });
   return {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: prompt }, { inlineData: face }, { inlineData: frame }],
-      },
-    ],
+    contents: [{ role: 'user', parts }],
     generationConfig: { responseModalities: ['IMAGE'] },
   };
 }
@@ -109,6 +122,22 @@ export async function referenceUrl(productId: number, origin: string): Promise<s
   return `/references/${productId}.jpg`;
 }
 
+/** Catalogue frames described by their real reference (public/references/catalogue.json). */
+export async function namedFrame(productId: number, origin: string): Promise<{ name: string; look: string } | null> {
+  try {
+    const res = await fetch(new URL('/references/catalogue.json', origin));
+    if (!res.ok) return null;
+    const all = (await res.json()) as Record<string, { name: string; look: string }>;
+    return all[productId] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function hasFeedPhoto(productId: number, origin: string): Promise<boolean> {
+  return (await referenceUrl(productId, origin)) !== `/references/${productId}.jpg`;
+}
+
 async function fetchReference(origin: string, productId: number) {
   const res = await fetch(new URL(await referenceUrl(productId, origin), origin));
   if (!res.ok) return null;
@@ -137,8 +166,11 @@ export async function handleApercu(request: Request, env: Env): Promise<Response
     return json(429, { error: 'Tu as atteint la limite d’aperçus pour l’instant. Réessaie dans une heure.' });
   }
 
-  const frame = await fetchReference(new URL(request.url).origin, body.productId);
-  if (!frame) return json(404, { error: 'Monture inconnue.' });
+  // Priority: merchant photo of the exact product > real reference by name > our own render.
+  const origin = new URL(request.url).origin;
+  const named = (await hasFeedPhoto(body.productId, origin)) ? null : await namedFrame(body.productId, origin);
+  const frame = named ? null : await fetchReference(origin, body.productId);
+  if (!named && !frame) return json(404, { error: 'Monture inconnue.' });
 
   const key = env.GEMINI_API_KEY;
   if (!key) {
@@ -149,7 +181,8 @@ export async function handleApercu(request: Request, env: Env): Promise<Response
   // Model names differ between accounts and API versions (e.g. a "-preview" suffix):
   // try the configured one first, then the known aliases.
   const models = [...new Set([env.GEMINI_IMAGE_MODEL || DEFAULT_MODEL, ...FALLBACK_MODELS])];
-  const payload = JSON.stringify(buildGeminiBody(face, frame, buildPrompt(body)));
+  const prompt = named ? buildNamedPrompt(named, body) : buildPrompt(body);
+  const payload = JSON.stringify(buildGeminiBody(face, frame, prompt));
   const tried: string[] = [];
   for (const model of models) {
     for (const base of ENDPOINTS) {

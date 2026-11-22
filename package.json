@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "faces": "node scripts/generate-faces.mjs",
-    "flux": "tsx scripts/import-flux.ts"
+    "flux": "tsx scripts/import-flux.ts",
+    "references": "tsx scripts/references.ts"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
