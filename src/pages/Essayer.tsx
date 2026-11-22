@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Camera, ChevronDown, ChevronUp, Download, ImageIcon, Loader2, VideoOff } from 'lucide-react';
-import { products, productById, type Product, priceLabel } from '../lib/catalog';
+import { products, type Product, priceLabel } from '../lib/catalog';
 import { loadAnalysis } from '../lib/analysisStore';
 import { detectFace, loadFaceModel, trackVideo } from '../lib/faceModel';
 import { facePose, PoseSmoother } from '../three/faceAnchor';
@@ -15,7 +15,8 @@ export default function Essayer() {
   const { id } = useParams();
   const navigate = useNavigate();
   const analysis = useMemo(() => loadAnalysis(), []);
-  const product: Product = productById(id ?? '') ?? products[0];
+  const tryable = products.filter((p) => !p.photo);
+  const product: Product = tryable.find((p) => String(p.id) === id) ?? tryable[0];
   const [source, setSource] = useState<Source>(analysis && !id ? 'photo' : 'camera');
   const [status, setStatus] = useState<'loading' | 'searching' | 'tracking' | 'denied' | 'error'>('loading');
   const [shotUrl, setShotUrl] = useState<string | null>(null);
@@ -324,7 +325,7 @@ export default function Essayer() {
 
           <h2 className="text-sm text-mist mt-8 mb-3">Autres montures</h2>
           <div className="flex lg:grid lg:grid-cols-2 gap-2 overflow-x-auto no-scrollbar -mx-5 px-5 lg:mx-0 lg:px-0 snap-x">
-            {products.map((p) => (
+            {tryable.map((p) => (
               <button
                 key={p.id}
                 onClick={() => pick(p)}

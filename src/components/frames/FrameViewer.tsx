@@ -12,7 +12,7 @@ export default function FrameViewer({ frame, className = '', label }: { frame: F
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return;
+    if (!host || frame.photo) return;
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     host.appendChild(renderer.domElement);
@@ -94,5 +94,12 @@ export default function FrameViewer({ frame, className = '', label }: { frame: F
     };
   }, [frame, label]);
 
+  if (frame.photo) {
+    return (
+      <div className={`relative flex items-center justify-center p-8 ${className}`}>
+        <img src={frame.photo} alt={label} className="max-h-full max-w-full object-contain mix-blend-multiply" />
+      </div>
+    );
+  }
   return <div ref={hostRef} className={`relative cursor-grab active:cursor-grabbing ${className}`} />;
 }

@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { readFileSync, readdirSync } from 'fs';
 import { resolve } from 'path';
@@ -29,8 +29,33 @@ function mediapipeWasm(): Plugin {
   };
 }
 
+/** Runs the Vercel functions of /api in the dev server, with .env.local loaded. */
+function devApi(): Plugin {
+  return {
+    name: 'dev-api',
+    configureServer(server) {
+      const env = loadEnv(server.config.mode, process.cwd(), '');
+      server.middlewares.use('/api/apercu', async (req, res) => {
+        const chunks: Buffer[] = [];
+        for await (const c of req) chunks.push(c as Buffer);
+        const { handleApercu } = await server.ssrLoadModule('/server/apercu.ts');
+        const origin = `http://${req.headers.host}`;
+        const request = new Request(origin + '/api/apercu', {
+          method: req.method,
+          headers: req.headers as Record<string, string>,
+          body: req.method === 'POST' ? Buffer.concat(chunks) : undefined,
+        });
+        const response: Response = await handleApercu(request, { ...process.env, ...env });
+        res.statusCode = response.status;
+        response.headers.forEach((v, k) => res.setHeader(k, v));
+        res.end(Buffer.from(await response.arrayBuffer()));
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), mediapipeWasm()],
+  plugins: [react(), mediapipeWasm(), devApi()],
   server: { host: true },
   build: {
     rollupOptions: {

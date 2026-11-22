@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Check, Minus } from 'lucide-react';
 import FrameViewer from '../components/frames/FrameViewer';
 import FrameImage from '../components/frames/FrameImage';
+import Offres from '../components/Offres';
 import { productById, products, priceLabel } from '../lib/catalog';
 import { loadAnalysis } from '../lib/analysisStore';
 import { SHAPE_INFO } from '../lib/recommendations';
@@ -56,7 +57,7 @@ export default function ProductDetail() {
     ['Branches', `${p.spec.temple} mm`],
     ['Largeur totale', `${p.width} mm (taille ${p.size})`],
     ['Hauteur de verre', `${p.spec.lens.h} mm`],
-    ['Matière', p.material],
+    ...(p.material ? [['Matière', p.material] as [string, string]] : []),
     ['Couleur', p.color],
   ];
 
@@ -69,7 +70,7 @@ export default function ProductDetail() {
       <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-12">
         <div className="relative rounded-stage bg-glass overflow-hidden lg:self-start lg:sticky lg:top-24">
           <FrameViewer frame={p} label={`${p.name} en 3D`} className="h-[300px] sm:h-[400px] lg:h-[520px]" />
-          <p className="absolute right-5 bottom-4 text-xs text-graphite pointer-events-none">Fais-la tourner</p>
+          {!p.photo && <p className="absolute right-5 bottom-4 text-xs text-graphite pointer-events-none">Fais-la tourner</p>}
         </div>
 
         <div className="mt-8 lg:mt-2">
@@ -85,12 +86,28 @@ export default function ProductDetail() {
           )}
 
           <div className="mt-6 grid gap-2">
-            <Link to={`/essayer/${p.id}`} className="btn-ink">Essayer sur mon visage</Link>
+            <Link to={`/apercu/${p.id}`} className="btn-ink">Me voir avec ces lunettes</Link>
+            {!p.photo && (
+              <Link to={`/essayer/${p.id}`} className="btn-line">Essayer en direct, à taille réelle</Link>
+            )}
             {!analysis && (
-              <Link to="/analyse" className="btn-line">Vérifier si elle me va</Link>
+              <Link to="/analyse" className="btn-quiet">Vérifier si elle me va</Link>
             )}
           </div>
 
+          {p.offres && p.offres.length > 0 && (
+            <section className="mt-10">
+              <h2 className="font-bold">Où l’acheter</h2>
+              <p className="text-sm text-graphite mt-1">
+                {p.offres.length} marchand{p.offres.length > 1 ? 's' : ''}, du moins cher au plus cher, livraison comprise.
+              </p>
+              <div className="mt-3">
+                <Offres offres={p.offres} demo={p.id >= 9000} />
+              </div>
+            </section>
+          )}
+
+          {p.marking && (
           <section className="mt-10">
             <h2 className="font-bold">Cotes</h2>
             <p className="text-sm text-graphite mt-1">
@@ -105,6 +122,7 @@ export default function ProductDetail() {
               ))}
             </dl>
           </section>
+          )}
 
           <section className="mt-10">
             <h2 className="font-bold">Va bien aux visages</h2>

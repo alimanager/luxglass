@@ -102,13 +102,20 @@ export default function AnalysisResults() {
                   <p className="mt-3 text-sm text-graphite">{p.brand}</p>
                   <p className="font-semibold leading-snug">{p.name}</p>
                   <p className="text-sm tnum">{priceLabel(p)}</p>
-                  <Link to={`/essayer/${p.id}`} className="inline-block text-sm font-semibold mt-1 underline underline-offset-4 decoration-shell decoration-2">
-                    Essayer
-                  </Link>
+                  <span className="flex gap-4 mt-1">
+                    <Link to={`/apercu/${p.id}`} className="text-sm font-semibold underline underline-offset-4 decoration-shell decoration-2">
+                      Me voir avec
+                    </Link>
+                    {!p.photo && (
+                      <Link to={`/essayer/${p.id}`} className="text-sm font-semibold underline underline-offset-4 decoration-rule decoration-2">
+                        En direct
+                      </Link>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>
-            <Link to={`/essayer/${picks[0].id}`} className="btn-ink w-full mt-8">Essayer mes montures en direct</Link>
+            <Link to={`/apercu/${picks[0].id}`} className="btn-ink w-full mt-8">Me voir avec mes montures</Link>
           </Section>
         )}
 

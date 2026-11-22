@@ -1,0 +1,125 @@
+{
+ "maj": "démo",
+ "produits": [
+  {
+   "id": 9001,
+   "nom": "Monture Démo Aviateur métal or 58-14-140",
+   "marque": "Marque démo",
+   "image": "/references/2.jpg",
+   "style": "Aviateur",
+   "couleur": "Or",
+   "cotes": [
+    58,
+    14,
+    140
+   ],
+   "ean": "3700000000011",
+   "offres": [
+    {
+     "marchand": "Boutique démo B",
+     "prix": 79.9,
+     "livraison": 6.9,
+     "url": "#demo-b-1",
+     "dispo": true
+    },
+    {
+     "marchand": "Boutique démo A",
+     "prix": 89,
+     "livraison": 4.9,
+     "url": "#demo-a-1",
+     "dispo": true
+    },
+    {
+     "marchand": "Boutique démo C",
+     "prix": 92.5,
+     "livraison": 0,
+     "url": "#demo-c-1",
+     "dispo": false
+    }
+   ]
+  },
+  {
+   "id": 9002,
+   "nom": "Monture Démo Ronde métal 47□21 145",
+   "marque": "Marque démo",
+   "image": "/references/7.jpg",
+   "style": "Rond",
+   "couleur": "Noir",
+   "cotes": [
+    47,
+    21,
+    145
+   ],
+   "ean": "3700000000028",
+   "offres": [
+    {
+     "marchand": "Boutique démo B",
+     "prix": 64,
+     "livraison": 0,
+     "url": "#demo-b-2",
+     "dispo": true
+    },
+    {
+     "marchand": "Boutique démo A",
+     "prix": 69,
+     "livraison": 4.9,
+     "url": "#demo-a-2",
+     "dispo": true
+    }
+   ]
+  },
+  {
+   "id": 9003,
+   "nom": "Monture Démo Carrée acétate noir 54□20 145",
+   "marque": "Marque démo",
+   "image": "/references/10.jpg",
+   "style": "Carré",
+   "couleur": "Noir",
+   "cotes": [
+    54,
+    20,
+    145
+   ],
+   "ean": "3700000000035",
+   "offres": [
+    {
+     "marchand": "Boutique démo C",
+     "prix": 109,
+     "livraison": 5.5,
+     "url": "#demo-c-3",
+     "dispo": true
+    },
+    {
+     "marchand": "Boutique démo A",
+     "prix": 119,
+     "livraison": 0,
+     "url": "#demo-a-3",
+     "dispo": true
+    }
+   ]
+  },
+  {
+   "id": 9004,
+   "nom": "Monture Démo Écaille cat-eye 55□18 140",
+   "marque": "Marque démo",
+   "image": "/references/4.jpg",
+   "style": "Cat-eye",
+   "couleur": "Écaille",
+   "cotes": [
+    55,
+    18,
+    140
+   ],
+   "ean": "3700000000042",
+   "offres": [
+    {
+     "marchand": "Boutique démo B",
+     "prix": 99,
+     "livraison": 0,
+     "url": "#demo-b-4",
+     "dispo": true
+    }
+   ]
+  }
+ ]
+}

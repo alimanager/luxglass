@@ -19,6 +19,10 @@ export default function FrameImage({
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
+    if (frame.photo) {
+      setSrc(frame.photo);
+      return;
+    }
     renderThumbnail(frame, view, size).then((u) => alive && setSrc(u));
     return () => {
       alive = false;
@@ -27,7 +31,7 @@ export default function FrameImage({
   return (
     <div className={`relative aspect-[1/0.62] ${className}`}>
       {src ? (
-        <img src={src} alt={alt} className="absolute inset-0 w-full h-full object-contain animate-fade-in" draggable={false} />
+        <img src={src} alt={alt} className={`absolute inset-0 w-full h-full object-contain animate-fade-in ${frame.photo ? 'mix-blend-multiply' : ''}`} draggable={false} />
       ) : (
         <div className="absolute inset-[30%_20%] rounded-full bg-glass-deep/60 animate-pulse" aria-hidden />
       )}

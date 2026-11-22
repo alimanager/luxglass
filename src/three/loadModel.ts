@@ -15,6 +15,8 @@ export interface FrameModel {
 export interface FrameSource {
   spec: FrameSpec;
   model?: FrameModel;
+  /** merchant photo: shown as is, no 3D */
+  photo?: string;
 }
 
 const loader = new GLTFLoader();

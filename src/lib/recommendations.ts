@@ -1,4 +1,4 @@
-import { glasses as catalog } from '../data/mockData';
+import { products as catalog } from './catalog';
 import type { Glasses } from '../types/glasses';
 import type { FaceMetrics, FaceShape, SkinTone } from './faceMetrics';
 
@@ -62,7 +62,7 @@ export function recommendGlasses(m: FaceMetrics, profile: Profile, count = 4): G
   const styles = SHAPE_INFO[m.shape].styles;
   const pref = STYLE_PREFERENCE[profile.style];
   const [lo, hi] = BUDGET[profile.budget];
-  return [...catalog]
+  return catalog.filter((g) => !g.demo)
     .map((g) => {
       let score = 0;
       const rank = styles.indexOf(g.style);
