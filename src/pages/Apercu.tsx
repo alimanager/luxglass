@@ -53,6 +53,7 @@ export default function Apercu() {
   const [image, setImage] = useState<string | null>(() => (product ? cache.get(String(product.id)) ?? null : null));
   const [demoImage, setDemoImage] = useState(false);
   const [error, setError] = useState('');
+  const [detail, setDetail] = useState('');
   const [showBefore, setShowBefore] = useState(false);
 
   const others = useMemo(
@@ -111,8 +112,9 @@ export default function Apercu() {
           faceWidthMm: analysis.metrics.faceWidthMm,
         }),
       });
-      const out = (await res.json().catch(() => ({}))) as { image?: string; error?: string; demo?: boolean };
-      if (!res.ok || !out.image) throw new Error(out.error ?? 'La génération a échoué. Réessaie.');
+      const out = (await res.json().catch(() => ({}))) as { image?: string; error?: string; detail?: string; demo?: boolean };
+      setDetail(out.detail ?? '');
+      if (!res.ok || !out.image) throw new Error(out.error ?? `La génération a échoué (erreur ${res.status}). Réessaie.`);
       countOne();
       cache.set(String(product.id), out.image);
       setImage(out.image);
@@ -196,7 +198,12 @@ export default function Apercu() {
             <p className="text-xs text-graphite mt-2 text-center">
               {Math.max(0, left)} aperçu{left > 1 ? 's' : ''} restant{left > 1 ? 's' : ''} aujourd’hui
             </p>
-            {state === 'error' && <p className="text-sm text-danger mt-3">{error}</p>}
+            {state === 'error' && (
+              <div className="mt-3">
+                <p className="text-sm text-danger">{error}</p>
+                {detail && <p className="text-xs text-graphite mt-1 break-words">{detail}</p>}
+              </div>
+            )}
           </div>
         )}
 

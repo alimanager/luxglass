@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { allow, buildGeminiBody, buildPrompt, extractImage, handleApercu, parseDataUrl, referenceUrl } from '../../server/apercu';
+import { allow, buildGeminiBody, describeGeminiError, noImageReason, buildPrompt, extractImage, handleApercu, parseDataUrl, referenceUrl } from '../../server/apercu';
 
 const FACE = 'data:image/jpeg;base64,' + Buffer.from('face').toString('base64');
 
@@ -87,5 +87,41 @@ describe('aller-retour avec Gemini (simulé)', () => {
     expect((await res.json()).image).toBe('data:image/png;base64,R0VO');
     expect(calls[1]).toBe('https://luxoptic.test/references/2.jpg');
     expect(calls[2]).toContain('/models/gemini-3.1-flash-image:generateContent');
+  });
+});
+
+describe('erreurs de Gemini', () => {
+  it('passe au modèle suivant quand le nom n’existe pas', async () => {
+    const urls: string[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string | URL) => {
+        const u = String(url);
+        urls.push(u);
+        if (u.endsWith('index.json')) return new Response('', { status: 404 });
+        if (u.includes('/references/')) return new Response(Buffer.from('ref'), { headers: { 'content-type': 'image/jpeg' } });
+        if (u.includes('gemini-3.1-flash-image-preview') && u.includes('v1beta'))
+          return Response.json({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'image/png', data: 'T0s=' } }] } }] });
+        return Response.json({ error: { code: 404, message: 'models/x is not found', status: 'NOT_FOUND' } }, { status: 404 });
+      })
+    );
+    const res = await handleApercu(post({ face: FACE, productId: 1 }, '10.0.1.1'), { GEMINI_API_KEY: 'k' });
+    expect(res.status).toBe(200);
+    expect((await res.json()).model).toBe('gemini-3.1-flash-image-preview');
+  });
+
+  it.each([
+    [429, { error: { status: 'RESOURCE_EXHAUSTED', message: 'quota' } }, /facturation/],
+    [400, { error: { status: 'INVALID_ARGUMENT', message: 'API key not valid.', details: [{ reason: 'API_KEY_INVALID' }] } }, /clé Gemini est invalide/],
+    [403, { error: { status: 'PERMISSION_DENIED', message: 'denied' } }, /API Gemini est activée/],
+  ])('explique l’erreur %i', (status, out, re) => {
+    const e = describeGeminiError(status, out);
+    expect(e.message).toMatch(re);
+    expect(e.modelMissing).toBe(false);
+    expect(e.detail).toContain(String(status));
+  });
+
+  it('explique un refus par filtre de sécurité', () => {
+    expect(noImageReason({ candidates: [{ finishReason: 'IMAGE_SAFETY' }] }).message).toMatch(/filtre de sécurité/);
   });
 });
