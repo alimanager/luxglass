@@ -7,11 +7,7 @@
  *   npm run kit -- --pdf   also writes kit/kit.pdf with headless Chrome
  */
 import { mkdir, writeFile } from 'node:fs/promises';
-import { glasses } from '../src/data/mockData';
-import { lensOutline, offsetOutline } from '../src/three/buildFrame';
-import { frameWidth, sizeMarking, specForGlasses, type FrameSpec } from '../src/three/frameSpec';
-
-type V2 = [number, number];
+import { SHAPES, type Shape, type V2 } from './kit-shapes';
 
 const INK = '#15110f';
 const SIZES = [
@@ -22,89 +18,178 @@ const SIZES = [
 /** pupillary distance used for the alignment marks */
 const PD = 63;
 
-const mirrorX = (pts: V2[]): V2[] => pts.map(([x, y]) => [-x, y] as V2).reverse();
 const fmt = (n: number) => n.toFixed(2);
-/** SVG path from points, y flipped (SVG grows downwards) */
 const path = (pts: V2[]) => 'M' + pts.map(([x, y]) => `${fmt(x)} ${fmt(-y)}`).join('L') + 'Z';
-const shift = (pts: V2[], dx: number): V2[] => pts.map(([x, y]) => [x + dx, y] as V2);
+const smooth = (u: number) => {
+  const c = Math.min(1, Math.max(0, u));
+  return c * c * (3 - 2 * c);
+};
 
-function scaled(spec: FrameSpec, k: number): FrameSpec {
-  // sizes are whole millimetres, like the numbers printed inside a real temple
-  const r = Math.round;
-  return { ...spec, lens: { ...spec.lens, w: r(spec.lens.w * k), h: r(spec.lens.h * k), lift: spec.lens.lift * k, drop: spec.lens.drop * k }, bridge: r(spec.bridge * k) };
+/** closed Catmull-Rom spline through the points, sampled */
+function spline(pts: V2[], per = 12): V2[] {
+  const n = pts.length;
+  const out: V2[] = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+    for (let j = 0; j < per; j++) {
+      const t = j / per;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const f = (a: number, b: number, c: number, d: number) =>
+        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  return out;
 }
 
-/** One frame, centred on (0,0) at the bridge, in millimetres. */
-function frameSvg(spec: FrameSpec): string {
-  const half = spec.bridge / 2;
-  const lens = lensOutline(spec.lens);
+const area = (pts: V2[]) => pts.reduce((s, [x, y], i) => s + (x * pts[(i + 1) % pts.length][1] - pts[(i + 1) % pts.length][0] * y), 0) / 2;
+const ccw = (pts: V2[]) => (area(pts) < 0 ? [...pts].reverse() : pts);
+
+/** offset a CCW outline outwards by d(x, y) mm */
+function offsetVar(pts: V2[], d: (x: number, y: number) => number): V2[] {
+  const n = pts.length;
+  return pts.map((p, i) => {
+    const prev = pts[(i - 1 + n) % n];
+    const next = pts[(i + 1) % n];
+    const tx = next[0] - prev[0];
+    const ty = next[1] - prev[1];
+    const len = Math.hypot(tx, ty) || 1;
+    const k = d(p[0], p[1]);
+    return [p[0] + (ty / len) * k, p[1] - (tx / len) * k] as V2;
+  });
+}
+
+const scaleShape = (pts: V2[], k: number): V2[] => pts.map(([x, y]) => [x * k, y * k] as V2);
+const mirror = (pts: V2[]): V2[] => pts.map(([x, y]) => [-x, y] as V2).reverse();
+const shift = (pts: V2[], dx: number): V2[] => pts.map(([x, y]) => [x + dx, y] as V2);
+
+interface Drawn {
+  svg: string;
+  width: number;
+  height: number;
+}
+
+let uid = 0;
+function drawFrame(shape: Shape, k: number): Drawn {
+  const maskId = `m${uid++}`;
+  const apRaw = ccw(shape.poly ?? spline(shape.lens!));
+  const ap = scaleShape(apRaw, k);
+  const rim = shape.rim ?? (() => 0);
+  const rimK = (x: number, y: number) => rim(x / k, y / k) * k;
+  const wire = (shape.wire ?? 1) * k;
+  const minX = Math.min(...ap.map((p) => p[0]));
+  const gap = shape.gap * k;
+  const cx = gap / 2 - minX;
   const out: string[] = [];
-  const acetate = spec.kind === 'acetate';
+  const bbox = { x: 0, yMin: 1e9, yMax: -1e9 };
 
   for (const side of [1, -1] as const) {
-    const cx = side * (half + spec.lens.w / 2);
-    const local = side === 1 ? lens : mirrorX(lens);
-    const inner = shift(local, cx);
+    const local = side === 1 ? ap : mirror(ap);
+    const inner = shift(local, side * cx);
     out.push(`<path d="${path(inner)}" fill="${INK}" fill-opacity="0.07"/>`);
-    if (acetate) {
-      const outer = shift(offsetOutline(local, spec.rim), cx);
+    if (shape.kind === 'acetate') {
+      const outer = shift(offsetVar(local, (x, y) => rimK(side === 1 ? x : -x, y)), side * cx);
       out.push(`<path d="${path(outer)}${path([...inner].reverse())}" fill="${INK}" fill-rule="evenodd"/>`);
+      for (const [x, y] of outer) {
+        bbox.x = Math.max(bbox.x, Math.abs(x));
+        bbox.yMin = Math.min(bbox.yMin, y);
+        bbox.yMax = Math.max(bbox.yMax, y);
+      }
     } else {
-      const wire = shift(offsetOutline(local, 0.5), cx);
-      out.push(`<path d="${path(wire)}" fill="none" stroke="${INK}" stroke-width="${fmt(Math.max(0.7, spec.rim * 2))}" stroke-linejoin="round"/>`);
+      out.push(`<path d="${path(inner)}" fill="none" stroke="${INK}" stroke-width="${fmt(wire)}" stroke-linejoin="round"/>`);
+      for (const [x, y] of inner) {
+        bbox.x = Math.max(bbox.x, Math.abs(x) + wire / 2);
+        bbox.yMin = Math.min(bbox.yMin, y - wire / 2);
+        bbox.yMax = Math.max(bbox.yMax, y + wire / 2);
+      }
     }
-    if (spec.kind === 'browline') {
-      const upper = shift(offsetOutline(local, 5.5), cx)
-        .filter(([, y]) => y > spec.lens.h * 0.08)
-        .sort((p, q) => p[0] - q[0]);
-      const lower = shift(local, cx)
-        .filter(([, y]) => y > spec.lens.h * 0.08)
-        .sort((p, q) => q[0] - p[0])
-        .map(([x, y]) => [x, y - 0.6] as V2);
-      out.push(`<path d="${path([...upper, ...lower])}" fill="${INK}"/>`);
+    if (shape.kind === 'browline') {
+      // acetate brow band over the top of the lens, thinning towards both ends
+      const ymax = Math.max(...local.map((p) => p[1]));
+      const top = inner
+        .map((p, i) => ({ p, i }))
+        .filter(({ p }) => p[1] > ymax * 0.15)
+        .map(({ p }) => p)
+        .sort((a, b) => a[0] - b[0]);
+      const band = offsetVar(ccw([...top, ...top.slice().reverse().map(([x, y]) => [x, y - 0.01] as V2)]), () => 0);
+      void band;
+      const upper = top.map(([x, y]) => {
+        const rel = (y - ymax * 0.15) / (ymax * 0.85);
+        const t = (2 + 4.8 * smooth(rel * 1.6)) * k;
+        return [x, y + t] as V2;
+      });
+      out.push(`<path d="${path([...upper, ...top.slice().reverse()])}" fill="${INK}"/>`);
+      for (const [, y] of upper) bbox.yMax = Math.max(bbox.yMax, y);
     }
-    // hinge stub: where the temple leaves the front, on the rim at about 55 % of the lens height
-    const top = Math.max(...local.map((p) => p[1]));
-    const hy = top * 0.55;
-    const edge = inner
-      .filter(([, y]) => Math.abs(y - hy) < spec.lens.h * 0.06)
-      .reduce((m, [x]) => (side * x > side * m ? x : m), side * -1e9);
-    const hingeX = edge + side * (acetate ? spec.rim - 1 : 0);
-    out.push(`<rect x="${fmt(Math.min(hingeX, hingeX + side * 9))}" y="${fmt(-hy - 1.4)}" width="9" height="2.8" rx="1.2" fill="${INK}"/>`);
   }
 
-  // bridge
-  const h = spec.lens.h;
-  if (acetate || spec.kind === 'browline') {
-    const top = h * 0.26;
-    const bottom = h * (acetate ? 0.1 : 0.14);
-    const r = spec.rim * (acetate ? 1 : 0);
-    out.push(`<rect x="${fmt(-half - r)}" y="${fmt(-top)}" width="${fmt(spec.bridge + r * 2)}" height="${fmt(top - bottom)}" fill="${INK}"/>`);
-  } else {
-    const arc = (y: number, lift: number) =>
-      `<path d="M${fmt(-half - 0.5)} ${fmt(-y)}Q0 ${fmt(-y - lift)} ${fmt(half + 0.5)} ${fmt(-y)}" fill="none" stroke="${INK}" stroke-width="1.1" stroke-linecap="round"/>`;
-    out.push(arc(h * 0.14, h * 0.18));
-    if (spec.doubleBridge) out.push(`<path d="M${fmt(-half - 0.5)} ${fmt(-h * 0.36)}H${fmt(half + 0.5)}" stroke="${INK}" stroke-width="1.1" stroke-linecap="round"/>`);
+  // bridge, centred on x = 0 and tied into the rims on both sides
+  const g = gap / 2;
+  const bt = (shape.bridgeTop ?? 12) * k;
+  const right = shift(shape.kind === 'acetate' ? offsetVar(ap, (x, y) => rimK(x, y)) : ap, cx);
+  /** x of the nose-side edge of the right lens at height y (mm), pushed slightly inside the rim */
+  const edgeX = (y: number, inside: number) => {
+    const xs = right.filter((p) => Math.abs(p[1] - y) < 1.4 * k).map((p) => p[0]);
+    return (xs.length ? Math.min(...xs) : g) + inside;
+  };
+  const stroke = (d: string, w: number) => `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${fmt(w)}" stroke-linecap="round"/>`;
+  const solid = (top: number, thick: number, lift: number) => {
+    const xt = edgeX(top, 3.2 * k);
+    const xb = edgeX(top - thick, 3.2 * k);
+    // the bridge never covers a lens: both apertures are cut out of it
+    const holes = [1, -1].map((s) => path(shift(s === 1 ? ap : mirror(ap), s * cx))).join('');
+    const mask = `<mask id="${maskId}" maskUnits="userSpaceOnUse" x="-100" y="-60" width="200" height="120"><rect x="-100" y="-60" width="200" height="120" fill="#fff"/><path d="${holes}" fill="#000"/></mask>`;
+    return `${mask}<path mask="url(#${maskId})" d="M${fmt(-xt)} ${fmt(-top)}H${fmt(xt)}L${fmt(xb)} ${fmt(-(top - thick))}Q0 ${fmt(-(top - thick + lift))} ${fmt(-xb)} ${fmt(-(top - thick))}Z" fill="${INK}"/>`;
+  };
+  const wireArc = (yEnd: number, lift: number) => {
+    const x = edgeX(yEnd, 0.2 * k);
+    return stroke(`M${fmt(-x)} ${fmt(-yEnd)}Q0 ${fmt(-(yEnd + lift))} ${fmt(x)} ${fmt(-yEnd)}`, wire);
+  };
+  switch (shape.bridge) {
+    case 'keyhole':
+      out.push(solid(bt, 7 * k, 5.5 * k));
+      break;
+    case 'saddle':
+      out.push(solid(bt, 7.5 * k, 3.5 * k));
+      break;
+    case 'arch':
+      out.push(solid(bt, 9 * k, 5 * k));
+      break;
+    case 'wire-arch':
+      out.push(wireArc(bt - 4 * k, 8 * k));
+      break;
+    case 'double':
+      out.push(wireArc(-1 * k, 8 * k));
+      out.push(stroke(`M${fmt(-edgeX(bt, 0.2 * k))} ${fmt(-bt)}Q0 ${fmt(-(bt + 2 * k))} ${fmt(edgeX(bt, 0.2 * k))} ${fmt(-bt)}`, wire));
+      break;
+    case 'browline': {
+      out.push(wireArc(bt - 8 * k, 7 * k));
+      const x = edgeX(bt, 0.5 * k);
+      out.push(`<path d="M${fmt(-x)} ${fmt(-(bt + 2.2 * k))}H${fmt(x)}V${fmt(-(bt - 2.4 * k))}H${fmt(-x)}Z" fill="${INK}"/>`);
+      break;
+    }
   }
 
-  // pupil marks: cross-hairs at the average pupillary distance
-  const py = -h * 0.05;
+  // pupil marks: cross-hairs at the average pupillary distance, at the height pupils usually sit
+  const lo = Math.min(...ap.map((p) => p[1]));
+  const hi = Math.max(...ap.map((p) => p[1]));
+  const py = -(lo + (hi - lo) * 0.56);
   for (const x of [-PD / 2, PD / 2]) {
-    out.push(
-      `<g stroke="${INK}" stroke-width="0.25" opacity="0.8"><path d="M${fmt(x - 2.4)} ${fmt(py)}h4.8M${fmt(x)} ${fmt(py - 2.4)}v4.8"/></g>`
-    );
+    out.push(`<g stroke="${INK}" stroke-width="0.25" opacity="0.8"><path d="M${fmt(x - 2.4)} ${fmt(py)}h4.8M${fmt(x)} ${fmt(py - 2.4)}v4.8"/></g>`);
   }
-  return out.join('');
+  return { svg: out.join(''), width: bbox.x * 2, height: bbox.yMax - bbox.yMin };
 }
 
 const CELL_W = 190;
 const CELL_H = 66;
 const TAB_W = 26;
 
-function strip(style: string, size: (typeof SIZES)[number], index: number): string {
-  const base = specForGlasses({ style, color: 'Noir', material: style === 'Aviateur' || style === 'Rond' ? 'Métal' : 'Acétate' });
-  const spec = scaled(base, size.scale);
-  const width = Math.round(frameWidth(spec));
+function strip(shape: Shape, size: (typeof SIZES)[number], index: number): string {
+  const d = drawFrame(shape, size.scale);
   const x = TAB_W + (CELL_W - TAB_W) / 2;
   const y = CELL_H / 2 + 1;
   return `
@@ -113,12 +198,11 @@ function strip(style: string, size: (typeof SIZES)[number], index: number): stri
     <line x1="${TAB_W}" y1="1" x2="${TAB_W}" y2="${CELL_H - 1}" stroke="#bbb" stroke-width="0.15" stroke-dasharray="0.8 1.2"/>
     <g font-family="Helvetica, Arial, sans-serif" fill="#222">
       <text x="4" y="12" font-size="9" font-weight="700">${size.id}${index + 1}</text>
-      <text x="4" y="21" font-size="3.1">${style}</text>
-      <text x="4" y="26" font-size="2.6" fill="#666">${sizeMarking(spec)}</text>
-      <text x="4" y="31" font-size="2.6" fill="#666">${width} mm</text>
+      <text x="4" y="21" font-size="3.1">${shape.name}</text>
+      <text x="4" y="26" font-size="2.6" fill="#666">${Math.round(d.width)} × ${Math.round(d.height)} mm</text>
       <text x="4" y="${CELL_H - 6}" font-size="2.4" fill="#888">Tiens ici</text>
     </g>
-    <g transform="translate(${fmt(x)} ${fmt(y)})">${frameSvg(spec)}</g>
+    <g transform="translate(${fmt(x)} ${fmt(y)})">${d.svg}</g>
   </svg>`;
 }
 
@@ -184,14 +268,13 @@ function guide(): string {
   `);
 }
 
-const styles = Array.from(new Set(glasses.map((g) => g.style)));
-const glassesCount = () => styles.length;
+const glassesCount = () => SHAPES.length;
 
 function sizePages(size: (typeof SIZES)[number]): string {
   const perPage = 4;
   const pages: string[] = [];
-  for (let i = 0; i < styles.length; i += perPage) {
-    const chunk = styles.slice(i, i + perPage);
+  for (let i = 0; i < SHAPES.length; i += perPage) {
+    const chunk = SHAPES.slice(i, i + perPage);
     pages.push(page(chunk.map((s, j) => strip(s, size, i + j)).join(''), 'strips'));
   }
   return pages.join('');
@@ -216,7 +299,7 @@ ${SIZES.map(sizePages).join('')}
 
 await mkdir('kit', { recursive: true });
 await writeFile('kit/kit.html', html);
-console.log('kit/kit.html écrit :', styles.length, 'formes x', SIZES.length, 'largeurs');
+console.log('kit/kit.html écrit :', SHAPES.length, 'formes x', SIZES.length, 'largeurs');
 
 if (process.argv.includes('--pdf')) {
   const puppeteer = (await import('puppeteer-core')).default;
