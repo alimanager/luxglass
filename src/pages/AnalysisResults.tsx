@@ -90,6 +90,9 @@ export default function AnalysisResults() {
             ))}
           </ul>
           <p className="text-graphite mt-4">À éviter : {shape.avoid.charAt(0).toLowerCase() + shape.avoid.slice(1)}</p>
+          <Link to="/formes" className="inline-block mt-4 font-semibold underline underline-offset-4 decoration-shell decoration-2">
+            Voir les formes faites pour toi
+          </Link>
         </Section>
 
         {picks.length > 0 && (

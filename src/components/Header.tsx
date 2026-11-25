@@ -3,6 +3,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
 const NAV = [
+  { to: '/formes', label: 'Formes' },
   { to: '/montures', label: 'Montures' },
   { to: '/analyse', label: 'Analyse du visage' },
   { to: '/essayer', label: 'Essayer' },

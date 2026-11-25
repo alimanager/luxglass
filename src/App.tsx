@@ -11,6 +11,7 @@ const TryOn = lazy(() => import('./pages/TryOn'));
 const Essayer = lazy(() => import('./pages/Essayer'));
 const Labo = lazy(() => import('./pages/Labo'));
 const Apercu = lazy(() => import('./pages/Apercu'));
+const Formes = lazy(() => import('./pages/Formes'));
 
 const Loading = () => <div className="min-h-[60vh]" />;
 const OldProduct = () => <Navigate to={`/montures/${useParams().id}`} replace />;
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="essayer/:id" element={<Essayer />} />
           <Route path="labo" element={<Labo />} />
           <Route path="apercu/:id" element={<Apercu />} />
+          <Route path="formes" element={<Formes />} />
           {/* old URLs */}
           <Route path="catalog" element={<Navigate to="/montures" replace />} />
           <Route path="product/:id" element={<OldProduct />} />
