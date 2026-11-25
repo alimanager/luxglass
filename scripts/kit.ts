@@ -6,37 +6,15 @@
  *   npm run kit            writes kit/kit.html
  *   npm run kit -- --pdf   also writes kit/kit.pdf with headless Chrome
  */
-import { mkdir, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { SHAPES, type Shape } from './kit-shapes';
-import { drawFrame, fmt } from './kit-render';
+import { drawFrame } from './kit-render';
+import { document, publish, strip, stripPages } from './kit-layout';
 import { atlasPages, catalogueJson, faceGuidePage, iconsPage, mapPage, SIZES, code, page } from './kit-faces';
 
-/** strip, mm: long enough to hold at one end and bind at the other, tall enough to cover brows to lip */
-const STRIP_W = 230;
-const STRIP_H = 64;
-const HOLE_X = STRIP_W - 9;
-const HOLE_R = 3;
-const FRAME_LEFT = 12;
-
-function strip(shape: Shape, size: (typeof SIZES)[number], index: number): string {
+function kitStrip(shape: Shape, size: (typeof SIZES)[number], index: number): string {
   const d = drawFrame(shape, size.scale);
-  const cx = FRAME_LEFT + d.width / 2;
-  const cy = STRIP_H / 2 - d.centerY;
-  const labelX = HOLE_X - HOLE_R - 4;
-  return `
-  <svg class="strip" xmlns="http://www.w3.org/2000/svg" width="${STRIP_W}mm" height="${STRIP_H}mm" viewBox="0 0 ${STRIP_W} ${STRIP_H}">
-    <defs>${d.defs}</defs>
-    <rect x="0.15" y="0.15" width="${STRIP_W - 0.3}" height="${STRIP_H - 0.3}" rx="1.6" fill="none" stroke="#b9b9b9" stroke-width="0.18" stroke-dasharray="1.4 1"/>
-    <circle cx="${HOLE_X}" cy="${STRIP_H / 2}" r="${HOLE_R}" fill="none" stroke="#9a9a9a" stroke-width="0.2"/>
-    <path d="M${HOLE_X - 1} ${STRIP_H / 2}h2M${HOLE_X} ${STRIP_H / 2 - 1}v2" stroke="#9a9a9a" stroke-width="0.15"/>
-    <g font-family="Helvetica, Arial, sans-serif" fill="#8d8d8d" text-anchor="end">
-      <text x="${labelX}" y="${STRIP_H / 2 - 1.2}" font-size="3.4" font-weight="700" fill="#6f6f6f">${code(size.id, index)}</text>
-      <text x="${labelX}" y="${STRIP_H / 2 + 3}" font-size="2.4">${shape.name}</text>
-      <text x="${labelX}" y="${STRIP_H / 2 + 6.2}" font-size="2.2">${shape.era}, ${shape.mood.join(' et ')}</text>
-      <text x="${labelX}" y="${STRIP_H / 2 + 9.4}" font-size="2.2">${d.marking}  ${Math.round(d.width)} mm</text>
-    </g>
-    <g transform="translate(${fmt(cx)} ${fmt(cy)})">${d.svg}</g>
-  </svg>`;
+  return strip(d, [code(size.id, index), shape.name, `${shape.era}, ${shape.mood.join(' et ')}`, `${d.marking}  ${Math.round(d.width)} mm`]);
 }
 
 function calibration(): string {
@@ -113,38 +91,11 @@ function guide(size: (typeof SIZES)[number]): string {
 }
 
 function sizePages(size: (typeof SIZES)[number]): string {
-  const perPage = 3;
-  const pages: string[] = [];
-  for (let i = 0; i < SHAPES.length; i += perPage) {
-    const chunk = SHAPES.slice(i, i + perPage);
-    pages.push(
-      page(`<p class="runner">Taille ${size.id}, ${size.label}</p>` + chunk.map((s, j) => strip(s, size, i + j)).join(''), 'strips')
-    );
-  }
-  return pages.join('');
+  return stripPages(SHAPES.map((s, i) => kitStrip(s, size, i)), `Taille ${size.id}, ${size.label}`);
 }
 
-const html = (size: (typeof SIZES)[number]) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Kit d’essayage, taille ${size.id}</title>
-<style>
-  @page { size: A4 landscape; margin: 0; }
-  html, body { margin: 0; background: #fff; }
-  .page { width: 297mm; height: 210mm; box-sizing: border-box; padding: 12mm 14mm; page-break-after: always; font-family: Helvetica, Arial, sans-serif; color: #111; position: relative; overflow: hidden; }
-  .page h1 { font-size: 22pt; margin: 0 0 4mm; letter-spacing: -0.01em; }
-  .page h2 { font-size: 12pt; margin: 6mm 0 2mm; }
-  .page p, .page li { font-size: 10.5pt; line-height: 1.5; max-width: 120mm; }
-  .page .small { font-size: 9pt; color: #555; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; }
-  .cols3 { display: grid; grid-template-columns: 1.15fr 1fr 0.8fr; gap: 8mm; }
-  .cols3 h2 { margin-top: 3mm; }
-  table.icons td, table.icons th { padding: 1mm 3mm 1mm 0; font-size: 8.4pt; line-height: 1.3; }
-  table.icons td:last-child { max-width: 150mm; }
-  .page.strips { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.5mm; padding: 6mm 14mm; }
-  .strips .runner { position: absolute; top: 1.5mm; left: 14mm; margin: 0; font-size: 8pt; color: #999; }
-  .strip { display: block; }
-  table { border-collapse: collapse; font-size: 9.5pt; }
-  td, th { text-align: left; padding: 1.6mm 3mm 1.6mm 0; vertical-align: top; border-bottom: 0.2mm solid #ddd; }
-  th { font-weight: 700; }
-</style></head><body>
+const html = (size: (typeof SIZES)[number]) =>
+  document(`Kit d’essayage, taille ${size.id}`, `
 ${guide(size)}
 ${calibration()}
 ${iconsPage()}
@@ -152,22 +103,8 @@ ${faceGuidePage()}
 ${mapPage()}
 ${atlasPages()}
 ${sizePages(size)}
-</body></html>`;
+`);
 
-await mkdir('kit', { recursive: true });
 await writeFile('src/data/gabarits.json', JSON.stringify(catalogueJson(), null, 1) + '\n');
-console.log('src/data/gabarits.json écrit');
-for (const size of SIZES) await writeFile(`kit/kit-${size.id}.html`, html(size));
-console.log('kit écrit :', SHAPES.length, 'montures, un fichier par largeur (S, M, L)');
-
-if (process.argv.includes('--pdf')) {
-  const puppeteer = (await import('puppeteer-core')).default;
-  const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
-  const p = await browser.newPage();
-  for (const size of SIZES) {
-    await p.goto('file://' + process.cwd() + `/kit/kit-${size.id}.html`);
-    await p.pdf({ path: `kit/kit-${size.id}.pdf`, preferCSSPageSize: true, printBackground: true });
-  }
-  await browser.close();
-  console.log('kit/kit-S.pdf, kit/kit-M.pdf, kit/kit-L.pdf écrits');
-}
+console.log('src/data/gabarits.json écrit,', SHAPES.length, 'montures au kit');
+await publish(SIZES.map((s) => ({ name: `kit-${s.id}`, html: html(s) })), process.argv.includes('--pdf'));

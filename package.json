@@ -14,7 +14,8 @@
     "faces": "node scripts/generate-faces.mjs",
     "flux": "tsx scripts/import-flux.ts",
     "references": "tsx scripts/references.ts",
-    "kit": "tsx scripts/kit.ts"
+    "kit": "tsx scripts/kit.ts",
+    "kit:50": "tsx scripts/kit-50.ts"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

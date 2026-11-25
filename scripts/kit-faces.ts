@@ -309,7 +309,6 @@ export function mapPage(): string {
 /** every form in every construction: the catalogue the app and the learning model work from */
 export function atlasPages(): string {
   const forms = Object.keys(FORMS) as FormId[];
-  const half = Math.ceil(forms.length / 2);
   const block = (list: FormId[], part: number) => {
     const CW = 31;
     const RH = 31;
@@ -341,7 +340,9 @@ export function atlasPages(): string {
       <svg width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" fill="#111">${head}${rows}</svg>
     `);
   };
-  return block(forms.slice(0, half), 1) + block(forms.slice(half), 2);
+  const out: string[] = [];
+  for (let i = 0; i < forms.length; i += 8) out.push(block(forms.slice(i, i + 8), i / 8 + 1));
+  return out.join('');
 }
 
 /** facets and measured descriptors of every template, for the app and for learning */

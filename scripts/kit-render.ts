@@ -4,7 +4,7 @@
  * rivets, nose pads and the stubs left where the temples were cut off.
  * The frame is centred on (0, 0) at the middle of the bridge; SVG y grows downwards.
  */
-import type { Finish, Shape, V2 } from './kit-shapes';
+import type { Finish, Mono, Shape, V2 } from './kit-shapes';
 
 export const fmt = (n: number) => n.toFixed(2);
 const path = (pts: V2[]) => 'M' + pts.map(([x, y]) => `${fmt(x)} ${fmt(-y)}`).join('L') + 'Z';
@@ -261,7 +261,8 @@ export function drawFrame(shape: Shape, k: number): Drawn {
       const arc: number[] = [];
       for (let j = 0; j < n && above[(start + j) % n]; j++) arc.push((start + j) % n);
       const bar = [...arc.map((i) => lifted[i]), ...arc.slice().reverse().map((i) => inner[i])];
-      front.push(`<path d="${path(bar)}" fill="url(#${id}met)" stroke="#000" stroke-opacity=".35" stroke-width=".2"/>`);
+      if (fin.acetate) solids.push(bar);
+      else front.push(`<path d="${path(bar)}" fill="url(#${id}met)" stroke="#000" stroke-opacity=".35" stroke-width=".2"/>`);
       front.push(`<path d="${path(inner)}" fill="none" stroke="#8b939b" stroke-opacity=".75" stroke-width=".32"/>`);
       grow(bar);
       grow(inner);
@@ -370,6 +371,22 @@ export function drawFrame(shape: Shape, k: number): Drawn {
   }
   void open;
 
+  // ---- extras
+  if (shape.extras?.includes('charniere')) {
+    const y = shape.bridge === 'wire-arch' ? bt : shape.bridge === 'double' ? bt - 0.2 * k : noseTop - 3 * k;
+    front.push(`<rect x="${fmt(-1.8 * k)}" y="${fmt(-y - 1.4 * k)}" width="${fmt(3.6 * k)}" height="${fmt(2.8 * k)}" rx="${fmt(0.6 * k)}" fill="url(#${id}met)" stroke="#000" stroke-opacity=".4" stroke-width=".15"/>`);
+    front.push(`<line x1="0" y1="${fmt(-y - 1.4 * k)}" x2="0" y2="${fmt(-y + 1.4 * k)}" stroke="#000" stroke-opacity=".5" stroke-width=".18"/>`);
+  }
+  if (shape.extras?.includes('capteurs')) {
+    defs.push(`<radialGradient id="${id}cam" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#6b7a8c"/><stop offset=".4" stop-color="#1b2028"/><stop offset="1" stop-color="#050608"/></radialGradient>`);
+    for (const side of [1, -1]) {
+      const x = side * (cx + maxX + 1.2 * k);
+      const y = -(hi * 0.78);
+      front.push(`<circle cx="${fmt(x)}" cy="${fmt(y)}" r="${fmt(1.8 * k)}" fill="url(#${id}cam)" stroke="#c9ccd0" stroke-width=".45"/>`);
+      if (side === 1) front.push(`<circle cx="${fmt(x)}" cy="${fmt(y + 3.4 * k)}" r="${fmt(0.45 * k)}" fill="#e9eef2" stroke="#777" stroke-width=".12"/>`);
+    }
+  }
+
   // ---- assemble
   const lensTint = `<path d="${lenses.map(path).join('')}" fill="#5b6670" fill-opacity=".05"/>`;
   let acetateLayer = '';
@@ -386,5 +403,65 @@ export function drawFrame(shape: Shape, k: number): Drawn {
     height: bbox.yMax - bbox.yMin,
     centerY: -(bbox.yMax + bbox.yMin) / 2,
     marking: `${Math.round(maxX - minX + 1)}□${Math.round(gap)}`,
+  };
+}
+
+/** a single lens across both eyes: shield, wraparound, mask, visor */
+export function drawMono(m: Mono, k: number): Drawn {
+  const id = `f${uid++}`;
+  const half = m.half.map(([x, y]) => [x * k, y * k] as V2);
+  const left = half
+    .slice()
+    .reverse()
+    .filter(([x]) => x > 0.01)
+    .map(([x, y]) => [-x, y] as V2);
+  const full = ccw(spline([...half, ...left], 8));
+  const xs = full.map((p) => p[0]);
+  const ys = full.map((p) => p[1]);
+  const W = Math.max(...xs);
+  const top = Math.max(...ys);
+  const bottom = Math.min(...ys);
+  const tone = m.finish.metal ?? 'canon';
+  const [m0, m1, m2, m3, m4] = METAL[tone];
+  const defs = [
+    `<linearGradient id="${id}met" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m0}"/><stop offset=".22" stop-color="${m1}"/><stop offset=".5" stop-color="${m2}"/><stop offset=".72" stop-color="${m3}"/><stop offset="1" stop-color="${m4}"/></linearGradient>`,
+    `<linearGradient id="${id}tint" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a2f36" stop-opacity="${m.tint}"/><stop offset="1" stop-color="#2a2f36" stop-opacity="${m.tint * 0.35}"/></linearGradient>`,
+    `<linearGradient id="${id}hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".3"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></linearGradient>`,
+  ];
+  const out: string[] = [];
+  out.push(`<path d="${path(full)}" fill="url(#${id}tint)" stroke="#3b4047" stroke-opacity=".7" stroke-width=".35"/>`);
+  // a soft reflection across the lens
+  out.push(`<path d="M${fmt(-W * 0.55)} ${fmt(-top * 0.55)}Q${fmt(-W * 0.1)} ${fmt(-top * 0.95)} ${fmt(W * 0.45)} ${fmt(-top * 0.6)}" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="${fmt(1.2 * k)}" stroke-linecap="round"/>`);
+  let barTop = top;
+  if (m.bar !== 'none') {
+    const edge = full.filter(([, y]) => y > top - (top - bottom) * 0.22).sort((a, b) => a[0] - b[0]);
+    if (m.bar === 'metal') {
+      const d = 'M' + edge.map(([x, y]) => `${fmt(x)} ${fmt(-(y + 0.6 * k))}`).join('L');
+      out.push(`<path d="${d}" fill="none" stroke="url(#${id}met)" stroke-width="${fmt(1.8 * k)}" stroke-linecap="round" stroke-linejoin="round"/>`);
+      barTop = top + 1.5 * k;
+    } else {
+      const upper = edge.map(([x, y]) => [x, y + 4 * k] as V2);
+      const band = [...upper, ...edge.slice().reverse().map(([x, y]) => [x, y - 0.8 * k] as V2)];
+      out.push(`<path d="${path(band)}" fill="${ACETATE_BASE[m.finish.acetate ?? 'noir']}"/><path d="${path(band)}" fill="url(#${id}hl)"/>`);
+      barTop = top + 4 * k;
+    }
+  }
+  // hinges at the two ends, pads on the nose
+  const hy = top - (top - bottom) * 0.28;
+  const ex = edgeAt(full, hy, 'max') ?? W;
+  for (const s of [1, -1]) {
+    out.push(`<rect x="${fmt(s === 1 ? ex - 1 * k : -ex - 3.4 * k)}" y="${fmt(-hy - 1.4 * k)}" width="${fmt(4.4 * k)}" height="${fmt(2.8 * k)}" rx="${fmt(0.7 * k)}" fill="url(#${id}met)"/>`);
+    const px = s * 6 * k;
+    const py = -(bottom + (top - bottom) * 0.42);
+    out.push(`<ellipse cx="${fmt(px)}" cy="${fmt(py)}" rx="${fmt(1.7 * k)}" ry="${fmt(3.5 * k)}" transform="rotate(${s * -16} ${fmt(px)} ${fmt(py)})" fill="#9aa0a6" fill-opacity=".25" stroke="#6b7076" stroke-width=".2"/>`);
+  }
+  const width = 2 * (ex + 3.4 * k);
+  return {
+    defs: defs.join(''),
+    svg: out.join(''),
+    width,
+    height: barTop - bottom,
+    centerY: -(barTop + bottom) / 2,
+    marking: `${Math.round(2 * W)} mm`,
   };
 }

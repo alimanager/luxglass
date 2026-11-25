@@ -48,12 +48,13 @@ export type FormId =
   | 'carre' | 'carre-doux' | 'rectangle' | 'd-frame' | 'trapeze'
   | 'oeil-de-chat' | 'papillon'
   | 'aviateur' | 'pilote-carre'
-  | 'hexagone' | 'octogone' | 'flat-top';
+  | 'hexagone' | 'octogone' | 'flat-top'
+  | 'pentagone' | 'arlequin' | 'angulaire' | 'irreguliere' | 'upswept' | 'goutte' | 'rectangle-fin' | 'rond-ovale';
 
 export interface Form {
   id: FormId;
   name: string;
-  family: 'Rondes' | 'Carrées et rectangulaires' | 'Relevées' | 'Aviateurs' | 'Géométriques';
+  family: 'Rondes' | 'Carrées et rectangulaires' | 'Relevées' | 'Aviateurs' | 'Géométriques' | 'Créatives';
   lens?: V2[];
   poly?: V2[];
   /** rim profile when built in acetate, mm */
@@ -137,6 +138,39 @@ export const FORMS: Record<FormId, Form> = {
     id: 'flat-top', name: 'Flat top', family: 'Géométriques',
     poly: roundedPoly([[-25, 17, 2], [-21, -14, 12], [24, -16, 15], [28, 17, 2]]), rim: heavyTop(3.4, 7.5), bridge: 'saddle',
   },
+  pentagone: {
+    id: 'pentagone', name: 'Pentagone', family: 'Géométriques',
+    poly: roundedPoly([[-21, 19, 2.5], [-25, -3, 2.5], [0, -22, 3], [25, -3, 2.5], [21, 19, 2.5]]), rim: even(4), bridge: 'saddle',
+  },
+  arlequin: {
+    id: 'arlequin', name: 'Arlequin', family: 'Relevées',
+    lens: [[-22, 4], [-20, -6], [-11, -13], [4, -14], [18, -9], [28, 2], [35, 15], [33, 20], [22, 18], [8, 15], [-8, 12]],
+    rim: (x, y) => 3 + 3.2 * smooth((x + 2) / 32) * smooth((y + 2) / 16), bridge: 'saddle',
+  },
+  angulaire: {
+    id: 'angulaire', name: 'Angulaire', family: 'Géométriques',
+    poly: roundedPoly([[-24, 16, 1.5], [-22, -14, 2], [-12, -20, 2], [22, -18, 2], [28, -6, 2], [29, 19, 1.5]]), rim: heavyTop(4, 6), bridge: 'saddle',
+  },
+  irreguliere: {
+    id: 'irreguliere', name: 'Irrégulière', family: 'Créatives',
+    lens: [[-22, 15], [-24, -3], [-15, -18], [2, -20], [18, -17], [27, -5], [25, 9], [29, 19], [14, 21], [-4, 18]],
+    rim: (x, y) => 3.4 + 2.4 * smooth((x + 10) / 40) * smooth((y + 20) / 40), bridge: 'saddle',
+  },
+  upswept: {
+    id: 'upswept', name: 'Upswept', family: 'Relevées',
+    lens: [[-24, 12], [-24, -4], [-18, -15], [4, -17], [20, -13], [27, -2], [30, 14], [27, 20], [12, 17], [-6, 14]],
+    rim: heavyTop(3.4, 5.4), bridge: 'saddle',
+  },
+  goutte: {
+    id: 'goutte', name: 'Goutte', family: 'Aviateurs',
+    lens: [[-25, 9], [-24, -6], [-17, -21], [-5, -29], [8, -28], [18, -19], [25, -5], [27, 9], [22, 18], [9, 21], [-9, 21], [-20, 17]],
+    rim: even(3.6), bridge: 'keyhole',
+  },
+  'rectangle-fin': {
+    id: 'rectangle-fin', name: 'Rectangle fin', family: 'Carrées et rectangulaires',
+    poly: roundedPoly([[-25, 13, 4], [-24, -13, 5], [26, -13, 5], [27, 13, 4]]), rim: even(3.4), bridge: 'saddle',
+  },
+  'rond-ovale': { id: 'rond-ovale', name: 'Rond ovale', family: 'Rondes', poly: ellipse(24, 21, 96), rim: even(4.4), bridge: 'keyhole' },
 };
 
 export type Construction = 'acetate' | 'metal' | 'browline' | 'semi' | 'rimless';
@@ -179,6 +213,7 @@ export interface Shape {
   pads?: boolean;
   /** mixed construction with a thin acetate ring all around the lens (Windsor) instead of a brow */
   ring?: boolean;
+  extras?: Extra[];
   finish: Finish;
   era?: string;
   icon?: string;
@@ -200,11 +235,17 @@ export interface Spec {
   bridge?: Shape['bridge'];
   bridgeTop?: number;
   ring?: boolean;
+  /** lens scale, replaces the size facet's */
+  scale?: number;
+  extras?: Extra[];
   era?: string;
   icon?: string;
   mood?: Mood[];
   reference?: boolean;
 }
+
+/** details drawn on top: hinge in the middle of the bridge (folding), camera and light (smart glasses) */
+export type Extra = 'charniere' | 'capteurs';
 
 const DEFAULT_FINISH: Record<Construction, Finish> = {
   acetate: { acetate: 'noir' },
@@ -219,7 +260,7 @@ export function make(spec: Spec): Shape {
   const f = FORMS[spec.form];
   const c = spec.construction;
   const size = spec.size ?? 'standard';
-  const k = SIZE_FACTOR[size];
+  const k = spec.scale ?? SIZE_FACTOR[size];
   const scale = (pts?: V2[]) => pts?.map(([x, y]) => [x * k, y * k] as V2);
   const metalLike = c !== 'acetate';
   const doubleBridge = spec.form === 'aviateur' || spec.form === 'pilote-carre';
@@ -244,6 +285,7 @@ export function make(spec: Spec): Shape {
     bridgeTop: spec.bridgeTop ?? (bridge === 'double' ? top - 2 : bridge === 'browline' ? top - 1 : Math.min(12, top - 8)),
     pads: metalLike,
     ring: spec.ring,
+    extras: spec.extras,
     finish: spec.finish ?? DEFAULT_FINISH[c],
     era: spec.era,
     icon: spec.icon,
@@ -388,4 +430,18 @@ export function atlas(): Shape[] {
   const out: Shape[] = [];
   for (const form of Object.keys(FORMS) as FormId[]) for (const c of CONSTRUCTIONS) out.push(make({ form, construction: c.id }));
   return out;
+}
+
+// ---------------------------------------------------------------- one-piece lenses
+
+/** a single lens across both eyes (shield, wraparound, mask, visor), drawn as its right half */
+export interface Mono {
+  id: string;
+  name: string;
+  /** right half of the outline, from the top centre round to the bottom centre (nose notch included), x >= 0 */
+  half: V2[];
+  bar: 'metal' | 'acetate' | 'none';
+  finish: Finish;
+  /** lens tint, 0 to 1 */
+  tint: number;
 }
