@@ -25,3 +25,4 @@ dist-ssr
 test-faces/
 tsconfig.server.tsbuildinfo
 kit/
+tsconfig.ml.tsbuildinfo

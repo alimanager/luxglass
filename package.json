@@ -15,7 +15,9 @@
     "flux": "tsx scripts/import-flux.ts",
     "references": "tsx scripts/references.ts",
     "kit": "tsx scripts/kit.ts",
-    "kit:50": "tsx scripts/kit-50.ts"
+    "kit:50": "tsx scripts/kit-50.ts",
+    "ml:train": "tsx ml/train.ts",
+    "ml:check": "tsc -p tsconfig.ml.json --noEmit && vitest run ml"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
