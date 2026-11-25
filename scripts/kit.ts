@@ -80,7 +80,7 @@ function calibration(): string {
   `);
 }
 
-function guide(): string {
+function guide(size: (typeof SIZES)[number]): string {
   return page(`
     <div class="cols">
       <div>
@@ -90,7 +90,7 @@ function guide(): string {
         raconte de toi, avant d’essayer en magasin.</p>
         <h2>Fabriquer ton carnet</h2>
         <ol>
-          <li>Imprime les pages de ta largeur sur du <b>film transparent A4</b> adapté à ton imprimante (jet d’encre ou laser), à 100 %.</li>
+          <li>Ce fichier est en taille ${size.id} (${size.label}). Imprime ses pages de bandes sur du <b>film transparent A4</b> adapté à ton imprimante (jet d’encre ou laser), à 100 %.</li>
           <li>Laisse sécher l’encre dix minutes, puis découpe chaque bande en suivant les pointillés.</li>
           <li>Perce le rond à droite de chaque bande avec une perforatrice simple.</li>
           <li>Enfile toutes les bandes sur un anneau de reliure de 25 à 30 mm.</li>
@@ -124,7 +124,7 @@ function sizePages(size: (typeof SIZES)[number]): string {
   return pages.join('');
 }
 
-const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Kit d’essayage</title>
+const html = (size: (typeof SIZES)[number]) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Kit d’essayage, taille ${size.id}</title>
 <style>
   @page { size: A4 landscape; margin: 0; }
   html, body { margin: 0; background: #fff; }
@@ -145,24 +145,26 @@ const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>
   td, th { text-align: left; padding: 1.6mm 3mm 1.6mm 0; vertical-align: top; border-bottom: 0.2mm solid #ddd; }
   th { font-weight: 700; }
 </style></head><body>
-${guide()}
+${guide(size)}
 ${calibration()}
 ${iconsPage()}
 ${faceGuidePage()}
 ${mapPage()}
-${SIZES.map(sizePages).join('')}
+${sizePages(size)}
 </body></html>`;
 
 await mkdir('kit', { recursive: true });
-await writeFile('kit/kit.html', html);
-console.log('kit/kit.html écrit :', SHAPES.length, 'montures x', SIZES.length, 'largeurs');
+for (const size of SIZES) await writeFile(`kit/kit-${size.id}.html`, html(size));
+console.log('kit écrit :', SHAPES.length, 'montures, un fichier par largeur (S, M, L)');
 
 if (process.argv.includes('--pdf')) {
   const puppeteer = (await import('puppeteer-core')).default;
   const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox'] });
   const p = await browser.newPage();
-  await p.goto('file://' + process.cwd() + '/kit/kit.html');
-  await p.pdf({ path: 'kit/kit.pdf', preferCSSPageSize: true, printBackground: true });
+  for (const size of SIZES) {
+    await p.goto('file://' + process.cwd() + `/kit/kit-${size.id}.html`);
+    await p.pdf({ path: `kit/kit-${size.id}.pdf`, preferCSSPageSize: true, printBackground: true });
+  }
   await browser.close();
-  console.log('kit/kit.pdf écrit');
+  console.log('kit/kit-S.pdf, kit/kit-M.pdf, kit/kit-L.pdf écrits');
 }
