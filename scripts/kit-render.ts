@@ -4,7 +4,7 @@
  * rivets, nose pads and the stubs left where the temples were cut off.
  * The frame is centred on (0, 0) at the middle of the bridge; SVG y grows downwards.
  */
-import type { Finish, Mono, Shape, V2 } from './kit-shapes';
+import { spline, type Finish, type Mono, type Shape, type V2 } from './kit-shapes';
 
 export const fmt = (n: number) => n.toFixed(2);
 const path = (pts: V2[]) => 'M' + pts.map(([x, y]) => `${fmt(x)} ${fmt(-y)}`).join('L') + 'Z';
@@ -12,27 +12,6 @@ const smooth = (u: number) => {
   const c = Math.min(1, Math.max(0, u));
   return c * c * (3 - 2 * c);
 };
-
-/** closed Catmull-Rom spline through the points, sampled */
-function spline(pts: V2[], per = 12): V2[] {
-  const n = pts.length;
-  const out: V2[] = [];
-  for (let i = 0; i < n; i++) {
-    const p0 = pts[(i - 1 + n) % n];
-    const p1 = pts[i];
-    const p2 = pts[(i + 1) % n];
-    const p3 = pts[(i + 2) % n];
-    for (let j = 0; j < per; j++) {
-      const t = j / per;
-      const t2 = t * t;
-      const t3 = t2 * t;
-      const f = (a: number, b: number, c: number, d: number) =>
-        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
-      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
-    }
-  }
-  return out;
-}
 
 const area = (pts: V2[]) =>
   pts.reduce((s, [x, y], i) => s + (x * pts[(i + 1) % pts.length][1] - pts[(i + 1) % pts.length][0] * y), 0) / 2;
@@ -273,11 +252,15 @@ export function drawFrame(shape: Shape, k: number): Drawn {
     } else {
       front.push(metalStroke(path(inner), wire));
       grow(inner, wire / 2);
+      // a browline hinges in its brow, below: no metal end piece
+      const brow = shape.kind === 'browline' && !shape.ring;
       const y = hingeY * 0.9;
       const ex = side * outerEdge(pos(inner), y);
-      front.push(metalStroke(`M${fmt(ex)} ${fmt(-y)}L${fmt(ex + side * 3.4 * k)} ${fmt(-y - 0.6 * k)}`, wire * 1.15));
-      front.push(`<rect x="${fmt(Math.min(ex + side * 2.4 * k, ex + side * 4.6 * k))}" y="${fmt(-y - 1.6 * k)}" width="${fmt(2.2 * k)}" height="${fmt(2 * k)}" rx="${fmt(0.5 * k)}" fill="url(#${id}met)"/>`);
-      bbox.x = Math.max(bbox.x, Math.abs(ex) + 4.8 * k);
+      if (!brow) {
+        front.push(metalStroke(`M${fmt(ex)} ${fmt(-y)}L${fmt(ex + side * 3.4 * k)} ${fmt(-y - 0.6 * k)}`, wire * 1.15));
+        front.push(`<rect x="${fmt(Math.min(ex + side * 2.4 * k, ex + side * 4.6 * k))}" y="${fmt(-y - 1.6 * k)}" width="${fmt(2.2 * k)}" height="${fmt(2 * k)}" rx="${fmt(0.5 * k)}" fill="url(#${id}met)"/>`);
+        bbox.x = Math.max(bbox.x, Math.abs(ex) + 4.8 * k);
+      }
     }
     if (shape.kind === 'browline' && shape.ring) {
       // Windsor: a thin acetate ring over the metal rim, all around the lens
@@ -288,30 +271,34 @@ export function drawFrame(shape: Shape, k: number): Drawn {
       grow(ringOut);
       front.push(`<path d="${path(ringOut)}" fill="none" stroke="#000" stroke-opacity=".4" stroke-width=".22"/>`);
     } else if (shape.kind === 'browline') {
-      // acetate brow over the top of the lens, thicker towards the temple
-      const local = side === 1 ? ap : mirror(ap);
-      const ymax = Math.max(...local.map((p) => p[1]));
-      const top = shift(local, side * cx)
-        .filter(([, y]) => y > ymax * 0.12)
-        .sort((a, b) => a[0] - b[0]);
-      const upper = top.map(([x, y]) => {
-        const rel = (y - ymax * 0.12) / (ymax * 0.88);
-        const towardTemple = smooth((side * x - g) / (maxX - minX));
-        const t = (2.2 + 3.2 * smooth(rel * 1.6) + 1.6 * towardTemple) * k;
-        return [x, y + t] as V2;
-      });
-      const lower = top.slice().reverse().map(([x, y]) => [x, y - 0.9 * k] as V2);
-      const brow = [...upper, ...lower];
+      // acetate brow along the top of the lens, wrapping its corners, thicker towards the temple
+      const ymax = hi;
+      const yc = lo + (hi - lo) * 0.55;
+      const n = inner.length;
+      const above = inner.map(([, y]) => y >= yc);
+      const start = above.findIndex((a, i) => a && !above[(i - 1 + n) % n]);
+      const arc: V2[] = [];
+      for (let j = 0; j < n && above[(start + j) % n]; j++) arc.push(inner[(start + j) % n]);
+      const t = (x: number, y: number) =>
+        (3 + 2.4 * smooth((side * x - g) / (maxX - minX))) * k * (0.5 + 0.5 * smooth((y - yc) / (6 * k)));
+      const upper = offsetVar(arc, t);
+      const lower = offsetVar(arc, () => -0.9 * k);
+      const brow = [...upper, ...lower.slice().reverse()];
       solids.push(brow);
       grow(upper);
+      // hinge where the brow reaches furthest towards the temple, near its top
       const ox = Math.max(...upper.map((p) => side * p[0]));
-      const sy = ymax * 0.82;
-      solids.push(rect(side * (ox - 2 * k), side * (ox + 3 * k), sy - 1.8 * k, sy + 1.8 * k));
+      const sy = Math.max(...upper.filter((p) => side * p[0] >= ox - 1.2 * k).map((p) => p[1])) - 2 * k;
+      solids.push(rect(side * (ox - 2 * k), side * (ox + 3 * k), sy - 1.6 * k, sy + 1.6 * k));
       bbox.x = Math.max(bbox.x, ox + 3 * k);
       front.push(`<path d="${path(brow)}" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".25"/>`);
       if (fin.rivets) {
+        // on the middle line of the brow, at its top, 7 mm in from the temple end
+        const mid = offsetVar(arc, (x, y) => t(x, y) / 2 - 0.45 * k);
+        const near = mid.filter((p) => Math.abs(side * p[0] - (ox - 7 * k)) < 2.5 * k);
+        const [mx, my] = near.reduce((b, p) => (p[1] > b[1] ? p : b), near[0] ?? [side * (ox - 7 * k), ymax + 2 * k]);
         for (const dx of [-1.3, 1.3]) {
-          front.push(`<circle cx="${fmt(side * (ox - 5 * k) + dx * k)}" cy="${fmt(-(ymax + 2.6 * k))}" r="${fmt(0.7 * k)}" fill="url(#${id}riv)"/>`);
+          front.push(`<circle cx="${fmt(mx + dx * k)}" cy="${fmt(-my)}" r="${fmt(0.7 * k)}" fill="url(#${id}riv)"/>`);
         }
       }
     }
@@ -364,8 +351,9 @@ export function drawFrame(shape: Shape, k: number): Drawn {
     }
     case 'browline': {
       front.push(metalStroke(wireArc(bt - 8 * k, 7 * k), wire * 1.2));
-      const x = edgeX(bt, 0.5 * k);
-      solids.push(rect(-x, x, bt - 2.4 * k, bt + 2.2 * k));
+      // acetate bar joining the two brows over the bridge
+      const x = edgeX(hi - 1 * k, 1.5 * k);
+      solids.push(rect(-x, x, hi - 1.2 * k, hi + 1.9 * k));
       break;
     }
   }
@@ -402,7 +390,7 @@ export function drawFrame(shape: Shape, k: number): Drawn {
     width: bbox.x * 2,
     height: bbox.yMax - bbox.yMin,
     centerY: -(bbox.yMax + bbox.yMin) / 2,
-    marking: `${Math.round(maxX - minX + 1)}□${Math.round(gap)}`,
+    marking: `${Math.round(maxX - minX)}□${Math.round(gap)}`,
   };
 }
 

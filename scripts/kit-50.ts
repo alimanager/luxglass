@@ -8,7 +8,7 @@
  */
 import { make, type Mono, type Shape, type Spec, type V2 } from './kit-shapes';
 import { drawFrame, drawMono, type Drawn } from './kit-render';
-import { document, page, publish, strip, stripPages } from './kit-layout';
+import { countPages, document, page, pageRange, printerPage, publish, scalePage, stripPages } from './kit-layout';
 import { SIZES } from './kit-faces';
 
 type Entry = { group: string; name: string; note: string } & ({ spec: Spec } | { mono: Mono });
@@ -18,8 +18,8 @@ const m = (name: string, note: string, mono: Mono) => ({ name, note, mono });
 
 // one-piece lenses: right halves from the top centre round to the bottom centre
 const SHIELD: V2[] = [[0, 22], [30, 23], [56, 20], [66, 10], [65, -6], [57, -20], [40, -26], [22, -24], [12, -16], [7, -8], [0, -6]];
-const WRAP: V2[] = [[0, 18], [28, 19], [52, 17], [68, 12], [72, 4], [68, -6], [56, -14], [38, -18], [20, -17], [11, -12], [6, -6], [0, -4]];
-const MASK: V2[] = [[0, 26], [34, 28], [60, 24], [70, 12], [69, -8], [60, -24], [42, -31], [22, -28], [12, -19], [7, -10], [0, -8]];
+const WRAP: V2[] = ([[0, 18], [28, 19], [52, 17], [68, 12], [72, 4], [68, -6], [56, -14], [38, -18], [20, -17], [11, -12], [6, -6], [0, -4]] as V2[]).map(([x, y]) => [x * 0.94, y] as V2);
+const MASK: V2[] = ([[0, 26], [34, 28], [60, 24], [70, 12], [69, -8], [60, -24], [42, -31], [22, -28], [12, -19], [7, -10], [0, -8]] as V2[]).map(([x, y]) => [x, y * 0.86] as V2);
 const VISOR: V2[] = [[0, 16], [36, 17], [62, 14], [70, 6], [66, -4], [52, -10], [30, -13], [16, -12], [9, -7], [0, -5]];
 
 const GROUPS: { group: string; items: ReturnType<typeof s | typeof m>[] }[] = [
@@ -80,15 +80,15 @@ const GROUPS: { group: string; items: ReturnType<typeof s | typeof m>[] }[] = [
       s('Browline à rivets', 'sourcil sur cerclage arrondi', { form: 'panto', construction: 'browline', gap: 21, finish: { acetate: 'ecaille', metal: 'argent', rivets: true } }),
       s('Browline', 'sourcil sur cerclage rectangle', { form: 'rectangle', construction: 'browline', finish: { acetate: 'noir', metal: 'or', rivets: true } }),
       s('Corne', 'haut épais façon corne, bas fin', { form: 'carre-doux', construction: 'acetate', finish: { acetate: 'brun' }, rim: (_x, y) => 2.6 + 5.4 * Math.max(0, Math.min(1, (y + 4) / 22)) }),
-      s('Acétate épais', 'cerclage massif tout autour', { form: 'carre', construction: 'acetate', finish: { acetate: 'noir' }, rim: () => 8 }),
+      s('Acétate épais', 'cerclage massif tout autour', { form: 'carre', construction: 'acetate', finish: { acetate: 'noir' }, rim: () => 6.5 }),
     ],
   },
   {
     group: 'G. Oversize',
     items: [
-      s('Carré oversize', '', { form: 'carre-doux', construction: 'acetate', size: 'oversize', finish: { acetate: 'noir' } }),
-      s('Rond oversize', '', { form: 'rond', construction: 'acetate', size: 'oversize', finish: { acetate: 'ecaille' } }),
-      s('Papillon oversize', '', { form: 'papillon', construction: 'acetate', size: 'oversize', finish: { acetate: 'brun' }, scale: 1.08 }),
+      s('Carré oversize', '', { form: 'carre-doux', construction: 'acetate', size: 'oversize', scale: 1.11, finish: { acetate: 'noir' } }),
+      s('Rond oversize', '', { form: 'rond', construction: 'acetate', size: 'oversize', scale: 1.07, rim: () => 3.8, finish: { acetate: 'ecaille' } }),
+      s('Papillon oversize', '', { form: 'papillon', construction: 'acetate', size: 'oversize', finish: { acetate: 'brun' }, scale: 1.04, rim: (x, y) => 3 + 1.8 * Math.max(0, Math.min(1, (x + 6) / 34)) * Math.max(0, Math.min(1, (y + 6) / 18)) }),
       s('Ovale oversize', '', { form: 'ovale', construction: 'acetate', size: 'oversize', finish: { acetate: 'miel' } }),
       s('Rectangle oversize', '', { form: 'rectangle', construction: 'acetate', size: 'oversize', finish: { acetate: 'ecaille-degrade' } }),
     ],
@@ -106,10 +106,10 @@ const GROUPS: { group: string; items: ReturnType<typeof s | typeof m>[] }[] = [
   {
     group: 'I. Vintage et créatives',
     items: [
-      s('Teashade', 'tout petit rond métal', { form: 'rond', construction: 'metal', scale: 0.72, gap: 22, finish: { metal: 'or' }, bridgeTop: 8 }),
+      s('Teashade', 'tout petit rond métal', { form: 'rond', construction: 'metal', scale: 0.87, gap: 23, finish: { metal: 'or' }, bridgeTop: 8 }),
       s('Mod', 'carré graphique des années 1960', { form: 'flat-top', construction: 'acetate', finish: { acetate: 'noir' }, rim: (_x, y) => 4 + 4 * Math.max(0, Math.min(1, (y + 2) / 20)) }),
       s('Ovale vintage', 'petit ovale métal', { form: 'ovale', construction: 'metal', size: 'fine', finish: { metal: 'or' } }),
-      s('Œil de chat sculpté', 'acétate massif, ailes taillées', { form: 'arlequin', construction: 'acetate', size: 'oversize', finish: { acetate: 'ecaille' }, rim: (x, y) => 4 + 5 * Math.max(0, Math.min(1, (x + 4) / 34)) * Math.max(0, Math.min(1, (y + 6) / 20)) }),
+      s('Œil de chat sculpté', 'acétate massif, ailes taillées', { form: 'arlequin', construction: 'acetate', size: 'oversize', scale: 1.06, finish: { acetate: 'ecaille' }, rim: (x, y) => 4 + 5 * Math.max(0, Math.min(1, (x + 4) / 34)) * Math.max(0, Math.min(1, (y + 6) / 20)) }),
       s('Avant-garde', 'angles et volumes exagérés', { form: 'angulaire', construction: 'acetate', size: 'oversize', finish: { acetate: 'ecaille-degrade' }, rim: (x) => 4 + 4 * Math.max(0, Math.min(1, (x + 10) / 40)) }),
     ],
   },
@@ -147,12 +147,17 @@ const html = (size: (typeof SIZES)[number]) => {
   const strips = ENTRIES.map((e, i) => {
     const d = draw(e, size.scale);
     const n = String(i + 1).padStart(2, '0');
-    return strip(d, [`${size.id}-${n}`, e.name, e.group.replace(/^[A-J]\. /, ''), `${Math.round(d.width)} mm`]);
+    const dims = 'mono' in e ? `${Math.round(d.width)} mm` : `${d.marking}  ${Math.round(d.width)} mm`;
+    return { d, lines: [`${size.id}-${n}`, e.name, e.group.replace(/^[A-J]\. /, ''), dims] };
   });
-  return document(
-    `Les 50 silhouettes, taille ${size.id}`,
-    indexPage() + stripPages(strips, `Les 50 silhouettes, taille ${size.id}, ${size.label}`)
-  );
+  const sheets = stripPages(strips, `Les 50 silhouettes, taille ${size.id}, ${size.label}`);
+  const reading = indexPage() + scalePage(SIZES);
+  const note = printerPage({
+    paper: `${pageRange(1, 1 + countPages(reading))} (conseils, index, échelle)`,
+    film: pageRange(2 + countPages(reading), countPages(sheets)),
+    strips: ENTRIES.length,
+  });
+  return document(`Les 50 silhouettes, taille ${size.id}`, note + reading + sheets);
 };
 
 console.log(ENTRIES.length, 'silhouettes');

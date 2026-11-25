@@ -36,6 +36,27 @@ export const ellipse = (a: number, b: number, n = 24): V2[] =>
     return [a * Math.cos(t), b * Math.sin(t)] as V2;
   });
 
+/** closed Catmull-Rom spline through the points, sampled */
+export function spline(pts: V2[], per = 12): V2[] {
+  const n = pts.length;
+  const out: V2[] = [];
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+    for (let j = 0; j < per; j++) {
+      const t = j / per;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const f = (a: number, b: number, c: number, d: number) =>
+        0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  return out;
+}
+
 const smooth = (u: number) => {
   const c = Math.min(1, Math.max(0, u));
   return c * c * (3 - 2 * c);
@@ -61,71 +82,80 @@ export interface Form {
   rim: (x: number, y: number) => number;
   /** bridge when built in acetate */
   bridge: 'keyhole' | 'saddle' | 'arch';
+  /**
+   * boxed lens size at size M, mm: A is the width, B the height, as in the "A□DBL" marking of a temple.
+   * The outline is rescaled to it, so the drawings follow typical published dimensions of each family.
+   */
+  A: number;
+  B: number;
+  /** distance between lenses (bridge, DBL) of the acetate build, and of metal builds when different, mm */
+  dbl: number;
+  dblMetal?: number;
 }
 
 const even = (w: number) => () => w;
 const heavyTop = (lo: number, hi: number) => (_x: number, y: number) => lo + (hi - lo) * smooth((y + 8) / 24);
 
 export const FORMS: Record<FormId, Form> = {
-  rond: { id: 'rond', name: 'Rond', family: 'Rondes', poly: ellipse(23.5, 23, 96), rim: even(5), bridge: 'saddle' },
+  rond: { id: 'rond', name: 'Rond', family: 'Rondes', A: 47, B: 46, dbl: 21, poly: ellipse(23.5, 23, 96), rim: even(4.6), bridge: 'saddle' },
   panto: {
-    id: 'panto', name: 'Panto', family: 'Rondes',
+    id: 'panto', name: 'Panto', family: 'Rondes', A: 47, B: 41, dbl: 22,
     lens: [[-21, 13], [-22, 0], [-18, -14], [-6, -21], [8, -21], [19, -14], [23, 0], [22, 13], [12, 18], [-5, 18]],
-    rim: heavyTop(3.8, 4.6), bridge: 'keyhole',
+    rim: heavyTop(4, 5), bridge: 'keyhole',
   },
   boston: {
-    id: 'boston', name: 'Boston', family: 'Rondes',
+    id: 'boston', name: 'Boston', family: 'Rondes', A: 48, B: 41, dbl: 21,
     lens: [[-22, 14], [-22, 0], [-17, -14], [-6, -21], [8, -20], [19, -12], [24, 2], [23, 14], [12, 19], [-6, 18]],
     rim: heavyTop(3.6, 5), bridge: 'keyhole',
   },
-  ovale: { id: 'ovale', name: 'Ovale', family: 'Rondes', poly: ellipse(26, 19.5, 96), rim: even(4.4), bridge: 'keyhole' },
+  ovale: { id: 'ovale', name: 'Ovale', family: 'Rondes', A: 52, B: 38, dbl: 19, poly: ellipse(26, 19.5, 96), rim: even(4.2), bridge: 'keyhole' },
   carre: {
-    id: 'carre', name: 'Carré', family: 'Carrées et rectangulaires',
-    poly: roundedPoly([[-24, 19, 4], [-23, -19, 5], [25, -19, 5], [25, 19, 4]]), rim: heavyTop(6, 7), bridge: 'saddle',
+    id: 'carre', name: 'Carré', family: 'Carrées et rectangulaires', A: 49, B: 41, dbl: 20,
+    poly: roundedPoly([[-24, 19, 4], [-23, -19, 5], [25, -19, 5], [25, 19, 4]]), rim: heavyTop(5, 6), bridge: 'saddle',
   },
   'carre-doux': {
-    id: 'carre-doux', name: 'Carré doux', family: 'Carrées et rectangulaires',
+    id: 'carre-doux', name: 'Carré doux', family: 'Carrées et rectangulaires', A: 50, B: 42, dbl: 19,
     poly: roundedPoly([[-24, 20, 11], [-23, -20, 12], [25, -20, 12], [25, 20, 11]]), rim: even(4.6), bridge: 'saddle',
   },
   rectangle: {
-    id: 'rectangle', name: 'Rectangle', family: 'Carrées et rectangulaires',
+    id: 'rectangle', name: 'Rectangle', family: 'Carrées et rectangulaires', A: 53, B: 35, dbl: 18,
     poly: roundedPoly([[-25, 15, 4], [-22, -16, 9], [26, -16, 9], [27, 16, 4]]), rim: heavyTop(3.4, 5.2), bridge: 'saddle',
   },
   'd-frame': {
-    id: 'd-frame', name: 'D-frame', family: 'Carrées et rectangulaires',
+    id: 'd-frame', name: 'D-frame', family: 'Carrées et rectangulaires', A: 50, B: 42, dbl: 20,
     poly: roundedPoly([[-24, 18, 3], [-23, -14, 9], [-6, -21, 12], [25, -16, 16], [26, 18, 4]]), rim: heavyTop(4, 5.6), bridge: 'saddle',
   },
   trapeze: {
-    id: 'trapeze', name: 'Trapèze', family: 'Carrées et rectangulaires',
-    poly: roundedPoly([[-24, 15, 5], [-20, -20, 14], [26, -16, 14], [27, 20, 5]]), rim: (_x, y) => 3.2 + 3.8 * smooth((y + 12) / 26), bridge: 'keyhole',
+    id: 'trapeze', name: 'Trapèze', family: 'Carrées et rectangulaires', A: 50, B: 40, dbl: 22,
+    poly: roundedPoly([[-24, 15, 5], [-20, -20, 14], [26, -16, 14], [27, 20, 5]]), rim: (_x, y) => 3.6 + 2.8 * smooth((y + 12) / 26), bridge: 'keyhole',
   },
   'oeil-de-chat': {
-    id: 'oeil-de-chat', name: 'Œil de chat', family: 'Relevées',
+    id: 'oeil-de-chat', name: 'Œil de chat', family: 'Relevées', A: 53, B: 38, dbl: 18,
     lens: [[-23, 6], [-21, -5], [-13, -13], [2, -15], [17, -11], [27, -1], [31, 11], [31, 19], [22, 20], [8, 18], [-8, 15]],
     rim: (x, y) => 3.4 + 3.4 * smooth((x + 4) / 30) * smooth((y + 2) / 14), bridge: 'saddle',
   },
   papillon: {
-    id: 'papillon', name: 'Papillon', family: 'Relevées',
+    id: 'papillon', name: 'Papillon', family: 'Relevées', A: 55, B: 48, dbl: 17,
     lens: ([[-21, 14], [-24, 2], [-19, -14], [-6, -24], [10, -25], [24, -18], [29, -4], [30, 12], [26, 24], [12, 26], [-6, 22]] as V2[]).map(
       ([x, y]) => [x * 0.94, y * 0.88] as V2
     ),
     rim: (x, y) => 3.2 + 3.4 * smooth((x + 6) / 34) * smooth((y + 6) / 18), bridge: 'arch',
   },
   aviateur: {
-    id: 'aviateur', name: 'Aviateur', family: 'Aviateurs',
+    id: 'aviateur', name: 'Aviateur', family: 'Aviateurs', A: 58, B: 50, dbl: 17, dblMetal: 14,
     lens: [[-27, 8], [-25, -6], [-17, -19], [-4, -26], [8, -25], [19, -17], [27, -4], [29, 9], [24, 19], [10, 24], [-10, 23], [-22, 18]],
     rim: even(4), bridge: 'keyhole',
   },
   'pilote-carre': {
-    id: 'pilote-carre', name: 'Pilote carré', family: 'Aviateurs',
+    id: 'pilote-carre', name: 'Pilote carré', family: 'Aviateurs', A: 57, B: 47, dbl: 18, dblMetal: 15,
     poly: roundedPoly([[-23, 20, 9], [-18, -20, 16], [25, -18, 16], [27, 20, 9]]), rim: heavyTop(3.4, 5.6), bridge: 'keyhole',
   },
   hexagone: {
-    id: 'hexagone', name: 'Hexagone', family: 'Géométriques',
+    id: 'hexagone', name: 'Hexagone', family: 'Géométriques', A: 51, B: 45, dbl: 20, dblMetal: 21,
     poly: roundedPoly([[-14, 22, 3], [-26, 0, 3], [-14, -22, 3], [14, -22, 3], [26, 0, 3], [14, 22, 3]]), rim: even(4), bridge: 'saddle',
   },
   octogone: {
-    id: 'octogone', name: 'Octogone', family: 'Géométriques',
+    id: 'octogone', name: 'Octogone', family: 'Géométriques', A: 49, B: 44, dbl: 21,
     poly: roundedPoly(
       Array.from({ length: 8 }, (_, i) => {
         const t = Math.PI - Math.PI / 8 - (i * Math.PI) / 4;
@@ -135,43 +165,61 @@ export const FORMS: Record<FormId, Form> = {
     rim: even(4), bridge: 'saddle',
   },
   'flat-top': {
-    id: 'flat-top', name: 'Flat top', family: 'Géométriques',
-    poly: roundedPoly([[-25, 17, 2], [-21, -14, 12], [24, -16, 15], [28, 17, 2]]), rim: heavyTop(3.4, 7.5), bridge: 'saddle',
+    id: 'flat-top', name: 'Flat top', family: 'Géométriques', A: 54, B: 37, dbl: 18,
+    poly: roundedPoly([[-25, 17, 2], [-21, -14, 12], [24, -16, 15], [28, 17, 2]]), rim: heavyTop(3.6, 7), bridge: 'saddle',
   },
   pentagone: {
-    id: 'pentagone', name: 'Pentagone', family: 'Géométriques',
+    id: 'pentagone', name: 'Pentagone', family: 'Géométriques', A: 49, B: 41, dbl: 20,
     poly: roundedPoly([[-21, 19, 2.5], [-25, -3, 2.5], [0, -22, 3], [25, -3, 2.5], [21, 19, 2.5]]), rim: even(4), bridge: 'saddle',
   },
   arlequin: {
-    id: 'arlequin', name: 'Arlequin', family: 'Relevées',
+    id: 'arlequin', name: 'Arlequin', family: 'Relevées', A: 52, B: 34, dbl: 19,
     lens: [[-22, 4], [-20, -6], [-11, -13], [4, -14], [18, -9], [28, 2], [35, 15], [33, 20], [22, 18], [8, 15], [-8, 12]],
     rim: (x, y) => 3 + 3.2 * smooth((x + 2) / 32) * smooth((y + 2) / 16), bridge: 'saddle',
   },
   angulaire: {
-    id: 'angulaire', name: 'Angulaire', family: 'Géométriques',
+    id: 'angulaire', name: 'Angulaire', family: 'Géométriques', A: 52, B: 39, dbl: 19,
     poly: roundedPoly([[-24, 16, 1.5], [-22, -14, 2], [-12, -20, 2], [22, -18, 2], [28, -6, 2], [29, 19, 1.5]]), rim: heavyTop(4, 6), bridge: 'saddle',
   },
   irreguliere: {
-    id: 'irreguliere', name: 'Irrégulière', family: 'Créatives',
+    id: 'irreguliere', name: 'Irrégulière', family: 'Créatives', A: 52, B: 41, dbl: 20,
     lens: [[-22, 15], [-24, -3], [-15, -18], [2, -20], [18, -17], [27, -5], [25, 9], [29, 19], [14, 21], [-4, 18]],
     rim: (x, y) => 3.4 + 2.4 * smooth((x + 10) / 40) * smooth((y + 20) / 40), bridge: 'saddle',
   },
   upswept: {
-    id: 'upswept', name: 'Upswept', family: 'Relevées',
+    id: 'upswept', name: 'Upswept', family: 'Relevées', A: 53, B: 37, dbl: 18,
     lens: [[-24, 12], [-24, -4], [-18, -15], [4, -17], [20, -13], [27, -2], [30, 14], [27, 20], [12, 17], [-6, 14]],
     rim: heavyTop(3.4, 5.4), bridge: 'saddle',
   },
   goutte: {
-    id: 'goutte', name: 'Goutte', family: 'Aviateurs',
+    id: 'goutte', name: 'Goutte', family: 'Aviateurs', A: 56, B: 52, dbl: 17, dblMetal: 15,
     lens: [[-25, 9], [-24, -6], [-17, -21], [-5, -29], [8, -28], [18, -19], [25, -5], [27, 9], [22, 18], [9, 21], [-9, 21], [-20, 17]],
     rim: even(3.6), bridge: 'keyhole',
   },
   'rectangle-fin': {
-    id: 'rectangle-fin', name: 'Rectangle fin', family: 'Carrées et rectangulaires',
+    id: 'rectangle-fin', name: 'Rectangle fin', family: 'Carrées et rectangulaires', A: 53, B: 27, dbl: 18,
     poly: roundedPoly([[-25, 13, 4], [-24, -13, 5], [26, -13, 5], [27, 13, 4]]), rim: even(3.4), bridge: 'saddle',
   },
-  'rond-ovale': { id: 'rond-ovale', name: 'Rond ovale', family: 'Rondes', poly: ellipse(24, 21, 96), rim: even(4.4), bridge: 'keyhole' },
+  'rond-ovale': { id: 'rond-ovale', name: 'Rond ovale', family: 'Rondes', A: 48, B: 42, dbl: 20, poly: ellipse(24, 21, 96), rim: even(4.4), bridge: 'keyhole' },
 };
+
+/** boxed width and height of an outline, mm */
+export function boxed(pts: V2[]): { A: number; B: number } {
+  const xs = pts.map((p) => p[0]);
+  const ys = pts.map((p) => p[1]);
+  return { A: Math.max(...xs) - Math.min(...xs), B: Math.max(...ys) - Math.min(...ys) };
+}
+
+// rescale every outline to its nominal A × B (a Catmull-Rom spline commutes with scaling, so the lens
+// control points scale exactly); rim profiles keep their thickness in mm
+for (const f of Object.values(FORMS)) {
+  const now = boxed(f.poly ?? spline(f.lens!));
+  const sx = f.A / now.A;
+  const sy = f.B / now.B;
+  const fit = (pts?: V2[]) => pts?.map(([x, y]) => [x * sx, y * sy] as V2);
+  f.lens = fit(f.lens);
+  f.poly = fit(f.poly);
+}
 
 export type Construction = 'acetate' | 'metal' | 'browline' | 'semi' | 'rimless';
 export const CONSTRUCTIONS: { id: Construction; name: string; note: string }[] = [
@@ -237,6 +285,8 @@ export interface Spec {
   ring?: boolean;
   /** lens scale, replaces the size facet's */
   scale?: number;
+  /** boxed lens size at M, mm, per axis: overrides the scale on that axis (e.g. a taller lens for a browline) */
+  fit?: { A?: number; B?: number };
   extras?: Extra[];
   era?: string;
   icon?: string;
@@ -261,13 +311,15 @@ export function make(spec: Spec): Shape {
   const c = spec.construction;
   const size = spec.size ?? 'standard';
   const k = spec.scale ?? SIZE_FACTOR[size];
-  const scale = (pts?: V2[]) => pts?.map(([x, y]) => [x * k, y * k] as V2);
+  const kx = spec.fit?.A ? spec.fit.A / f.A : k;
+  const ky = spec.fit?.B ? spec.fit.B / f.B : k;
+  const scale = (pts?: V2[]) => pts?.map(([x, y]) => [x * kx, y * ky] as V2);
   const metalLike = c !== 'acetate';
   const doubleBridge = spec.form === 'aviateur' || spec.form === 'pilote-carre';
   const bridge: Shape['bridge'] =
     spec.bridge ?? (c === 'acetate' ? f.bridge : c === 'browline' ? 'browline' : doubleBridge && c === 'metal' ? 'double' : 'wire-arch');
   const ys = (f.poly ?? f.lens!).map((p) => p[1]);
-  const top = Math.max(...ys) * k;
+  const top = Math.max(...ys) * ky;
   const name = spec.name ?? [f.name, c === 'acetate' ? '' : CONSTRUCTIONS.find((x) => x.id === c)!.name.toLowerCase(), size === 'standard' ? '' : size].filter(Boolean).join(' ');
   return {
     id: spec.id ?? `${spec.form}-${c}-${size}`,
@@ -278,9 +330,9 @@ export function make(spec: Spec): Shape {
     kind: c,
     lens: scale(f.lens),
     poly: scale(f.poly),
-    rim: spec.rim ?? (c === 'acetate' ? (x, y) => f.rim(x / k, y / k) * (size === 'oversize' ? 1.1 : size === 'fine' ? 0.85 : 1) : undefined),
-    wire: spec.wire ?? (c === 'rimless' ? 0.9 : 1.05),
-    gap: spec.gap ?? (doubleBridge ? 15 : c === 'acetate' ? 18 : 20),
+    rim: spec.rim ?? (c === 'acetate' ? (x, y) => f.rim(x / kx, y / ky) * (size === 'oversize' ? 1.1 : size === 'fine' ? 0.85 : 1) : undefined),
+    wire: spec.wire ?? (c === 'rimless' ? 0.9 : 1.2),
+    gap: spec.gap ?? (c === 'acetate' ? f.dbl : f.dblMetal ?? f.dbl),
     bridge,
     bridgeTop: spec.bridgeTop ?? (bridge === 'double' ? top - 2 : bridge === 'browline' ? top - 1 : Math.min(12, top - 8)),
     pads: metalLike,
@@ -304,7 +356,7 @@ export const SHAPES: Shape[] = [
     mood: ['intellectuel', 'créatif'],
   }),
   make({
-    id: 'rond-epais', name: 'Rond épais', form: 'rond', construction: 'acetate', rim: () => 6.2,
+    id: 'rond-epais', name: 'Rond épais', form: 'rond', construction: 'acetate', rim: () => 5.6,
     finish: { acetate: 'noir' }, era: 'années 1930',
     icon: 'Les grands cercles noirs des architectes modernistes : une signature plus qu’un accessoire.',
     mood: ['créatif', 'confiant'],
@@ -316,7 +368,7 @@ export const SHAPES: Shape[] = [
     mood: ['créatif', 'intellectuel'], reference: true,
   }),
   make({
-    id: 'windsor', name: 'Windsor', form: 'rond', construction: 'browline', size: 'fine', gap: 21, ring: true, bridge: 'wire-arch', bridgeTop: 9,
+    id: 'windsor', name: 'Windsor', form: 'rond', construction: 'browline', size: 'fine', scale: 0.95, gap: 22, ring: true, bridge: 'wire-arch', bridgeTop: 9,
     finish: { acetate: 'ecaille', metal: 'or' }, era: 'années 1920',
     icon: 'Un petit rond métal cerclé d’un fin bourrelet d’acétate : l’élégance des années folles.',
     mood: ['intellectuel', 'glamour'],
@@ -328,13 +380,13 @@ export const SHAPES: Shape[] = [
     mood: ['créatif', 'décontracté'],
   }),
   make({
-    id: 'aviateur', name: 'Aviateur', form: 'aviateur', construction: 'metal', wire: 0.95,
+    id: 'aviateur', name: 'Aviateur', form: 'aviateur', construction: 'metal', wire: 1.2,
     finish: { metal: 'canon' }, era: '1937',
     icon: 'Dessinée pour les pilotes, adoptée par le cinéma : la goutte protège tout le champ de vision.',
     mood: ['confiant', 'décontracté'], reference: true,
   }),
   make({
-    id: 'browline', name: 'Browline bicolore', form: 'rectangle', construction: 'browline',
+    id: 'browline', name: 'Browline bicolore', form: 'rectangle', construction: 'browline', fit: { A: 50, B: 39 }, gap: 21,
     finish: { acetate: 'noir', metal: 'or', rivets: true }, era: '1947',
     icon: 'Un sourcil d’acétate sur un cerclage métal : la monture des leaders et des hommes d’affaires des années 1950.',
     mood: ['professionnel', 'confiant'], reference: true,
@@ -364,7 +416,7 @@ export const SHAPES: Shape[] = [
     mood: ['confiant', 'créatif'],
   }),
   make({
-    id: 'pilote-acetate', name: 'Pilote acétate', form: 'pilote-carre', construction: 'acetate',
+    id: 'pilote-acetate', name: 'Pilote acétate', form: 'pilote-carre', construction: 'acetate', scale: 0.95,
     finish: { acetate: 'miel' }, era: '1957',
     icon: 'La forme des pilotes en acétate, portée par les acteurs italiens et les dandys de la Riviera.',
     mood: ['décontracté', 'glamour'],
@@ -394,7 +446,7 @@ export const SHAPES: Shape[] = [
     mood: ['créatif', 'glamour'],
   }),
   make({
-    id: 'carre-oversize', name: 'Carré oversize', form: 'carre-doux', construction: 'acetate', size: 'oversize',
+    id: 'carre-oversize', name: 'Carré oversize', form: 'carre-doux', construction: 'acetate', size: 'oversize', scale: 1.11,
     finish: { acetate: 'ecaille' }, era: 'années 1970',
     icon: 'Les grands carrés adoucis des années disco, qui reviennent à chaque génération.',
     mood: ['glamour', 'confiant'],
@@ -406,7 +458,7 @@ export const SHAPES: Shape[] = [
     mood: ['créatif', 'intellectuel'],
   }),
   make({
-    id: 'sans-cercle', name: 'Rond sans cercle', form: 'ovale', construction: 'rimless', size: 'fine', bridgeTop: 9,
+    id: 'sans-cercle', name: 'Rond sans cercle', form: 'ovale', construction: 'rimless', size: 'fine', scale: 0.96, bridgeTop: 9,
     finish: { metal: 'argent' }, era: 'années 1990',
     icon: 'Des verres percés sans monture autour : la discrétion absolue des inventeurs et des minimalistes.',
     mood: ['intellectuel', 'professionnel'],

@@ -310,9 +310,9 @@ export function mapPage(): string {
 export function atlasPages(): string {
   const forms = Object.keys(FORMS) as FormId[];
   const block = (list: FormId[], part: number) => {
-    const CW = 31;
+    const CW = 29;
     const RH = 31;
-    const LW = 34;
+    const LW = 40;
     const head = list
       .map((f, i) => `<text x="${LW + i * CW + CW / 2}" y="6" font-size="3.2" font-weight="700" text-anchor="middle">${FORMS[f].name}</text>
         <text x="${LW + i * CW + CW / 2}" y="10" font-size="2.3" fill="#888" text-anchor="middle">${FORMS[f].family}</text>`)
@@ -353,7 +353,7 @@ export function catalogueJson() {
     return {
       id: s.id, name: s.name, kit,
       form: s.form, family: FORMS[s.form].family, construction: s.construction, size: s.size,
-      finish: s.finish, era: s.era ?? null, mood: s.mood,
+      finish: s.finish, era: s.era ?? null, mood: s.mood, icon: s.icon ?? null,
       descriptor: Object.fromEntries(Object.entries(d).map(([k, v]) => [k, Math.round(v * 1000) / 1000])),
       map: [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000],
     };
