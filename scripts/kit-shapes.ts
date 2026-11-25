@@ -39,10 +39,12 @@ export interface Finish {
   rivets?: boolean;
 }
 
+export type Mood = 'confiant' | 'créatif' | 'intellectuel' | 'professionnel' | 'glamour' | 'décontracté';
+
 export interface Shape {
   id: string;
   name: string;
-  kind: 'acetate' | 'metal' | 'browline';
+  kind: 'acetate' | 'metal' | 'browline' | 'rimless';
   /** lens aperture, counter-clockwise from the top of the nose side; closed spline through these points */
   lens?: V2[];
   /** or a polygon with rounded corners, sampled as is */
@@ -58,6 +60,12 @@ export interface Shape {
   bridgeTop?: number;
   pads?: boolean;
   finish: Finish;
+  /** when the style was born or became an icon */
+  era: string;
+  /** the story behind the style, in a sentence (no brand names on the strips) */
+  icon: string;
+  /** the impression it gives, strongest first (stylist's judgement) */
+  mood: Mood[];
   /** seen in the reference video */
   reference?: boolean;
 }
@@ -67,11 +75,37 @@ const smooth = (u: number) => {
   return c * c * (3 - 2 * c);
 };
 
+/** 14 timeless frames, in the order they entered the history of eyewear */
 export const SHAPES: Shape[] = [
-  // the five frames of the reference video, in its order
+  {
+    id: 'panto-acetate',
+    name: 'Panto à pont trou de serrure',
+    kind: 'acetate',
+    lens: [[-21, 13], [-22, 0], [-18, -14], [-6, -21], [8, -21], [19, -14], [23, 0], [22, 13], [12, 18], [-5, 18]],
+    rim: (_x, y) => 3.8 + 0.8 * smooth((y + 4) / 20),
+    gap: 22,
+    bridge: 'keyhole',
+    finish: { acetate: 'ecaille', rivets: true },
+    era: 'années 1910',
+    icon: 'La monture des intellectuels new-yorkais, revenue dans les années 2000 sur les acteurs et les créatifs.',
+    mood: ['intellectuel', 'créatif'],
+  },
+  {
+    id: 'rond-epais',
+    name: 'Rond épais',
+    kind: 'acetate',
+    poly: ellipse(22, 22.5, 96),
+    rim: () => 6.2,
+    gap: 18,
+    bridge: 'saddle',
+    finish: { acetate: 'noir' },
+    era: 'années 1930',
+    icon: 'Les grands cercles noirs des architectes modernistes : une signature plus qu’un accessoire.',
+    mood: ['créatif', 'confiant'],
+  },
   {
     id: 'panto',
-    name: 'Panto rond',
+    name: 'Rond métal',
     kind: 'metal',
     poly: ellipse(23.5, 23, 96),
     wire: 1.25,
@@ -80,6 +114,9 @@ export const SHAPES: Shape[] = [
     bridgeTop: 10,
     pads: true,
     finish: { metal: 'noir' },
+    era: 'années 1930',
+    icon: 'Le rond fin des étudiants d’avant-guerre, devenu celui des musiciens et des poètes dans les années 1960.',
+    mood: ['créatif', 'intellectuel'],
     reference: true,
   },
   {
@@ -93,6 +130,9 @@ export const SHAPES: Shape[] = [
     bridgeTop: 21,
     pads: true,
     finish: { metal: 'canon' },
+    era: '1937',
+    icon: 'Dessinée pour les pilotes, adoptée par le cinéma : la goutte protège tout le champ de vision.',
+    mood: ['confiant', 'décontracté'],
     reference: true,
   },
   {
@@ -106,7 +146,23 @@ export const SHAPES: Shape[] = [
     bridgeTop: 16,
     pads: true,
     finish: { acetate: 'noir', metal: 'or', rivets: true },
+    era: '1947',
+    icon: 'Un sourcil d’acétate sur un cerclage métal : la monture des leaders et des hommes d’affaires des années 1950.',
+    mood: ['professionnel', 'confiant'],
     reference: true,
+  },
+  {
+    id: 'trapeze',
+    name: 'Trapèze acétate',
+    kind: 'acetate',
+    poly: roundedPoly([[-24, 15, 5], [-20, -20, 14], [26, -16, 14], [27, 20, 5]]),
+    rim: (_x, y) => 3.2 + 3.8 * smooth((y + 12) / 26),
+    gap: 18,
+    bridge: 'keyhole',
+    finish: { acetate: 'noir', rivets: true },
+    era: '1952',
+    icon: 'Le premier grand succès du plastique moulé : la forme du rock, des Blues Brothers aux musiciens d’aujourd’hui.',
+    mood: ['confiant', 'décontracté'],
   },
   {
     id: 'carre-rivets',
@@ -116,33 +172,11 @@ export const SHAPES: Shape[] = [
     rim: (_x, y) => 6.4 + 1.2 * smooth((y + 4) / 20),
     gap: 17,
     bridge: 'saddle',
-    bridgeTop: 14,
     finish: { acetate: 'brun', rivets: true },
+    era: 'années 1950',
+    icon: 'L’acétate épais des ingénieurs et des écrivains, remis à la mode par les créateurs indépendants.',
+    mood: ['confiant', 'créatif'],
     reference: true,
-  },
-  {
-    id: 'rectangle-ecaille',
-    name: 'Rectangle écaille',
-    kind: 'acetate',
-    poly: roundedPoly([[-24, 15, 4], [-21, -16, 9], [26, -16, 9], [27, 16, 4]]),
-    rim: (_x, y) => 3.4 + 1.8 * smooth((y + 6) / 20),
-    gap: 17,
-    bridge: 'saddle',
-    bridgeTop: 12,
-    finish: { acetate: 'ecaille-degrade' },
-    reference: true,
-  },
-  // the other classic families
-  {
-    id: 'trapeze',
-    name: 'Trapèze acétate',
-    kind: 'acetate',
-    poly: roundedPoly([[-24, 15, 5], [-20, -20, 14], [26, -16, 14], [27, 20, 5]]),
-    rim: (_x, y) => 3.2 + 3.8 * smooth((y + 12) / 26),
-    gap: 18,
-    bridge: 'keyhole',
-    bridgeTop: 14,
-    finish: { acetate: 'noir', rivets: true },
   },
   {
     id: 'oeil-de-chat',
@@ -152,30 +186,38 @@ export const SHAPES: Shape[] = [
     rim: (x, y) => 3.4 + 3.4 * smooth((x + 4) / 30) * smooth((y + 2) / 14),
     gap: 18,
     bridge: 'saddle',
-    bridgeTop: 12,
     finish: { acetate: 'ecaille' },
-  },
-  {
-    id: 'ovale-retro',
-    name: 'Ovale rétro',
-    kind: 'acetate',
-    poly: ellipse(26, 21, 96),
-    rim: () => 4.6,
-    gap: 19,
-    bridge: 'keyhole',
-    bridgeTop: 13,
-    finish: { acetate: 'ecaille' },
+    era: 'années 1950',
+    icon: 'Les coins relevés des stars d’Hollywood : un regard qui remonte vers les tempes.',
+    mood: ['glamour', 'créatif'],
   },
   {
     id: 'pilote-carre',
-    name: 'Pilote arrondi',
+    name: 'Pilote acétate',
     kind: 'acetate',
     poly: roundedPoly([[-23, 20, 9], [-18, -20, 16], [25, -18, 16], [27, 20, 9]]),
     rim: (_x, y) => 3.4 + 2.2 * smooth((y + 4) / 22),
     gap: 17,
     bridge: 'keyhole',
-    bridgeTop: 13,
     finish: { acetate: 'miel' },
+    era: '1957',
+    icon: 'La forme des pilotes en acétate, portée par les acteurs italiens et les dandys de la Riviera.',
+    mood: ['décontracté', 'glamour'],
+  },
+  {
+    id: 'navigator',
+    name: 'Aviateur carré',
+    kind: 'metal',
+    poly: roundedPoly([[-24, 19, 6], [-22, -18, 14], [26, -18, 14], [27, 19, 7]]),
+    wire: 1.1,
+    gap: 15,
+    bridge: 'double',
+    bridgeTop: 19,
+    pads: true,
+    finish: { metal: 'or' },
+    era: '1957',
+    icon: 'L’aviateur aux verres carrés, plus graphique, des photographes et des voyageurs.',
+    mood: ['confiant', 'décontracté'],
   },
   {
     id: 'papillon',
@@ -187,8 +229,10 @@ export const SHAPES: Shape[] = [
     rim: (x, y) => 3.2 + 3.4 * smooth((x + 6) / 34) * smooth((y + 6) / 18),
     gap: 16,
     bridge: 'arch',
-    bridgeTop: 16,
     finish: { acetate: 'noir' },
+    era: 'années 1960',
+    icon: 'Les grands verres des premières dames et des icônes de mode : élégance et mystère.',
+    mood: ['glamour', 'confiant'],
   },
   {
     id: 'hexagonale',
@@ -201,17 +245,37 @@ export const SHAPES: Shape[] = [
     bridgeTop: 14,
     pads: true,
     finish: { metal: 'or' },
+    era: 'années 1970',
+    icon: 'Une géométrie inattendue née avec la contre-culture, reprise par les créateurs des années 2010.',
+    mood: ['créatif', 'glamour'],
   },
   {
-    id: 'rectangle-fin',
-    name: 'Rectangle fin',
-    kind: 'metal',
-    poly: roundedPoly([[-25, 15, 5], [-24, -15, 5], [25, -15, 5], [26, 15, 5]]),
-    wire: 1,
+    id: 'sans-cercle',
+    name: 'Rond sans cercle',
+    kind: 'rimless',
+    poly: ellipse(22.5, 20.5, 96),
+    wire: 0.9,
     gap: 20,
     bridge: 'wire-arch',
-    bridgeTop: 11,
+    bridgeTop: 9,
     pads: true,
     finish: { metal: 'argent' },
+    era: 'années 1990',
+    icon: 'Des verres percés sans monture autour : la discrétion absolue des inventeurs et des minimalistes.',
+    mood: ['intellectuel', 'professionnel'],
+  },
+  {
+    id: 'rectangle-ecaille',
+    name: 'Rectangle écaille',
+    kind: 'acetate',
+    poly: roundedPoly([[-24, 15, 4], [-21, -16, 9], [26, -16, 9], [27, 16, 4]]),
+    rim: (_x, y) => 3.4 + 1.8 * smooth((y + 6) / 20),
+    gap: 17,
+    bridge: 'saddle',
+    finish: { acetate: 'ecaille-degrade' },
+    era: 'années 1990',
+    icon: 'Le rectangle de la mode et des affaires : foncé en haut pour l’autorité, écaille en bas pour la chaleur.',
+    mood: ['professionnel', 'confiant'],
+    reference: true,
   },
 ];

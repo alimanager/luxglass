@@ -9,7 +9,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { SHAPES, type Shape } from './kit-shapes';
 import { drawFrame, fmt } from './kit-render';
-import { faceGuidePage, mapPage, SIZES, code, page } from './kit-faces';
+import { faceGuidePage, iconsPage, mapPage, SIZES, code, page } from './kit-faces';
 
 /** strip, mm: long enough to hold at one end and bind at the other, tall enough to cover brows to lip */
 const STRIP_W = 230;
@@ -32,7 +32,8 @@ function strip(shape: Shape, size: (typeof SIZES)[number], index: number): strin
     <g font-family="Helvetica, Arial, sans-serif" fill="#8d8d8d" text-anchor="end">
       <text x="${labelX}" y="${STRIP_H / 2 - 1.2}" font-size="3.4" font-weight="700" fill="#6f6f6f">${code(size.id, index)}</text>
       <text x="${labelX}" y="${STRIP_H / 2 + 3}" font-size="2.4">${shape.name}</text>
-      <text x="${labelX}" y="${STRIP_H / 2 + 6.4}" font-size="2.2">${d.marking}  ${Math.round(d.width)} mm</text>
+      <text x="${labelX}" y="${STRIP_H / 2 + 6.2}" font-size="2.2">${shape.era}, ${shape.mood.join(' et ')}</text>
+      <text x="${labelX}" y="${STRIP_H / 2 + 9.4}" font-size="2.2">${d.marking}  ${Math.round(d.width)} mm</text>
     </g>
     <g transform="translate(${fmt(cx)} ${fmt(cy)})">${d.svg}</g>
   </svg>`;
@@ -84,8 +85,9 @@ function guide(): string {
     <div class="cols">
       <div>
         <h1>Kit d’essayage</h1>
-        <p>${SHAPES.length} montures à leur taille réelle, en trois largeurs, à feuilleter devant ton visage. Même visage, autre
-        impression : en quelques secondes tu vois ce que chaque forme change à ton regard, avant d’essayer en magasin.</p>
+        <p>${SHAPES.length} montures qui ont traversé le siècle, de 1910 à aujourd’hui, à leur taille réelle et en trois largeurs.
+        Même visage, autre impression : en quelques secondes tu vois ce que chaque forme change à ton regard, et ce qu’elle
+        raconte de toi, avant d’essayer en magasin.</p>
         <h2>Fabriquer ton carnet</h2>
         <ol>
           <li>Imprime les pages de ta largeur sur du <b>film transparent A4</b> adapté à ton imprimante (jet d’encre ou laser), à 100 %.</li>
@@ -132,6 +134,10 @@ const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>
   .page p, .page li { font-size: 10.5pt; line-height: 1.5; max-width: 120mm; }
   .page .small { font-size: 9pt; color: #555; }
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; }
+  .cols3 { display: grid; grid-template-columns: 1.15fr 1fr 0.8fr; gap: 8mm; }
+  .cols3 h2 { margin-top: 3mm; }
+  table.icons td, table.icons th { padding: 1.1mm 4mm 1.1mm 0; font-size: 9pt; }
+  table.icons td:last-child { max-width: 150mm; }
   .page.strips { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.5mm; padding: 6mm 14mm; }
   .strips .runner { position: absolute; top: 1.5mm; left: 14mm; margin: 0; font-size: 8pt; color: #999; }
   .strip { display: block; }
@@ -141,6 +147,7 @@ const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>
 </style></head><body>
 ${guide()}
 ${calibration()}
+${iconsPage()}
 ${faceGuidePage()}
 ${mapPage()}
 ${SIZES.map(sizePages).join('')}

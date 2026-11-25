@@ -5,7 +5,7 @@
  * Frame descriptors are measured on the drawings. Face shapes and traits are placed with the
  * expert rules of src/lib/fit.ts (the frame each face calls for), not learned from data.
  */
-import { SHAPES, type Shape } from './kit-shapes';
+import { SHAPES, type Mood, type Shape } from './kit-shapes';
 import { aperture, drawFrame, fmt } from './kit-render';
 
 export const SIZES = [
@@ -195,9 +195,41 @@ function facePoint(target: Partial<Descriptor>): [number, number] {
 
 const codesM = (ids: number[]) => ids.map((i) => `<b>${code('M', i).slice(1)}</b> ${SHAPES[i].name}`).join('<br>');
 
+const MOODS: { id: Mood; name: string; why: string }[] = [
+  { id: 'confiant', name: 'Confiant', why: 'de la matière et des lignes nettes' },
+  { id: 'créatif', name: 'Créatif', why: 'une forme qu’on ne voit pas partout' },
+  { id: 'intellectuel', name: 'Intellectuel', why: 'des ronds, du fin, de l’histoire' },
+  { id: 'professionnel', name: 'Professionnel', why: 'des lignes horizontales et sobres' },
+  { id: 'glamour', name: 'Glamour', why: 'des coins relevés, du volume' },
+  { id: 'décontracté', name: 'Décontracté', why: 'des formes de plein air, sans effort' },
+];
+
+function moodRows(): string {
+  return MOODS.map((m) => {
+    const ids = SHAPES.map((s, i) => ({ i, r: s.mood.indexOf(m.id) }))
+      .filter((x) => x.r >= 0)
+      .sort((a, b) => a.r - b.r)
+      .slice(0, 4)
+      .map((x) => x.i);
+    return `<tr><th>${m.name}</th><td>${codesM(ids)}</td></tr>`;
+  }).join('');
+}
+
+export function iconsPage(): string {
+  const rows = SHAPES.map(
+    (s, i) => `<tr><th>${String(i + 1).padStart(2, '0')}</th><td><b>${s.name}</b><br><span class="small">${s.era}</span></td><td>${s.icon}</td></tr>`
+  ).join('');
+  return page(`
+    <h1>${SHAPES.length} icônes, un siècle de regards</h1>
+    <p class="small">Chaque monture de ce kit a marqué son époque et n’a jamais disparu. Elles sont dessinées d’après les proportions
+    de leur famille, sans reproduire le modèle d’une marque.</p>
+    <table class="icons">${rows}</table>
+  `);
+}
+
 export function faceGuidePage(): string {
   const faceRows = FACE_TARGETS.map((f) => {
-    const ids = f.id === 'oval' ? [0, 2, 4, 6] : rank(descs, model, f.target);
+    const ids = f.id === 'oval' ? ['panto', 'browline', 'trapeze', 'rectangle-ecaille'].map((x) => SHAPES.findIndex((s) => s.id === x)) : rank(descs, model, f.target);
     return `<tr><th>${f.name}</th><td>${codesM(ids)}</td><td>${f.why[0].toUpperCase() + f.why.slice(1)}.</td></tr>`;
   }).join('');
   const traitRows = TRAIT_TARGETS.map(
@@ -207,9 +239,10 @@ export function faceGuidePage(): string {
     <h1>Par où commencer</h1>
     <p class="small">Les numéros valent pour les trois largeurs : 05 est la bande S05, M05 ou L05. L’application reconnaît ta forme
     de visage et tes traits à partir d’une photo.</p>
-    <div class="cols">
+    <div class="cols3">
       <div><h2>Par forme de visage</h2><table>${faceRows}</table></div>
       <div><h2>Par trait</h2><table>${traitRows}</table></div>
+      <div><h2>Par impression</h2><table>${moodRows()}</table></div>
     </div>
   `);
 }

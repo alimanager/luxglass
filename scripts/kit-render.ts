@@ -117,6 +117,24 @@ export interface Drawn {
 
 let uid = 0;
 
+/** sample a quadratic Bézier, geometry coordinates */
+function quad(a: V2, c: V2, b: V2, n = 14): V2[] {
+  return Array.from({ length: n + 1 }, (_, i) => {
+    const t = i / n;
+    return [
+      (1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0],
+      (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1],
+    ] as V2;
+  });
+}
+const rect = (x0: number, x1: number, y0: number, y1: number): V2[] => [
+  [Math.min(x0, x1), Math.min(y0, y1)],
+  [Math.max(x0, x1), Math.min(y0, y1)],
+  [Math.max(x0, x1), Math.max(y0, y1)],
+  [Math.min(x0, x1), Math.max(y0, y1)],
+];
+const cw = (pts: V2[]) => (area(pts) > 0 ? [...pts].reverse() : pts);
+
 export function drawFrame(shape: Shape, k: number): Drawn {
   const id = `f${uid++}`;
   const ap = aperture(shape, k);
@@ -131,11 +149,17 @@ export function drawFrame(shape: Shape, k: number): Drawn {
   const g = gap / 2;
   const fin = shape.finish;
   const acetate = shape.kind === 'acetate';
+  const rimless = shape.kind === 'rimless';
   const metalTone = fin.metal ?? 'noir';
 
   const defs: string[] = [];
-  const back: string[] = []; // acetate silhouettes, filled together then masked by the lenses
-  const front: string[] = []; // metal, rivets, pads, edges
+  /**
+   * Acetate pieces as polygons, all counter-clockwise, lens holes clockwise: one path, nonzero fill,
+   * gives their union with the lenses cut out. No SVG mask, so every PDF viewer shows it the same.
+   */
+  const solids: V2[][] = [];
+  const holes: V2[][] = [];
+  const front: string[] = [];
   const bbox = { x: 0, yMin: 1e9, yMax: -1e9 };
   const grow = (pts: V2[], pad = 0) => {
     for (const [x, y] of pts) {
@@ -178,54 +202,60 @@ export function drawFrame(shape: Shape, k: number): Drawn {
       `<linearGradient id="${id}dg" gradientUnits="userSpaceOnUse" x1="0" y1="${fmt(yTop)}" x2="0" y2="${fmt(yBot)}"><stop offset="0" stop-color="#140c09" stop-opacity=".97"/><stop offset=".28" stop-color="#140c09" stop-opacity=".9"/><stop offset=".62" stop-color="#140c09" stop-opacity="0"/></linearGradient>`
     );
   }
-  // lenses are cut out of everything drawn in acetate
-  defs.push(
-    `<mask id="${id}lens" maskUnits="userSpaceOnUse" x="-130" y="-70" width="260" height="140"><rect x="-130" y="-70" width="260" height="140" fill="#fff"/><path d="${lenses.map(path).join('')}" fill="#000"/></mask>`
-  );
 
-  /** x of the nose-side edge of a contour at height y, pushed inside by `inside` */
   const right = shift(acetate ? offsetVar(ap, (x, y) => rimK(x, y)) : ap, cx);
+  /** nose-side edge of the right front at height y, moved by `inside` towards the lens */
   const edgeX = (y: number, inside: number) => (edgeAt(right, y, 'min') ?? g) + inside;
-  /** temple-side edge of a contour at height y */
+  /** temple-side edge of a contour at height y (contour given with x > 0) */
   const outerEdge = (pts: V2[], y: number) => edgeAt(pts, y, 'max') ?? Math.max(...pts.map((p) => p[0]));
 
   const metalStroke = (d: string, w: number, cap = 'round') =>
     `<path d="${d}" fill="none" stroke="url(#${id}met)" stroke-width="${fmt(w)}" stroke-linecap="${cap}" stroke-linejoin="round"/>` +
     `<path d="${d}" fill="none" stroke="#fff" stroke-opacity=".38" stroke-width="${fmt(w * 0.22)}" stroke-linecap="round" transform="translate(0 ${fmt(-w * 0.22)})"/>`;
+  const open = (pts: V2[]) => 'M' + pts.map(([x, y]) => `${fmt(x)} ${fmt(-y)}`).join('L');
 
   // ---- rims
   const hingeY = hi * (acetate ? 0.72 : 0.6);
   for (const side of [1, -1] as const) {
     const inner = lenses[side === 1 ? 0 : 1];
+    const pos = (pts: V2[]) => pts.map(([x, y]) => [side * x, y] as V2);
     if (acetate) {
       const outer = outerOf(side);
-      back.push(path(outer));
+      solids.push(outer);
+      holes.push(inner);
       grow(outer);
-      // temple stub cut at the hinge
-      const ox = outerEdge(outer.map(([x, y]) => [side * x, y] as V2), hingeY);
-      const x0 = side * (ox - 1.5 * k);
+      // temple stub cut at the hinge: starts inside the rim, never reaches the lens
+      const ox = outerEdge(pos(outer), hingeY);
       const x1 = side * (ox + 3.2 * k);
-      const h = 3.4 * k;
-      back.push(`M${fmt(Math.min(x0, x1))} ${fmt(-hingeY - h / 2)}H${fmt(Math.max(x0, x1))}V${fmt(-hingeY + h / 2)}H${fmt(Math.min(x0, x1))}Z`);
+      solids.push(rect(side * (ox - 1.5 * k), x1, hingeY - 1.7 * k, hingeY + 1.7 * k));
       bbox.x = Math.max(bbox.x, Math.abs(x1));
       front.push(`<path d="${path(outer)}" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".28"/>`);
       front.push(`<path d="${path(inner)}" fill="none" stroke="#000" stroke-opacity=".55" stroke-width=".32"/>`);
       front.push(`<path d="${path(offsetVar(inner, () => 0.45 * k))}" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width=".35"/>`);
       if (fin.rivets) {
-        const ix = side * outerEdge(inner.map(([x, y]) => [side * x, y] as V2), hingeY);
-        const mx = (ix + side * ox) / 2;
+        const ix = outerEdge(pos(inner), hingeY);
+        const mx = side * ((ix + ox) / 2);
         for (const dx of [-1.25, 1.25]) {
           front.push(`<circle cx="${fmt(mx + dx * k)}" cy="${fmt(-hingeY)}" r="${fmt(0.72 * k)}" fill="url(#${id}riv)"/>`);
         }
       }
+    } else if (rimless) {
+      // drilled lens: only its edge shows, with the screws of the bridge and of the temple
+      front.push(`<path d="${path(inner)}" fill="none" stroke="#7d868f" stroke-opacity=".7" stroke-width=".3"/>`);
+      front.push(`<path d="${path(offsetVar(inner, () => -0.5 * k))}" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width=".25"/>`);
+      grow(inner);
+      const y = hingeY * 0.55;
+      const ex = side * outerEdge(pos(inner), y);
+      front.push(metalStroke(`M${fmt(ex - side * 2.6 * k)} ${fmt(-y)}L${fmt(ex + side * 3.8 * k)} ${fmt(-y - 0.5 * k)}`, wire * 1.2));
+      front.push(`<circle cx="${fmt(ex - side * 2 * k)}" cy="${fmt(-y)}" r="${fmt(0.75 * k)}" fill="url(#${id}riv)"/>`);
+      bbox.x = Math.max(bbox.x, Math.abs(ex) + 4 * k);
     } else {
       front.push(metalStroke(path(inner), wire));
       grow(inner, wire / 2);
-      // end piece and hinge block where the temple was
-      const ex = side * outerEdge(inner.map(([x, y]) => [side * x, y] as V2), hingeY * 0.9);
-      const y = -hingeY * 0.9;
-      front.push(metalStroke(`M${fmt(ex)} ${fmt(y)}L${fmt(ex + side * 3.4 * k)} ${fmt(y - 0.6 * k)}`, wire * 1.15));
-      front.push(`<rect x="${fmt(Math.min(ex + side * 2.4 * k, ex + side * 4.6 * k))}" y="${fmt(y - 1.6 * k)}" width="${fmt(2.2 * k)}" height="${fmt(2 * k)}" rx="${fmt(0.5 * k)}" fill="url(#${id}met)"/>`);
+      const y = hingeY * 0.9;
+      const ex = side * outerEdge(pos(inner), y);
+      front.push(metalStroke(`M${fmt(ex)} ${fmt(-y)}L${fmt(ex + side * 3.4 * k)} ${fmt(-y - 0.6 * k)}`, wire * 1.15));
+      front.push(`<rect x="${fmt(Math.min(ex + side * 2.4 * k, ex + side * 4.6 * k))}" y="${fmt(-y - 1.6 * k)}" width="${fmt(2.2 * k)}" height="${fmt(2 * k)}" rx="${fmt(0.5 * k)}" fill="url(#${id}met)"/>`);
       bbox.x = Math.max(bbox.x, Math.abs(ex) + 4.8 * k);
     }
     if (shape.kind === 'browline') {
@@ -242,14 +272,14 @@ export function drawFrame(shape: Shape, k: number): Drawn {
         return [x, y + t] as V2;
       });
       const lower = top.slice().reverse().map(([x, y]) => [x, y - 0.9 * k] as V2);
-      back.push(path([...upper, ...lower]));
+      const brow = [...upper, ...lower];
+      solids.push(brow);
       grow(upper);
-      // stub
       const ox = Math.max(...upper.map((p) => side * p[0]));
       const sy = ymax * 0.82;
-      back.push(`M${fmt(side * (ox - 2 * k))} ${fmt(-sy - 1.8 * k)}H${fmt(side * (ox + 3 * k))}V${fmt(-sy + 1.8 * k)}H${fmt(side * (ox - 2 * k))}Z`);
+      solids.push(rect(side * (ox - 2 * k), side * (ox + 3 * k), sy - 1.8 * k, sy + 1.8 * k));
       bbox.x = Math.max(bbox.x, ox + 3 * k);
-      front.push(`<path d="${path([...upper, ...lower])}" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".25"/>`);
+      front.push(`<path d="${path(brow)}" fill="none" stroke="#000" stroke-opacity=".45" stroke-width=".25"/>`);
       if (fin.rivets) {
         for (const dx of [-1.3, 1.3]) {
           front.push(`<circle cx="${fmt(side * (ox - 5 * k) + dx * k)}" cy="${fmt(-(ymax + 2.6 * k))}" r="${fmt(0.7 * k)}" fill="url(#${id}riv)"/>`);
@@ -258,7 +288,7 @@ export function drawFrame(shape: Shape, k: number): Drawn {
     }
     if (shape.pads) {
       const px = side * (g + 0.4 * k);
-      const py = 6 * k; // svg y, below the lens centre
+      const py = 6 * k;
       front.push(
         `<path d="M${fmt(side * (g + 1.2 * k))} ${fmt(-2 * k)}Q${fmt(side * (g - 0.8 * k))} ${fmt(1 * k)} ${fmt(px)} ${fmt(py - 3 * k)}" fill="none" stroke="url(#${id}met)" stroke-width="${fmt(0.55 * k)}"/>`,
         `<ellipse cx="${fmt(px)}" cy="${fmt(py)}" rx="${fmt(1.7 * k)}" ry="${fmt(3.5 * k)}" transform="rotate(${side * -16} ${fmt(px)} ${fmt(py)})" fill="#9aa0a6" fill-opacity=".22" stroke="#6b7076" stroke-width=".2"/>`
@@ -268,13 +298,13 @@ export function drawFrame(shape: Shape, k: number): Drawn {
 
   // ---- bridge
   const bt = (shape.bridgeTop ?? 12) * k;
-  // a solid bridge starts flush with the top of the rims on the nose side
   const noseTop = Math.max(...right.filter((p) => p[0] < Math.min(...right.map((q) => q[0])) + 7 * k).map((p) => p[1]));
-  const solid = (_top: number, thick: number, lift: number) => {
+  /** solid acetate bridge, flush with the top of the rims, reaching 1.5 mm into them */
+  const solid = (thick: number, lift: number): V2[] => {
     const top = noseTop - 0.8 * k;
-    const xt = edgeX(top, 3.2 * k);
-    const xb = edgeX(top - thick, 3.2 * k);
-    return `M${fmt(-xt)} ${fmt(-top)}H${fmt(xt)}L${fmt(xb)} ${fmt(-(top - thick))}Q0 ${fmt(-(top - thick + lift))} ${fmt(-xb)} ${fmt(-(top - thick))}Z`;
+    const xt = edgeX(top - 0.6 * k, 1.5 * k);
+    const xb = edgeX(top - thick, 1.5 * k);
+    return [[-xt, top], [xt, top], ...quad([xb, top - thick], [0, top - thick + lift], [-xb, top - thick])];
   };
   const wireArc = (yEnd: number, lift: number) => {
     const x = edgeX(yEnd, 0.2 * k);
@@ -282,16 +312,20 @@ export function drawFrame(shape: Shape, k: number): Drawn {
   };
   switch (shape.bridge) {
     case 'keyhole':
-      back.push(solid(bt, 7.5 * k, 5.5 * k));
+      solids.push(solid(7.5 * k, 5.5 * k));
       break;
     case 'saddle':
-      back.push(solid(bt, 8.5 * k, 3.5 * k));
+      solids.push(solid(8.5 * k, 3.5 * k));
       break;
     case 'arch':
-      back.push(solid(bt, 9 * k, 5 * k));
+      solids.push(solid(9 * k, 5 * k));
       break;
     case 'wire-arch':
       front.push(metalStroke(wireArc(bt - 4 * k, 8 * k), wire * 1.1));
+      if (rimless) {
+        const x = edgeX(bt - 4 * k, 0);
+        for (const s of [1, -1]) front.push(`<circle cx="${fmt(s * (x + 1.6 * k))}" cy="${fmt(-(bt - 4 * k))}" r="${fmt(0.75 * k)}" fill="url(#${id}riv)"/>`);
+      }
       break;
     case 'double': {
       front.push(metalStroke(wireArc(-1 * k, 8 * k), wire));
@@ -302,32 +336,27 @@ export function drawFrame(shape: Shape, k: number): Drawn {
     case 'browline': {
       front.push(metalStroke(wireArc(bt - 8 * k, 7 * k), wire * 1.2));
       const x = edgeX(bt, 0.5 * k);
-      back.push(`M${fmt(-x)} ${fmt(-(bt + 2.2 * k))}H${fmt(x)}V${fmt(-(bt - 2.4 * k))}H${fmt(-x)}Z`);
+      solids.push(rect(-x, x, bt - 2.4 * k, bt + 2.2 * k));
       break;
     }
   }
+  void open;
 
   // ---- assemble
   const lensTint = `<path d="${lenses.map(path).join('')}" fill="#5b6670" fill-opacity=".05"/>`;
   let acetateLayer = '';
-  if (back.length) {
-    // the pieces overlap (rims, bridge, stubs): their union is built as a mask, then the material fills it
-    defs.push(
-      `<mask id="${id}back" maskUnits="userSpaceOnUse" x="-130" y="-70" width="260" height="140"><g fill="#fff">${back.map((d) => `<path d="${d}"/>`).join('')}</g></mask>`
-    );
-    const bx = bbox.x + 2;
-    const box = `x="${fmt(-bx)}" y="${fmt(-bbox.yMax - 2)}" width="${fmt(2 * bx)}" height="${fmt(bbox.yMax - bbox.yMin + 4)}"`;
-    const base = tortoise ? `<rect ${box} fill="#000" filter="url(#${id}tort)"/>` : `<rect ${box} fill="${ACETATE_BASE[ac]}"/>`;
-    const fade = ac === 'ecaille-degrade' ? `<rect ${box} fill="url(#${id}dg)"/>` : '';
-    acetateLayer = `<g mask="url(#${id}lens)"><g mask="url(#${id}back)">${base}${fade}<rect ${box} fill="url(#${id}hl)"/></g></g>`;
+  if (solids.length) {
+    const d = [...solids.map(ccw), ...holes.map(cw)].map(path).join('');
+    const base = tortoise ? `<path d="${d}" fill="#000" filter="url(#${id}tort)"/>` : `<path d="${d}" fill="${ACETATE_BASE[ac]}"/>`;
+    const fade = ac === 'ecaille-degrade' ? `<path d="${d}" fill="url(#${id}dg)"/>` : '';
+    acetateLayer = `${base}${fade}<path d="${d}" fill="url(#${id}hl)"/>`;
   }
-  const lensW = Math.round(maxX - minX + 1);
   return {
     defs: defs.join(''),
     svg: lensTint + acetateLayer + front.join(''),
     width: bbox.x * 2,
     height: bbox.yMax - bbox.yMin,
     centerY: -(bbox.yMax + bbox.yMin) / 2,
-    marking: `${lensW}□${Math.round(gap)}`,
+    marking: `${Math.round(maxX - minX + 1)}□${Math.round(gap)}`,
   };
 }
