@@ -32,6 +32,13 @@ export const ellipse = (a: number, b: number, n = 24): V2[] =>
     return [a * Math.cos(t), b * Math.sin(t)] as V2;
   });
 
+/** surface of the frame: acetate colour, metal tone, rivets on the front */
+export interface Finish {
+  acetate?: 'noir' | 'brun' | 'ecaille' | 'miel' | 'ecaille-degrade';
+  metal?: 'or' | 'argent' | 'noir' | 'canon';
+  rivets?: boolean;
+}
+
 export interface Shape {
   id: string;
   name: string;
@@ -50,6 +57,9 @@ export interface Shape {
   /** y of the bridge top above lens centre, mm */
   bridgeTop?: number;
   pads?: boolean;
+  finish: Finish;
+  /** seen in the reference video */
+  reference?: boolean;
 }
 
 const smooth = (u: number) => {
@@ -58,6 +68,71 @@ const smooth = (u: number) => {
 };
 
 export const SHAPES: Shape[] = [
+  // the five frames of the reference video, in its order
+  {
+    id: 'panto',
+    name: 'Panto rond',
+    kind: 'metal',
+    poly: ellipse(23.5, 23, 96),
+    wire: 1.25,
+    gap: 20,
+    bridge: 'wire-arch',
+    bridgeTop: 10,
+    pads: true,
+    finish: { metal: 'noir' },
+    reference: true,
+  },
+  {
+    id: 'aviateur',
+    name: 'Aviateur',
+    kind: 'metal',
+    lens: [[-27, 8], [-25, -6], [-17, -19], [-4, -26], [8, -25], [19, -17], [27, -4], [29, 9], [24, 19], [10, 24], [-10, 23], [-22, 18]],
+    wire: 0.95,
+    gap: 15,
+    bridge: 'double',
+    bridgeTop: 21,
+    pads: true,
+    finish: { metal: 'canon' },
+    reference: true,
+  },
+  {
+    id: 'browline',
+    name: 'Browline bicolore',
+    kind: 'browline',
+    poly: roundedPoly([[-24, 17, 5], [-22, -15, 13], [25, -15, 13], [25, 17, 5]]),
+    wire: 0.9,
+    gap: 20,
+    bridge: 'browline',
+    bridgeTop: 16,
+    pads: true,
+    finish: { acetate: 'noir', metal: 'or', rivets: true },
+    reference: true,
+  },
+  {
+    id: 'carre-rivets',
+    name: 'Carré épais à rivets',
+    kind: 'acetate',
+    poly: roundedPoly([[-24, 18, 4], [-23, -18, 5], [26, -18, 5], [26, 18, 4]]),
+    rim: (_x, y) => 6.4 + 1.2 * smooth((y + 4) / 20),
+    gap: 17,
+    bridge: 'saddle',
+    bridgeTop: 14,
+    finish: { acetate: 'brun', rivets: true },
+    reference: true,
+  },
+  {
+    id: 'rectangle-ecaille',
+    name: 'Rectangle écaille',
+    kind: 'acetate',
+    poly: roundedPoly([[-24, 15, 4], [-21, -16, 9], [26, -16, 9], [27, 16, 4]]),
+    rim: (_x, y) => 3.4 + 1.8 * smooth((y + 6) / 20),
+    gap: 17,
+    bridge: 'saddle',
+    bridgeTop: 12,
+    finish: { acetate: 'ecaille-degrade' },
+    reference: true,
+  },
+  // the other classic families
   {
     id: 'trapeze',
     name: 'Trapèze acétate',
@@ -67,39 +142,7 @@ export const SHAPES: Shape[] = [
     gap: 18,
     bridge: 'keyhole',
     bridgeTop: 14,
-  },
-  {
-    id: 'browline',
-    name: 'Browline',
-    kind: 'browline',
-    poly: roundedPoly([[-24, 17, 5], [-22, -14, 13], [25, -14, 13], [25, 17, 5]]),
-    wire: 0.9,
-    gap: 20,
-    bridge: 'browline',
-    bridgeTop: 16,
-    pads: true,
-  },
-  {
-    id: 'aviateur',
-    name: 'Aviateur',
-    kind: 'metal',
-    lens: [[-27, 8], [-25, -6], [-17, -19], [-4, -26], [8, -25], [19, -17], [27, -4], [29, 9], [24, 19], [10, 24], [-10, 23], [-22, 18]],
-    wire: 1.1,
-    gap: 15,
-    bridge: 'double',
-    bridgeTop: 21,
-    pads: true,
-  },
-  {
-    id: 'panto',
-    name: 'Panto rond',
-    kind: 'metal',
-    poly: ellipse(24, 24, 32),
-    wire: 1,
-    gap: 20,
-    bridge: 'wire-arch',
-    bridgeTop: 9,
-    pads: true,
+    finish: { acetate: 'noir', rivets: true },
   },
   {
     id: 'oeil-de-chat',
@@ -110,16 +153,42 @@ export const SHAPES: Shape[] = [
     gap: 18,
     bridge: 'saddle',
     bridgeTop: 12,
+    finish: { acetate: 'ecaille' },
   },
   {
-    id: 'carre-epais',
-    name: 'Carré épais',
+    id: 'ovale-retro',
+    name: 'Ovale rétro',
     kind: 'acetate',
-    poly: roundedPoly([[-24, 21, 7], [-24, -21, 7], [25, -21, 7], [25, 21, 7]]),
-    rim: () => 6.8,
-    gap: 17,
-    bridge: 'saddle',
+    poly: ellipse(26, 21, 96),
+    rim: () => 4.6,
+    gap: 19,
+    bridge: 'keyhole',
     bridgeTop: 13,
+    finish: { acetate: 'ecaille' },
+  },
+  {
+    id: 'pilote-carre',
+    name: 'Pilote arrondi',
+    kind: 'acetate',
+    poly: roundedPoly([[-23, 20, 9], [-18, -20, 16], [25, -18, 16], [27, 20, 9]]),
+    rim: (_x, y) => 3.4 + 2.2 * smooth((y + 4) / 22),
+    gap: 17,
+    bridge: 'keyhole',
+    bridgeTop: 13,
+    finish: { acetate: 'miel' },
+  },
+  {
+    id: 'papillon',
+    name: 'Papillon',
+    kind: 'acetate',
+    lens: ([[-21, 14], [-24, 2], [-19, -14], [-6, -24], [10, -25], [24, -18], [29, -4], [30, 12], [26, 24], [12, 26], [-6, 22]] as V2[]).map(
+      ([x, y]) => [x * 0.94, y * 0.88] as V2
+    ),
+    rim: (x, y) => 3.2 + 3.4 * smooth((x + 6) / 34) * smooth((y + 6) / 18),
+    gap: 16,
+    bridge: 'arch',
+    bridgeTop: 16,
+    finish: { acetate: 'noir' },
   },
   {
     id: 'hexagonale',
@@ -131,27 +200,7 @@ export const SHAPES: Shape[] = [
     bridge: 'wire-arch',
     bridgeTop: 14,
     pads: true,
-  },
-  {
-    id: 'papillon',
-    name: 'Papillon',
-    kind: 'acetate',
-    lens: [[-21, 14], [-24, 2], [-19, -14], [-6, -24], [10, -25], [24, -18], [29, -4], [30, 12], [26, 24], [12, 26], [-6, 22]],
-    rim: (x, y) => 3.2 + 3.4 * smooth((x + 6) / 34) * smooth((y + 6) / 18),
-    gap: 16,
-    bridge: 'arch',
-    bridgeTop: 16,
-  },
-  {
-    id: 'navigator',
-    name: 'Navigator double pont',
-    kind: 'metal',
-    poly: roundedPoly([[-24, 19, 6], [-22, -18, 14], [26, -18, 14], [27, 19, 7]]),
-    wire: 1.1,
-    gap: 15,
-    bridge: 'double',
-    bridgeTop: 19,
-    pads: true,
+    finish: { metal: 'or' },
   },
   {
     id: 'rectangle-fin',
@@ -163,25 +212,6 @@ export const SHAPES: Shape[] = [
     bridge: 'wire-arch',
     bridgeTop: 11,
     pads: true,
-  },
-  {
-    id: 'ovale-retro',
-    name: 'Ovale rétro',
-    kind: 'acetate',
-    poly: ellipse(26, 21),
-    rim: () => 4.6,
-    gap: 19,
-    bridge: 'keyhole',
-    bridgeTop: 13,
-  },
-  {
-    id: 'pilote-carre',
-    name: 'Pilote arrondi',
-    kind: 'acetate',
-    poly: roundedPoly([[-23, 20, 9], [-18, -20, 16], [25, -18, 16], [27, 20, 9]]),
-    rim: (_x, y) => 3.4 + 2.2 * smooth((y + 4) / 22),
-    gap: 17,
-    bridge: 'keyhole',
-    bridgeTop: 13,
+    finish: { metal: 'argent' },
   },
 ];
