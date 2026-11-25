@@ -1,0 +1,2673 @@
+{
+ "features": [
+  "ratio",
+  "roundness",
+  "presence",
+  "top",
+  "lift"
+ ],
+ "pca": {
+  "mean": [
+   0.8013457224188275,
+   0.9124481349029833,
+   3.453778095361174,
+   1.5479752559231705,
+   0.09128828279054725
+  ],
+  "sd": [
+   0.12339164964294505,
+   0.06579893108229845,
+   1.9012484884175773,
+   1.6835098810270368,
+   0.11729556244395106
+  ],
+  "axes": [
+   [
+    0.5336203183899968,
+    0.5536496980585994,
+    -0.30224486422306657,
+    -0.40792672590032925,
+    -0.38854239921532113
+   ],
+   [
+    0.4055189154235167,
+    0.19021017022500325,
+    0.8528267534783099,
+    0.24996475153525896,
+    -0.09787058760563627
+   ]
+  ],
+  "explained": [
+   0.5478604198696587,
+   0.1798116975765168
+  ]
+ },
+ "templates": [
+  {
+   "id": "panto-acetate",
+   "name": "Panto à pont trou de serrure",
+   "kit": true,
+   "form": "panto",
+   "family": "Rondes",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "ecaille",
+    "rivets": true
+   },
+   "era": "années 1910",
+   "mood": [
+    "intellectuel",
+    "créatif"
+   ],
+   "descriptor": {
+    "ratio": 0.878,
+    "roundness": 0.959,
+    "presence": 4.153,
+    "top": 0.752,
+    "lift": 0.044
+   },
+   "map": [
+    0.964,
+    0.621
+   ]
+  },
+  {
+   "id": "rond-epais",
+   "name": "Rond épais",
+   "kit": true,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": "années 1930",
+   "mood": [
+    "créatif",
+    "confiant"
+   ],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 6.2,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.74,
+    1.913
+   ]
+  },
+  {
+   "id": "rond-metal",
+   "name": "Rond métal",
+   "kit": true,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "noir"
+   },
+   "era": "années 1930",
+   "mood": [
+    "créatif",
+    "intellectuel"
+   ],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 1.125,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    2.547,
+    -0.364
+   ]
+  },
+  {
+   "id": "windsor",
+   "name": "Windsor",
+   "kit": true,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "browline",
+   "size": "fine",
+   "finish": {
+    "acetate": "ecaille",
+    "metal": "or"
+   },
+   "era": "années 1920",
+   "mood": [
+    "intellectuel",
+    "glamour"
+   ],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0
+   },
+   "map": [
+    1.006,
+    1.309
+   ]
+  },
+  {
+   "id": "boston",
+   "name": "Boston",
+   "kit": true,
+   "form": "boston",
+   "family": "Rondes",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "miel"
+   },
+   "era": "années 1930",
+   "mood": [
+    "créatif",
+    "décontracté"
+   ],
+   "descriptor": {
+    "ratio": 0.851,
+    "roundness": 0.945,
+    "presence": 4.239,
+    "top": 1.329,
+    "lift": 0.1
+   },
+   "map": [
+    0.386,
+    0.569
+   ]
+  },
+  {
+   "id": "aviateur",
+   "name": "Aviateur",
+   "kit": true,
+   "form": "aviateur",
+   "family": "Aviateurs",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": "1937",
+   "mood": [
+    "confiant",
+    "décontracté"
+   ],
+   "descriptor": {
+    "ratio": 0.902,
+    "roundness": 0.976,
+    "presence": 0.855,
+    "top": 0,
+    "lift": 0.09
+   },
+   "map": [
+    1.765,
+    -0.879
+   ]
+  },
+  {
+   "id": "browline",
+   "name": "Browline bicolore",
+   "kit": true,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": "1947",
+   "mood": [
+    "professionnel",
+    "confiant"
+   ],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.054
+   },
+   "map": [
+    -2.223,
+    -0.43
+   ]
+  },
+  {
+   "id": "trapeze",
+   "name": "Trapèze acétate",
+   "kit": true,
+   "form": "trapeze",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "rivets": true
+   },
+   "era": "1952",
+   "mood": [
+    "confiant",
+    "décontracté"
+   ],
+   "descriptor": {
+    "ratio": 0.763,
+    "roundness": 0.867,
+    "presence": 5.162,
+    "top": 3.721,
+    "lift": 0.171
+   },
+   "map": [
+    -1.61,
+    0.765
+   ]
+  },
+  {
+   "id": "carre-rivets",
+   "name": "Carré épais à rivets",
+   "kit": true,
+   "form": "carre",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "brun",
+    "rivets": true
+   },
+   "era": "années 1950",
+   "mood": [
+    "confiant",
+    "créatif"
+   ],
+   "descriptor": {
+    "ratio": 0.777,
+    "roundness": 0.832,
+    "presence": 6.5,
+    "top": 0.999,
+    "lift": 0.009
+   },
+   "map": [
+    -0.861,
+    1.041
+   ]
+  },
+  {
+   "id": "oeil-de-chat",
+   "name": "Œil de chat",
+   "kit": true,
+   "form": "oeil-de-chat",
+   "family": "Relevées",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "ecaille"
+   },
+   "era": "années 1950",
+   "mood": [
+    "glamour",
+    "créatif"
+   ],
+   "descriptor": {
+    "ratio": 0.633,
+    "roundness": 0.847,
+    "presence": 4.418,
+    "top": 2.026,
+    "lift": 0.495
+   },
+   "map": [
+    -2.885,
+    -0.576
+   ]
+  },
+  {
+   "id": "d-frame",
+   "name": "D-frame",
+   "kit": true,
+   "form": "d-frame",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "ecaille-degrade"
+   },
+   "era": "années 1950",
+   "mood": [
+    "confiant",
+    "créatif"
+   ],
+   "descriptor": {
+    "ratio": 0.762,
+    "roundness": 0.879,
+    "presence": 4.651,
+    "top": 1.597,
+    "lift": 0.138
+   },
+   "map": [
+    -0.807,
+    0.281
+   ]
+  },
+  {
+   "id": "pilote-acetate",
+   "name": "Pilote acétate",
+   "kit": true,
+   "form": "pilote-carre",
+   "family": "Aviateurs",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "miel"
+   },
+   "era": "1957",
+   "mood": [
+    "décontracté",
+    "glamour"
+   ],
+   "descriptor": {
+    "ratio": 0.809,
+    "roundness": 0.913,
+    "presence": 4.496,
+    "top": 2.163,
+    "lift": 0.163
+   },
+   "map": [
+    -0.514,
+    0.526
+   ]
+  },
+  {
+   "id": "pilote-metal",
+   "name": "Aviateur carré",
+   "kit": true,
+   "form": "pilote-carre",
+   "family": "Aviateurs",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "or"
+   },
+   "era": "1957",
+   "mood": [
+    "confiant",
+    "décontracté"
+   ],
+   "descriptor": {
+    "ratio": 0.809,
+    "roundness": 0.913,
+    "presence": 0.99,
+    "top": 0,
+    "lift": 0.163
+   },
+   "map": [
+    0.567,
+    -1.368
+   ]
+  },
+  {
+   "id": "nylor",
+   "name": "Rectangle semi-cerclé",
+   "kit": true,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": "années 1960",
+   "mood": [
+    "professionnel",
+    "intellectuel"
+   ],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.054
+   },
+   "map": [
+    -1.363,
+    -1.519
+   ]
+  },
+  {
+   "id": "papillon",
+   "name": "Papillon",
+   "kit": true,
+   "form": "papillon",
+   "family": "Relevées",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": "années 1960",
+   "mood": [
+    "glamour",
+    "confiant"
+   ],
+   "descriptor": {
+    "ratio": 0.892,
+    "roundness": 0.958,
+    "presence": 3.98,
+    "top": 1.586,
+    "lift": 0.135
+   },
+   "map": [
+    0.545,
+    0.638
+   ]
+  },
+  {
+   "id": "hexagone",
+   "name": "Hexagone fin",
+   "kit": true,
+   "form": "hexagone",
+   "family": "Géométriques",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "or"
+   },
+   "era": "années 1970",
+   "mood": [
+    "créatif",
+    "glamour"
+   ],
+   "descriptor": {
+    "ratio": 0.87,
+    "roundness": 0.94,
+    "presence": 1.08,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.585,
+    -0.912
+   ]
+  },
+  {
+   "id": "carre-oversize",
+   "name": "Carré oversize",
+   "kit": true,
+   "form": "carre-doux",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "oversize",
+   "finish": {
+    "acetate": "ecaille"
+   },
+   "era": "années 1970",
+   "mood": [
+    "glamour",
+    "confiant"
+   ],
+   "descriptor": {
+    "ratio": 0.821,
+    "roundness": 0.912,
+    "presence": 5.06,
+    "top": 0,
+    "lift": 0.009
+   },
+   "map": [
+    0.478,
+    0.624
+   ]
+  },
+  {
+   "id": "octogone",
+   "name": "Octogone",
+   "kit": true,
+   "form": "octogone",
+   "family": "Géométriques",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": "années 1980",
+   "mood": [
+    "créatif",
+    "intellectuel"
+   ],
+   "descriptor": {
+    "ratio": 0.9,
+    "roundness": 0.967,
+    "presence": 1.035,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.951,
+    -0.756
+   ]
+  },
+  {
+   "id": "sans-cercle",
+   "name": "Rond sans cercle",
+   "kit": true,
+   "form": "ovale",
+   "family": "Rondes",
+   "construction": "rimless",
+   "size": "fine",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": "années 1990",
+   "mood": [
+    "intellectuel",
+    "professionnel"
+   ],
+   "descriptor": {
+    "ratio": 0.75,
+    "roundness": 0.969,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.354,
+    -1.344
+   ]
+  },
+  {
+   "id": "rectangle-ecaille",
+   "name": "Rectangle écaille",
+   "kit": true,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "ecaille-degrade"
+   },
+   "era": "années 1990",
+   "mood": [
+    "professionnel",
+    "confiant"
+   ],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 4.277,
+    "top": 1.752,
+    "lift": 0.054
+   },
+   "map": [
+    -1.607,
+    -0.429
+   ]
+  },
+  {
+   "id": "flat-top",
+   "name": "Flat top",
+   "kit": true,
+   "form": "flat-top",
+   "family": "Géométriques",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": "années 2010",
+   "mood": [
+    "confiant",
+    "créatif"
+   ],
+   "descriptor": {
+    "ratio": 0.615,
+    "roundness": 0.819,
+    "presence": 5.498,
+    "top": 4.081,
+    "lift": 0.238
+   },
+   "map": [
+    -3.018,
+    0.288
+   ]
+  },
+  {
+   "id": "rond-acetate-standard",
+   "name": "Rond",
+   "kit": false,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 5,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.931,
+    1.374
+   ]
+  },
+  {
+   "id": "rond-metal-standard",
+   "name": "Rond métal cerclé",
+   "kit": false,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    2.576,
+    -0.445
+   ]
+  },
+  {
+   "id": "rond-browline-standard",
+   "name": "Rond mixte (browline, windsor)",
+   "kit": false,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0
+   },
+   "map": [
+    1.006,
+    1.309
+   ]
+  },
+  {
+   "id": "rond-semi-standard",
+   "name": "Rond semi-cerclé (nylor)",
+   "kit": false,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0
+   },
+   "map": [
+    1.866,
+    0.22
+   ]
+  },
+  {
+   "id": "rond-rimless-standard",
+   "name": "Rond sans cercle",
+   "kit": false,
+   "form": "rond",
+   "family": "Rondes",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.979,
+    "roundness": 0.999,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    2.597,
+    -0.505
+   ]
+  },
+  {
+   "id": "panto-acetate-standard",
+   "name": "Panto",
+   "kit": false,
+   "form": "panto",
+   "family": "Rondes",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.878,
+    "roundness": 0.959,
+    "presence": 4.153,
+    "top": 0.752,
+    "lift": 0.044
+   },
+   "map": [
+    0.964,
+    0.621
+   ]
+  },
+  {
+   "id": "panto-metal-standard",
+   "name": "Panto métal cerclé",
+   "kit": false,
+   "form": "panto",
+   "family": "Rondes",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.878,
+    "roundness": 0.959,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.044
+   },
+   "map": [
+    1.656,
+    -0.929
+   ]
+  },
+  {
+   "id": "panto-browline-standard",
+   "name": "Panto mixte (browline, windsor)",
+   "kit": false,
+   "form": "panto",
+   "family": "Rondes",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.878,
+    "roundness": 0.959,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.044
+   },
+   "map": [
+    0.086,
+    0.825
+   ]
+  },
+  {
+   "id": "panto-semi-standard",
+   "name": "Panto semi-cerclé (nylor)",
+   "kit": false,
+   "form": "panto",
+   "family": "Rondes",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.878,
+    "roundness": 0.959,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.044
+   },
+   "map": [
+    0.946,
+    -0.264
+   ]
+  },
+  {
+   "id": "panto-rimless-standard",
+   "name": "Panto sans cercle",
+   "kit": false,
+   "form": "panto",
+   "family": "Rondes",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.878,
+    "roundness": 0.959,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.044
+   },
+   "map": [
+    1.677,
+    -0.99
+   ]
+  },
+  {
+   "id": "boston-acetate-standard",
+   "name": "Boston",
+   "kit": false,
+   "form": "boston",
+   "family": "Rondes",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.851,
+    "roundness": 0.945,
+    "presence": 4.239,
+    "top": 1.329,
+    "lift": 0.1
+   },
+   "map": [
+    0.386,
+    0.569
+   ]
+  },
+  {
+   "id": "boston-metal-standard",
+   "name": "Boston métal cerclé",
+   "kit": false,
+   "form": "boston",
+   "family": "Rondes",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.851,
+    "roundness": 0.945,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.1
+   },
+   "map": [
+    1.232,
+    -1.106
+   ]
+  },
+  {
+   "id": "boston-browline-standard",
+   "name": "Boston mixte (browline, windsor)",
+   "kit": false,
+   "form": "boston",
+   "family": "Rondes",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.851,
+    "roundness": 0.945,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.1
+   },
+   "map": [
+    -0.338,
+    0.648
+   ]
+  },
+  {
+   "id": "boston-semi-standard",
+   "name": "Boston semi-cerclé (nylor)",
+   "kit": false,
+   "form": "boston",
+   "family": "Rondes",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.851,
+    "roundness": 0.945,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.1
+   },
+   "map": [
+    0.522,
+    -0.441
+   ]
+  },
+  {
+   "id": "boston-rimless-standard",
+   "name": "Boston sans cercle",
+   "kit": false,
+   "form": "boston",
+   "family": "Rondes",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.851,
+    "roundness": 0.945,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.1
+   },
+   "map": [
+    1.254,
+    -1.166
+   ]
+  },
+  {
+   "id": "ovale-acetate-standard",
+   "name": "Ovale",
+   "kit": false,
+   "form": "ovale",
+   "family": "Rondes",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.75,
+    "roundness": 0.969,
+    "presence": 4.4,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    0.783,
+    0.266
+   ]
+  },
+  {
+   "id": "ovale-metal-standard",
+   "name": "Ovale métal cerclé",
+   "kit": false,
+   "form": "ovale",
+   "family": "Rondes",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.75,
+    "roundness": 0.969,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.333,
+    -1.283
+   ]
+  },
+  {
+   "id": "ovale-browline-standard",
+   "name": "Ovale mixte (browline, windsor)",
+   "kit": false,
+   "form": "ovale",
+   "family": "Rondes",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.75,
+    "roundness": 0.969,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0
+   },
+   "map": [
+    -0.237,
+    0.471
+   ]
+  },
+  {
+   "id": "ovale-semi-standard",
+   "name": "Ovale semi-cerclé (nylor)",
+   "kit": false,
+   "form": "ovale",
+   "family": "Rondes",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.75,
+    "roundness": 0.969,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0
+   },
+   "map": [
+    0.623,
+    -0.618
+   ]
+  },
+  {
+   "id": "ovale-rimless-standard",
+   "name": "Ovale sans cercle",
+   "kit": false,
+   "form": "ovale",
+   "family": "Rondes",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.75,
+    "roundness": 0.969,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.354,
+    -1.344
+   ]
+  },
+  {
+   "id": "carre-acetate-standard",
+   "name": "Carré",
+   "kit": false,
+   "form": "carre",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.777,
+    "roundness": 0.832,
+    "presence": 6.5,
+    "top": 0.999,
+    "lift": 0.009
+   },
+   "map": [
+    -0.861,
+    1.041
+   ]
+  },
+  {
+   "id": "carre-metal-standard",
+   "name": "Carré métal cerclé",
+   "kit": false,
+   "form": "carre",
+   "family": "Carrées et rectangulaires",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.777,
+    "roundness": 0.832,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.009
+   },
+   "map": [
+    0.264,
+    -1.599
+   ]
+  },
+  {
+   "id": "carre-browline-standard",
+   "name": "Carré mixte (browline, windsor)",
+   "kit": false,
+   "form": "carre",
+   "family": "Carrées et rectangulaires",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.777,
+    "roundness": 0.832,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.009
+   },
+   "map": [
+    -1.306,
+    0.155
+   ]
+  },
+  {
+   "id": "carre-semi-standard",
+   "name": "Carré semi-cerclé (nylor)",
+   "kit": false,
+   "form": "carre",
+   "family": "Carrées et rectangulaires",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.777,
+    "roundness": 0.832,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.009
+   },
+   "map": [
+    -0.446,
+    -0.934
+   ]
+  },
+  {
+   "id": "carre-rimless-standard",
+   "name": "Carré sans cercle",
+   "kit": false,
+   "form": "carre",
+   "family": "Carrées et rectangulaires",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.777,
+    "roundness": 0.832,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.009
+   },
+   "map": [
+    0.286,
+    -1.659
+   ]
+  },
+  {
+   "id": "carre-doux-acetate-standard",
+   "name": "Carré doux",
+   "kit": false,
+   "form": "carre-doux",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.821,
+    "roundness": 0.912,
+    "presence": 4.6,
+    "top": 0,
+    "lift": 0.009
+   },
+   "map": [
+    0.551,
+    0.418
+   ]
+  },
+  {
+   "id": "carre-doux-metal-standard",
+   "name": "Carré doux métal cerclé",
+   "kit": false,
+   "form": "carre-doux",
+   "family": "Carrées et rectangulaires",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.821,
+    "roundness": 0.912,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.009
+   },
+   "map": [
+    1.132,
+    -1.222
+   ]
+  },
+  {
+   "id": "carre-doux-browline-standard",
+   "name": "Carré doux mixte (browline, windsor)",
+   "kit": false,
+   "form": "carre-doux",
+   "family": "Carrées et rectangulaires",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.821,
+    "roundness": 0.912,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.009
+   },
+   "map": [
+    -0.438,
+    0.532
+   ]
+  },
+  {
+   "id": "carre-doux-semi-standard",
+   "name": "Carré doux semi-cerclé (nylor)",
+   "kit": false,
+   "form": "carre-doux",
+   "family": "Carrées et rectangulaires",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.821,
+    "roundness": 0.912,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.009
+   },
+   "map": [
+    0.422,
+    -0.557
+   ]
+  },
+  {
+   "id": "carre-doux-rimless-standard",
+   "name": "Carré doux sans cercle",
+   "kit": false,
+   "form": "carre-doux",
+   "family": "Carrées et rectangulaires",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.821,
+    "roundness": 0.912,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.009
+   },
+   "map": [
+    1.154,
+    -1.282
+   ]
+  },
+  {
+   "id": "rectangle-acetate-standard",
+   "name": "Rectangle",
+   "kit": false,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 4.277,
+    "top": 1.752,
+    "lift": 0.054
+   },
+   "map": [
+    -1.607,
+    -0.429
+   ]
+  },
+  {
+   "id": "rectangle-metal-standard",
+   "name": "Rectangle métal cerclé",
+   "kit": false,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.054
+   },
+   "map": [
+    -0.653,
+    -2.184
+   ]
+  },
+  {
+   "id": "rectangle-browline-standard",
+   "name": "Rectangle mixte (browline, windsor)",
+   "kit": false,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.054
+   },
+   "map": [
+    -2.223,
+    -0.43
+   ]
+  },
+  {
+   "id": "rectangle-semi-standard",
+   "name": "Rectangle semi-cerclé (nylor)",
+   "kit": false,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.054
+   },
+   "map": [
+    -1.363,
+    -1.519
+   ]
+  },
+  {
+   "id": "rectangle-rimless-standard",
+   "name": "Rectangle sans cercle",
+   "kit": false,
+   "form": "rectangle",
+   "family": "Carrées et rectangulaires",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.62,
+    "roundness": 0.822,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.054
+   },
+   "map": [
+    -0.632,
+    -2.244
+   ]
+  },
+  {
+   "id": "d-frame-acetate-standard",
+   "name": "D-frame",
+   "kit": false,
+   "form": "d-frame",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.762,
+    "roundness": 0.879,
+    "presence": 4.651,
+    "top": 1.597,
+    "lift": 0.138
+   },
+   "map": [
+    -0.807,
+    0.281
+   ]
+  },
+  {
+   "id": "d-frame-metal-standard",
+   "name": "D-frame métal cerclé",
+   "kit": false,
+   "form": "d-frame",
+   "family": "Carrées et rectangulaires",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.762,
+    "roundness": 0.879,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.138
+   },
+   "map": [
+    0.169,
+    -1.619
+   ]
+  },
+  {
+   "id": "d-frame-browline-standard",
+   "name": "D-frame mixte (browline, windsor)",
+   "kit": false,
+   "form": "d-frame",
+   "family": "Carrées et rectangulaires",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.762,
+    "roundness": 0.879,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.138
+   },
+   "map": [
+    -1.401,
+    0.135
+   ]
+  },
+  {
+   "id": "d-frame-semi-standard",
+   "name": "D-frame semi-cerclé (nylor)",
+   "kit": false,
+   "form": "d-frame",
+   "family": "Carrées et rectangulaires",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.762,
+    "roundness": 0.879,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.138
+   },
+   "map": [
+    -0.541,
+    -0.954
+   ]
+  },
+  {
+   "id": "d-frame-rimless-standard",
+   "name": "D-frame sans cercle",
+   "kit": false,
+   "form": "d-frame",
+   "family": "Carrées et rectangulaires",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.762,
+    "roundness": 0.879,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.138
+   },
+   "map": [
+    0.19,
+    -1.68
+   ]
+  },
+  {
+   "id": "trapeze-acetate-standard",
+   "name": "Trapèze",
+   "kit": false,
+   "form": "trapeze",
+   "family": "Carrées et rectangulaires",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.763,
+    "roundness": 0.867,
+    "presence": 5.162,
+    "top": 3.721,
+    "lift": 0.171
+   },
+   "map": [
+    -1.61,
+    0.765
+   ]
+  },
+  {
+   "id": "trapeze-metal-standard",
+   "name": "Trapèze métal cerclé",
+   "kit": false,
+   "form": "trapeze",
+   "family": "Carrées et rectangulaires",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.763,
+    "roundness": 0.867,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.171
+   },
+   "map": [
+    -0.038,
+    -1.679
+   ]
+  },
+  {
+   "id": "trapeze-browline-standard",
+   "name": "Trapèze mixte (browline, windsor)",
+   "kit": false,
+   "form": "trapeze",
+   "family": "Carrées et rectangulaires",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.763,
+    "roundness": 0.867,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.171
+   },
+   "map": [
+    -1.608,
+    0.075
+   ]
+  },
+  {
+   "id": "trapeze-semi-standard",
+   "name": "Trapèze semi-cerclé (nylor)",
+   "kit": false,
+   "form": "trapeze",
+   "family": "Carrées et rectangulaires",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.763,
+    "roundness": 0.867,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.171
+   },
+   "map": [
+    -0.748,
+    -1.014
+   ]
+  },
+  {
+   "id": "trapeze-rimless-standard",
+   "name": "Trapèze sans cercle",
+   "kit": false,
+   "form": "trapeze",
+   "family": "Carrées et rectangulaires",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.763,
+    "roundness": 0.867,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.171
+   },
+   "map": [
+    -0.016,
+    -1.739
+   ]
+  },
+  {
+   "id": "oeil-de-chat-acetate-standard",
+   "name": "Œil de chat",
+   "kit": false,
+   "form": "oeil-de-chat",
+   "family": "Relevées",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.633,
+    "roundness": 0.847,
+    "presence": 4.418,
+    "top": 2.026,
+    "lift": 0.495
+   },
+   "map": [
+    -2.885,
+    -0.576
+   ]
+  },
+  {
+   "id": "oeil-de-chat-metal-standard",
+   "name": "Œil de chat métal cerclé",
+   "kit": false,
+   "form": "oeil-de-chat",
+   "family": "Relevées",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.633,
+    "roundness": 0.847,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.495
+   },
+   "map": [
+    -1.842,
+    -2.435
+   ]
+  },
+  {
+   "id": "oeil-de-chat-browline-standard",
+   "name": "Œil de chat mixte (browline, windsor)",
+   "kit": false,
+   "form": "oeil-de-chat",
+   "family": "Relevées",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.633,
+    "roundness": 0.847,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.495
+   },
+   "map": [
+    -3.412,
+    -0.681
+   ]
+  },
+  {
+   "id": "oeil-de-chat-semi-standard",
+   "name": "Œil de chat semi-cerclé (nylor)",
+   "kit": false,
+   "form": "oeil-de-chat",
+   "family": "Relevées",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.633,
+    "roundness": 0.847,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.495
+   },
+   "map": [
+    -2.552,
+    -1.77
+   ]
+  },
+  {
+   "id": "oeil-de-chat-rimless-standard",
+   "name": "Œil de chat sans cercle",
+   "kit": false,
+   "form": "oeil-de-chat",
+   "family": "Relevées",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.633,
+    "roundness": 0.847,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.495
+   },
+   "map": [
+    -1.82,
+    -2.495
+   ]
+  },
+  {
+   "id": "papillon-acetate-standard",
+   "name": "Papillon",
+   "kit": false,
+   "form": "papillon",
+   "family": "Relevées",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.892,
+    "roundness": 0.958,
+    "presence": 3.98,
+    "top": 1.586,
+    "lift": 0.135
+   },
+   "map": [
+    0.545,
+    0.638
+   ]
+  },
+  {
+   "id": "papillon-metal-standard",
+   "name": "Papillon métal cerclé",
+   "kit": false,
+   "form": "papillon",
+   "family": "Relevées",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.892,
+    "roundness": 0.958,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.135
+   },
+   "map": [
+    1.411,
+    -0.959
+   ]
+  },
+  {
+   "id": "papillon-browline-standard",
+   "name": "Papillon mixte (browline, windsor)",
+   "kit": false,
+   "form": "papillon",
+   "family": "Relevées",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.892,
+    "roundness": 0.958,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.135
+   },
+   "map": [
+    -0.159,
+    0.795
+   ]
+  },
+  {
+   "id": "papillon-semi-standard",
+   "name": "Papillon semi-cerclé (nylor)",
+   "kit": false,
+   "form": "papillon",
+   "family": "Relevées",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.892,
+    "roundness": 0.958,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.135
+   },
+   "map": [
+    0.702,
+    -0.294
+   ]
+  },
+  {
+   "id": "papillon-rimless-standard",
+   "name": "Papillon sans cercle",
+   "kit": false,
+   "form": "papillon",
+   "family": "Relevées",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.892,
+    "roundness": 0.958,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.135
+   },
+   "map": [
+    1.433,
+    -1.019
+   ]
+  },
+  {
+   "id": "aviateur-acetate-standard",
+   "name": "Aviateur",
+   "kit": false,
+   "form": "aviateur",
+   "family": "Aviateurs",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.902,
+    "roundness": 0.976,
+    "presence": 4,
+    "top": 0,
+    "lift": 0.09
+   },
+   "map": [
+    1.265,
+    0.532
+   ]
+  },
+  {
+   "id": "aviateur-metal-standard",
+   "name": "Aviateur métal cerclé",
+   "kit": false,
+   "form": "aviateur",
+   "family": "Aviateurs",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.902,
+    "roundness": 0.976,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.09
+   },
+   "map": [
+    1.751,
+    -0.838
+   ]
+  },
+  {
+   "id": "aviateur-browline-standard",
+   "name": "Aviateur mixte (browline, windsor)",
+   "kit": false,
+   "form": "aviateur",
+   "family": "Aviateurs",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.902,
+    "roundness": 0.976,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.09
+   },
+   "map": [
+    0.181,
+    0.916
+   ]
+  },
+  {
+   "id": "aviateur-semi-standard",
+   "name": "Aviateur semi-cerclé (nylor)",
+   "kit": false,
+   "form": "aviateur",
+   "family": "Aviateurs",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.902,
+    "roundness": 0.976,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.09
+   },
+   "map": [
+    1.041,
+    -0.173
+   ]
+  },
+  {
+   "id": "aviateur-rimless-standard",
+   "name": "Aviateur sans cercle",
+   "kit": false,
+   "form": "aviateur",
+   "family": "Aviateurs",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.902,
+    "roundness": 0.976,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.09
+   },
+   "map": [
+    1.773,
+    -0.899
+   ]
+  },
+  {
+   "id": "pilote-carre-acetate-standard",
+   "name": "Pilote carré",
+   "kit": false,
+   "form": "pilote-carre",
+   "family": "Aviateurs",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.809,
+    "roundness": 0.913,
+    "presence": 4.496,
+    "top": 2.163,
+    "lift": 0.163
+   },
+   "map": [
+    -0.514,
+    0.526
+   ]
+  },
+  {
+   "id": "pilote-carre-metal-standard",
+   "name": "Pilote carré métal cerclé",
+   "kit": false,
+   "form": "pilote-carre",
+   "family": "Aviateurs",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.809,
+    "roundness": 0.913,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.163
+   },
+   "map": [
+    0.575,
+    -1.388
+   ]
+  },
+  {
+   "id": "pilote-carre-browline-standard",
+   "name": "Pilote carré mixte (browline, windsor)",
+   "kit": false,
+   "form": "pilote-carre",
+   "family": "Aviateurs",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.809,
+    "roundness": 0.913,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.163
+   },
+   "map": [
+    -0.995,
+    0.365
+   ]
+  },
+  {
+   "id": "pilote-carre-semi-standard",
+   "name": "Pilote carré semi-cerclé (nylor)",
+   "kit": false,
+   "form": "pilote-carre",
+   "family": "Aviateurs",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.809,
+    "roundness": 0.913,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.163
+   },
+   "map": [
+    -0.135,
+    -0.723
+   ]
+  },
+  {
+   "id": "pilote-carre-rimless-standard",
+   "name": "Pilote carré sans cercle",
+   "kit": false,
+   "form": "pilote-carre",
+   "family": "Aviateurs",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.809,
+    "roundness": 0.913,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.163
+   },
+   "map": [
+    0.596,
+    -1.449
+   ]
+  },
+  {
+   "id": "hexagone-acetate-standard",
+   "name": "Hexagone",
+   "kit": false,
+   "form": "hexagone",
+   "family": "Géométriques",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.87,
+    "roundness": 0.94,
+    "presence": 4,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.121,
+    0.398
+   ]
+  },
+  {
+   "id": "hexagone-metal-standard",
+   "name": "Hexagone métal cerclé",
+   "kit": false,
+   "form": "hexagone",
+   "family": "Géométriques",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.87,
+    "roundness": 0.94,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.606,
+    -0.972
+   ]
+  },
+  {
+   "id": "hexagone-browline-standard",
+   "name": "Hexagone mixte (browline, windsor)",
+   "kit": false,
+   "form": "hexagone",
+   "family": "Géométriques",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.87,
+    "roundness": 0.94,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0
+   },
+   "map": [
+    0.036,
+    0.782
+   ]
+  },
+  {
+   "id": "hexagone-semi-standard",
+   "name": "Hexagone semi-cerclé (nylor)",
+   "kit": false,
+   "form": "hexagone",
+   "family": "Géométriques",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.87,
+    "roundness": 0.94,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0
+   },
+   "map": [
+    0.896,
+    -0.307
+   ]
+  },
+  {
+   "id": "hexagone-rimless-standard",
+   "name": "Hexagone sans cercle",
+   "kit": false,
+   "form": "hexagone",
+   "family": "Géométriques",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.87,
+    "roundness": 0.94,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.628,
+    -1.033
+   ]
+  },
+  {
+   "id": "octogone-acetate-standard",
+   "name": "Octogone",
+   "kit": false,
+   "form": "octogone",
+   "family": "Géométriques",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.9,
+    "roundness": 0.967,
+    "presence": 4,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.48,
+    0.574
+   ]
+  },
+  {
+   "id": "octogone-metal-standard",
+   "name": "Octogone métal cerclé",
+   "kit": false,
+   "form": "octogone",
+   "family": "Géométriques",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.9,
+    "roundness": 0.967,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.965,
+    -0.796
+   ]
+  },
+  {
+   "id": "octogone-browline-standard",
+   "name": "Octogone mixte (browline, windsor)",
+   "kit": false,
+   "form": "octogone",
+   "family": "Géométriques",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.9,
+    "roundness": 0.967,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0
+   },
+   "map": [
+    0.395,
+    0.958
+   ]
+  },
+  {
+   "id": "octogone-semi-standard",
+   "name": "Octogone semi-cerclé (nylor)",
+   "kit": false,
+   "form": "octogone",
+   "family": "Géométriques",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.9,
+    "roundness": 0.967,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0
+   },
+   "map": [
+    1.255,
+    -0.131
+   ]
+  },
+  {
+   "id": "octogone-rimless-standard",
+   "name": "Octogone sans cercle",
+   "kit": false,
+   "form": "octogone",
+   "family": "Géométriques",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.9,
+    "roundness": 0.967,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0
+   },
+   "map": [
+    1.987,
+    -0.856
+   ]
+  },
+  {
+   "id": "flat-top-acetate-standard",
+   "name": "Flat top",
+   "kit": false,
+   "form": "flat-top",
+   "family": "Géométriques",
+   "construction": "acetate",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.615,
+    "roundness": 0.819,
+    "presence": 5.498,
+    "top": 4.081,
+    "lift": 0.238
+   },
+   "map": [
+    -3.018,
+    0.288
+   ]
+  },
+  {
+   "id": "flat-top-metal-standard",
+   "name": "Flat top métal cerclé",
+   "kit": false,
+   "form": "flat-top",
+   "family": "Géométriques",
+   "construction": "metal",
+   "size": "standard",
+   "finish": {
+    "metal": "canon"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.615,
+    "roundness": 0.819,
+    "presence": 0.945,
+    "top": 0,
+    "lift": 0.238
+   },
+   "map": [
+    -1.306,
+    -2.36
+   ]
+  },
+  {
+   "id": "flat-top-browline-standard",
+   "name": "Flat top mixte (browline, windsor)",
+   "kit": false,
+   "form": "flat-top",
+   "family": "Géométriques",
+   "construction": "browline",
+   "size": "standard",
+   "finish": {
+    "acetate": "noir",
+    "metal": "or",
+    "rivets": true
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.615,
+    "roundness": 0.819,
+    "presence": 3.2,
+    "top": 5,
+    "lift": 0.238
+   },
+   "map": [
+    -2.876,
+    -0.606
+   ]
+  },
+  {
+   "id": "flat-top-semi-standard",
+   "name": "Flat top semi-cerclé (nylor)",
+   "kit": false,
+   "form": "flat-top",
+   "family": "Géométriques",
+   "construction": "semi",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.615,
+    "roundness": 0.819,
+    "presence": 1.6,
+    "top": 2.5,
+    "lift": 0.238
+   },
+   "map": [
+    -2.016,
+    -1.695
+   ]
+  },
+  {
+   "id": "flat-top-rimless-standard",
+   "name": "Flat top sans cercle",
+   "kit": false,
+   "form": "flat-top",
+   "family": "Géométriques",
+   "construction": "rimless",
+   "size": "standard",
+   "finish": {
+    "metal": "argent"
+   },
+   "era": null,
+   "mood": [],
+   "descriptor": {
+    "ratio": 0.615,
+    "roundness": 0.819,
+    "presence": 0.81,
+    "top": 0,
+    "lift": 0.238
+   },
+   "map": [
+    -1.284,
+    -2.421
+   ]
+  }
+ ]
+}

@@ -249,6 +249,26 @@ export function drawFrame(shape: Shape, k: number): Drawn {
       front.push(metalStroke(`M${fmt(ex - side * 2.6 * k)} ${fmt(-y)}L${fmt(ex + side * 3.8 * k)} ${fmt(-y - 0.5 * k)}`, wire * 1.2));
       front.push(`<circle cx="${fmt(ex - side * 2 * k)}" cy="${fmt(-y)}" r="${fmt(0.75 * k)}" fill="url(#${id}riv)"/>`);
       bbox.x = Math.max(bbox.x, Math.abs(ex) + 4 * k);
+    } else if (shape.kind === 'semi') {
+      // upper bar in metal, the lower edge held by a nylon thread
+      const ymid = lo + (hi - lo) * 0.42;
+      const t = (y: number) => (1.5 + 1.1 * smooth((y - ymid) / (hi - ymid))) * k;
+      const lifted = offsetVar(inner, (_x, y) => (y >= ymid ? t(y) : 0));
+      // the contiguous arc of the contour above ymid
+      const n = inner.length;
+      const above = inner.map(([, y]) => y >= ymid);
+      const start = above.findIndex((a, i) => a && !above[(i - 1 + n) % n]);
+      const arc: number[] = [];
+      for (let j = 0; j < n && above[(start + j) % n]; j++) arc.push((start + j) % n);
+      const bar = [...arc.map((i) => lifted[i]), ...arc.slice().reverse().map((i) => inner[i])];
+      front.push(`<path d="${path(bar)}" fill="url(#${id}met)" stroke="#000" stroke-opacity=".35" stroke-width=".2"/>`);
+      front.push(`<path d="${path(inner)}" fill="none" stroke="#8b939b" stroke-opacity=".75" stroke-width=".32"/>`);
+      grow(bar);
+      grow(inner);
+      const y = hingeY * 0.95;
+      const ex = side * outerEdge(pos(inner), y);
+      front.push(metalStroke(`M${fmt(ex)} ${fmt(-y)}L${fmt(ex + side * 3.4 * k)} ${fmt(-y - 0.6 * k)}`, wire * 1.15));
+      bbox.x = Math.max(bbox.x, Math.abs(ex) + 4.8 * k);
     } else {
       front.push(metalStroke(path(inner), wire));
       grow(inner, wire / 2);
@@ -258,7 +278,15 @@ export function drawFrame(shape: Shape, k: number): Drawn {
       front.push(`<rect x="${fmt(Math.min(ex + side * 2.4 * k, ex + side * 4.6 * k))}" y="${fmt(-y - 1.6 * k)}" width="${fmt(2.2 * k)}" height="${fmt(2 * k)}" rx="${fmt(0.5 * k)}" fill="url(#${id}met)"/>`);
       bbox.x = Math.max(bbox.x, Math.abs(ex) + 4.8 * k);
     }
-    if (shape.kind === 'browline') {
+    if (shape.kind === 'browline' && shape.ring) {
+      // Windsor: a thin acetate ring over the metal rim, all around the lens
+      const ringOut = offsetVar(inner, () => 2.4 * k);
+      const ringIn = offsetVar(inner, () => 0.35 * k);
+      solids.push(ringOut);
+      holes.push(ringIn);
+      grow(ringOut);
+      front.push(`<path d="${path(ringOut)}" fill="none" stroke="#000" stroke-opacity=".4" stroke-width=".22"/>`);
+    } else if (shape.kind === 'browline') {
       // acetate brow over the top of the lens, thicker towards the temple
       const local = side === 1 ? ap : mirror(ap);
       const ymax = Math.max(...local.map((p) => p[1]));

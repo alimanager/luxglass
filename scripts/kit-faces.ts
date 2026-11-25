@@ -5,7 +5,7 @@
  * Frame descriptors are measured on the drawings. Face shapes and traits are placed with the
  * expert rules of src/lib/fit.ts (the frame each face calls for), not learned from data.
  */
-import { SHAPES, type Mood, type Shape } from './kit-shapes';
+import { CONSTRUCTIONS, FORMS, SHAPES, atlas, make, type FormId, type Mood, type Shape } from './kit-shapes';
 import { aperture, drawFrame, fmt } from './kit-render';
 
 export const SIZES = [
@@ -61,6 +61,9 @@ export function describe(shape: Shape): Descriptor {
   } else if (shape.kind === 'browline') {
     presence = 3.2;
     topWeight = 5;
+  } else if (shape.kind === 'semi') {
+    presence = 1.6;
+    topWeight = 2.5;
   } else {
     presence = (shape.wire ?? 1) * 0.9;
     topWeight = 0;
@@ -216,20 +219,22 @@ function moodRows(): string {
 }
 
 export function iconsPage(): string {
-  const rows = SHAPES.map(
-    (s, i) => `<tr><th>${String(i + 1).padStart(2, '0')}</th><td><b>${s.name}</b><br><span class="small">${s.era}</span></td><td>${s.icon}</td></tr>`
-  ).join('');
+  const row = (s: Shape, i: number) =>
+    `<tr><th>${String(i + 1).padStart(2, '0')}</th><td><b>${s.name}</b><br><span class="small">${s.era}</span></td><td>${s.icon}</td></tr>`;
+  const half = Math.ceil(SHAPES.length / 2);
+  const rows = `<div class="cols"><table class="icons">${SHAPES.slice(0, half).map((s, i) => row(s, i)).join('')}</table>
+    <table class="icons">${SHAPES.slice(half).map((s, i) => row(s, i + half)).join('')}</table></div>`;
   return page(`
     <h1>${SHAPES.length} icônes, un siècle de regards</h1>
     <p class="small">Chaque monture de ce kit a marqué son époque et n’a jamais disparu. Elles sont dessinées d’après les proportions
     de leur famille, sans reproduire le modèle d’une marque.</p>
-    <table class="icons">${rows}</table>
+    ${rows}
   `);
 }
 
 export function faceGuidePage(): string {
   const faceRows = FACE_TARGETS.map((f) => {
-    const ids = f.id === 'oval' ? ['panto', 'browline', 'trapeze', 'rectangle-ecaille'].map((x) => SHAPES.findIndex((s) => s.id === x)) : rank(descs, model, f.target);
+    const ids = f.id === 'oval' ? ['rond-metal', 'browline', 'trapeze', 'rectangle-ecaille'].map((x) => SHAPES.findIndex((s) => s.id === x)) : rank(descs, model, f.target);
     return `<tr><th>${f.name}</th><td>${codesM(ids)}</td><td>${f.why[0].toUpperCase() + f.why.slice(1)}.</td></tr>`;
   }).join('');
   const traitRows = TRAIT_TARGETS.map(
@@ -273,8 +278,8 @@ export function mapPage(): string {
   const thumbs = SHAPES.map((s, i) => {
     const d = drawFrame(s, 1);
     const [x, y] = pts[i];
-    return `<defs>${d.defs}</defs><g transform="translate(${fmt(sx(x))} ${fmt(sy(y))})"><g transform="scale(0.2)">${d.svg}</g>
-      <text y="7.4" font-size="2.6" text-anchor="middle" fill="#333">${String(i + 1).padStart(2, '0')}</text></g>`;
+    return `<defs>${d.defs}</defs><g transform="translate(${fmt(sx(x))} ${fmt(sy(y))})"><g transform="scale(0.15)">${d.svg}</g>
+      <text y="6" font-size="2.4" text-anchor="middle" fill="#333">${String(i + 1).padStart(2, '0')}</text></g>`;
   }).join('');
   const faceMarks = faces
     .map(
@@ -299,4 +304,62 @@ export function mapPage(): string {
       ${faceMarks}
     </svg>
   `);
+}
+
+/** every form in every construction: the catalogue the app and the learning model work from */
+export function atlasPages(): string {
+  const forms = Object.keys(FORMS) as FormId[];
+  const half = Math.ceil(forms.length / 2);
+  const block = (list: FormId[], part: number) => {
+    const CW = 31;
+    const RH = 31;
+    const LW = 34;
+    const head = list
+      .map((f, i) => `<text x="${LW + i * CW + CW / 2}" y="6" font-size="3.2" font-weight="700" text-anchor="middle">${FORMS[f].name}</text>
+        <text x="${LW + i * CW + CW / 2}" y="10" font-size="2.3" fill="#888" text-anchor="middle">${FORMS[f].family}</text>`)
+      .join('');
+    const rows = CONSTRUCTIONS.map((c, r) => {
+      const y = 16 + r * RH;
+      const cells = list
+        .map((f, i) => {
+          const d = drawFrame(make({ form: f, construction: c.id }), 1);
+          const sc = Math.min(0.2, (CW - 3) / d.width);
+          return `<defs>${d.defs}</defs><g transform="translate(${fmt(LW + i * CW + CW / 2)} ${fmt(y + RH / 2 - 2)}) scale(${fmt(sc)}) translate(0 ${fmt(d.centerY)})">${d.svg}</g>`;
+        })
+        .join('');
+      return `<line x1="0" y1="${y}" x2="${LW + list.length * CW}" y2="${y}" stroke="#e2e2e2" stroke-width=".2"/>
+        <text x="0" y="${y + RH / 2 - 1}" font-size="3.1" font-weight="700">${c.name}</text>
+        <text x="0" y="${y + RH / 2 + 3}" font-size="2.3" fill="#888">${c.note}</text>${cells}`;
+    }).join('');
+    const W = LW + list.length * CW;
+    const H = 16 + CONSTRUCTIONS.length * RH;
+    return page(`
+      <h1>Atlas des montures ${part === 1 ? '' : '(suite)'}</h1>
+      <p class="small">Chaque monture combine une forme (colonnes) et une construction (lignes), puis une taille (fine, standard, oversize)
+      et une finition. ${forms.length} formes × ${CONSTRUCTIONS.length} constructions = ${forms.length * CONSTRUCTIONS.length} gabarits, que
+      l’application et l’apprentissage utilisent comme variables séparées.</p>
+      <svg width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif" fill="#111">${head}${rows}</svg>
+    `);
+  };
+  return block(forms.slice(0, half), 1) + block(forms.slice(half), 2);
+}
+
+/** facets and measured descriptors of every template, for the app and for learning */
+export function catalogueJson() {
+  const entry = (s: Shape, kit: boolean) => {
+    const d = describe(s);
+    const [x, y] = model.project(d);
+    return {
+      id: s.id, name: s.name, kit,
+      form: s.form, family: FORMS[s.form].family, construction: s.construction, size: s.size,
+      finish: s.finish, era: s.era ?? null, mood: s.mood,
+      descriptor: Object.fromEntries(Object.entries(d).map(([k, v]) => [k, Math.round(v * 1000) / 1000])),
+      map: [Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000],
+    };
+  };
+  return {
+    features: FEATURES.map((f) => f.key),
+    pca: { mean: model.mean, sd: model.sd, axes: model.axes.slice(0, 2), explained: model.explained.slice(0, 2) },
+    templates: [...SHAPES.map((s) => entry(s, true)), ...atlas().map((s) => entry(s, false))],
+  };
 }

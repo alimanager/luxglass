@@ -9,7 +9,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { SHAPES, type Shape } from './kit-shapes';
 import { drawFrame, fmt } from './kit-render';
-import { faceGuidePage, iconsPage, mapPage, SIZES, code, page } from './kit-faces';
+import { atlasPages, catalogueJson, faceGuidePage, iconsPage, mapPage, SIZES, code, page } from './kit-faces';
 
 /** strip, mm: long enough to hold at one end and bind at the other, tall enough to cover brows to lip */
 const STRIP_W = 230;
@@ -136,7 +136,7 @@ const html = (size: (typeof SIZES)[number]) => `<!doctype html><html lang="fr"><
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14mm; }
   .cols3 { display: grid; grid-template-columns: 1.15fr 1fr 0.8fr; gap: 8mm; }
   .cols3 h2 { margin-top: 3mm; }
-  table.icons td, table.icons th { padding: 1.1mm 4mm 1.1mm 0; font-size: 9pt; }
+  table.icons td, table.icons th { padding: 1mm 3mm 1mm 0; font-size: 8.4pt; line-height: 1.3; }
   table.icons td:last-child { max-width: 150mm; }
   .page.strips { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.5mm; padding: 6mm 14mm; }
   .strips .runner { position: absolute; top: 1.5mm; left: 14mm; margin: 0; font-size: 8pt; color: #999; }
@@ -150,10 +150,13 @@ ${calibration()}
 ${iconsPage()}
 ${faceGuidePage()}
 ${mapPage()}
+${atlasPages()}
 ${sizePages(size)}
 </body></html>`;
 
 await mkdir('kit', { recursive: true });
+await writeFile('src/data/gabarits.json', JSON.stringify(catalogueJson(), null, 1) + '\n');
+console.log('src/data/gabarits.json écrit');
 for (const size of SIZES) await writeFile(`kit/kit-${size.id}.html`, html(size));
 console.log('kit écrit :', SHAPES.length, 'montures, un fichier par largeur (S, M, L)');
 
